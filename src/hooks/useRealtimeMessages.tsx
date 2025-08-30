@@ -69,20 +69,13 @@ export const useRealtimeMessages = (conversationId: string) => {
         setTimeout(() => {
           messageCache.fetchAndCacheMessages(conversationId);
         }, 1000);
-      } else {
-        // Fetch from server
-        const freshMessages = await messageCache.fetchAndCacheMessages(conversationId, forceRefresh);
-        setMessages(freshMessages as RealtimeMessage[]);
-      }
+        return;
+      } 
       
-      // Mark messages as delivered when fetched
-      const undeliveredMessages = messages.filter(
-        msg => msg.sender_id !== user.id && !msg.delivered_at
-      );
-
-      if (undeliveredMessages.length > 0) {
-        await markMessagesAsDelivered(undeliveredMessages.map(m => m.id));
-      }
+      // Fetch from server
+      const freshMessages = await messageCache.fetchAndCacheMessages(conversationId, forceRefresh);
+      setMessages(freshMessages as RealtimeMessage[]);
+      
     } catch (error) {
       console.error('Error fetching messages:', error);
       // Fallback to cached data on error
@@ -93,7 +86,7 @@ export const useRealtimeMessages = (conversationId: string) => {
     } finally {
       setLoading(false);
     }
-  }, [conversationId, user, messageCache, messages]);
+  }, [conversationId, user, messageCache]);
 
   // Mark messages as delivered
   const markMessagesAsDelivered = async (messageIds: string[]) => {
