@@ -334,6 +334,8 @@ const Feed = () => {
                           <VideoPlayer
                             src={post.image_url}
                             className="w-full max-h-96"
+                            autoPlay={true}
+                            loop={false}
                             onPlayStateChange={(isPlaying) => {
                               // Pause other videos when this one plays
                               if (isPlaying) {

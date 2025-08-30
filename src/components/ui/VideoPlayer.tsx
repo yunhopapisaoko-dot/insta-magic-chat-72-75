@@ -22,7 +22,12 @@ const VideoPlayer = ({
   poster,
   onPlayStateChange,
 }: VideoPlayerProps) => {
-  const ctrl = useVideoController({ autoPlay, loop, onPlayStateChange });
+  const ctrl = useVideoController({ 
+    autoPlay, 
+    loop, 
+    muted: autoPlay, // Auto-mute when autoplay is enabled for browser compatibility
+    onPlayStateChange 
+  });
 
   const handleVideoClick = useCallback(() => {
     if (ctrl.showControls) ctrl.togglePlay();
