@@ -3,10 +3,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Smile, X } from 'lucide-react';
+import { Send, Smile, X, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useRealtimeConversations } from '@/hooks/useRealtimeConversations';
+import { useProfileNavigation } from '@/hooks/useProfileNavigation';
 import MessageStatus from '@/components/ui/MessageStatus';
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import MediaUpload from '@/components/MediaUpload';
@@ -22,11 +23,14 @@ interface ProfileChatProps {
   };
   isOpen: boolean;
   onClose: () => void;
+  onNavigateBack?: () => void;
+  showBackButton?: boolean;
 }
 
-const ProfileChat = ({ otherUser, isOpen, onClose }: ProfileChatProps) => {
+const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButton = false }: ProfileChatProps) => {
   const { user } = useAuth();
   const { createOrGetConversation } = useRealtimeConversations();
+  const { cacheConversation } = useProfileNavigation();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,6 +67,14 @@ const ProfileChat = ({ otherUser, isOpen, onClose }: ProfileChatProps) => {
     const convId = await createOrGetConversation(otherUser.id);
     if (convId) {
       setConversationId(convId);
+      // Cache this conversation with complete profile data
+      const profileData = {
+        ...otherUser,
+        bio: null,
+        followers_count: 0,
+        following_count: 0,
+      };
+      cacheConversation(otherUser.id, convId, profileData);
     }
   };
 
@@ -179,6 +191,17 @@ const ProfileChat = ({ otherUser, isOpen, onClose }: ProfileChatProps) => {
         <SheetHeader className="px-6 py-4 border-b border-border bg-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+              {showBackButton && onNavigateBack && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onNavigateBack}
+                  className="w-8 h-8 p-0 mr-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              )}
+              
               <Avatar className="w-10 h-10">
                 <AvatarImage src={otherUser.avatar_url || ''} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Grid3X3, Users, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Grid3X3, Users, UserPlus, UserMinus, MessageCircle, Navigation } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import MobileLayout from '@/components/MobileLayout';
 import PostsGrid from '@/components/PostsGrid';
 import FollowersList from '@/components/FollowersList';
 import ProfileChat from '@/components/ProfileChat';
+import ProfileNavigator from '@/components/ProfileNavigator';
 import { toast } from '@/hooks/use-toast';
 
 interface ProfileData {
@@ -31,6 +32,7 @@ const UserProfile = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [activeView, setActiveView] = useState<'profile' | 'followers' | 'following'>('profile');
   const [chatOpen, setChatOpen] = useState(false);
+  const [navigatorOpen, setNavigatorOpen] = useState(false);
 
   useEffect(() => {
     if (username) {
@@ -186,6 +188,16 @@ const UserProfile = () => {
               </Button>
               <h1 className="text-lg font-semibold">@{profileData.username}</h1>
             </div>
+            
+            {/* Navigation Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setNavigatorOpen(true)}
+              className="p-2"
+            >
+              <Navigation className="w-5 h-5" />
+            </Button>
           </div>
         </div>
 
@@ -308,6 +320,14 @@ const UserProfile = () => {
             />
           )}
         </div>
+        
+        {/* Profile Navigator */}
+        <ProfileNavigator
+          isOpen={navigatorOpen}
+          onClose={() => setNavigatorOpen(false)}
+          initialUsername={profileData.username}
+          initialUserId={profileData.id}
+        />
         
         {/* Profile Chat */}
         {!isOwnProfile && profileData && (
