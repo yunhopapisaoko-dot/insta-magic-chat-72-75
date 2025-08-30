@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, Search, Users } from 'lucide-react';
+import { MessageCircle, Search, Users, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useOptimizedConversations } from '@/hooks/useOptimizedConversations';
@@ -14,7 +14,8 @@ import MobileLayout from '@/components/MobileLayout';
 import { LoadingFeedback } from '@/components/ui/LoadingFeedback';
 
 const ChatList = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { 
     conversations, 
@@ -26,6 +27,7 @@ const ChatList = () => {
     searchParams.get('chat') || null
   );
   const [showPublicChat, setShowPublicChat] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // Auto-open chat from URL parameter
   useEffect(() => {
@@ -67,6 +69,14 @@ const ChatList = () => {
     setSearchParams(searchParams);
   };
 
+  const handleLogout = async () => {
+    if (confirm('Tem certeza que deseja sair das conversas?')) {
+      setLoggingOut(true);
+      await logout();
+      navigate('/login');
+    }
+  };
+
   if (selectedConversation) {
     return (
       <Chat 
@@ -89,8 +99,27 @@ const ChatList = () => {
       <div className="mobile-container py-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Conversas</h1>
-          <MessageCircle className="w-6 h-6 text-primary" />
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-full magic-gradient flex items-center justify-center">
+              <MessageCircle className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Conversas
+            </h1>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+          >
+            {loggingOut ? (
+              <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <LogOut className="w-5 h-5" />
+            )}
+          </Button>
         </div>
 
         {/* Public Chat Button */}

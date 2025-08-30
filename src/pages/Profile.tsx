@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Settings, Edit2, Grid3X3, Heart, MessageCircle, Share } from 'lucide-react';
+import { Settings, Edit2, Grid3X3, Heart, MessageCircle, Share, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import ProfileEditor from '@/components/ProfileEditor';
 import MobileLayout from '@/components/MobileLayout';
@@ -20,9 +21,11 @@ interface ProfileData {
 
 const Profile = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const mockPosts = [];
 
@@ -55,7 +58,11 @@ const Profile = () => {
   }, [user]);
 
   const handleLogout = async () => {
-    await logout();
+    if (confirm('Tem certeza que deseja sair?')) {
+      setLoggingOut(true);
+      await logout();
+      navigate('/login');
+    }
   };
 
   if (loading) {
@@ -86,8 +93,18 @@ const Profile = () => {
           <div className="flex items-center space-x-3">
             <h1 className="text-xl font-bold">@{user?.username}</h1>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <Settings className="w-5 h-5" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+          >
+            {loggingOut ? (
+              <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <LogOut className="w-5 h-5" />
+            )}
           </Button>
         </div>
 
