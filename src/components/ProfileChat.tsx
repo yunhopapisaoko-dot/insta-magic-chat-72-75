@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Smile, X, ArrowLeft, Settings } from 'lucide-react';
+import { Send, Smile, X, ArrowLeft, Settings, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useRealtimeConversations } from '@/hooks/useRealtimeConversations';
@@ -14,6 +14,9 @@ import MediaUpload from '@/components/MediaUpload';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 import { NetworkIndicator } from '@/components/ui/NetworkIndicator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -37,6 +40,10 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -178,6 +185,79 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     return currentDate !== previousDate;
   };
 
+  const fetchParticipants = async () => {
+    if (!conversationId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('conversation_participants')
+        .select(`
+          user_id,
+          profiles:user_id (
+            id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('conversation_id', conversationId);
+
+      if (error) throw error;
+      setParticipants(data || []);
+    } catch (error) {
+      console.error('Error fetching participants:', error);
+    }
+  };
+
+  const fetchAllUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .limit(50);
+
+      if (error) throw error;
+      setAllUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const addParticipant = async (userId: string) => {
+    if (!conversationId) return;
+
+    try {
+      const { error } = await supabase
+        .from('conversation_participants')
+        .insert({
+          conversation_id: conversationId,
+          user_id: userId
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Pessoa adicionada",
+        description: "A pessoa foi adicionada à conversa.",
+      });
+
+      fetchParticipants();
+    } catch (error) {
+      console.error('Error adding participant:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar a pessoa.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenSettings = () => {
+    setShowSettings(true);
+    fetchParticipants();
+    fetchAllUsers();
+  };
+
   const handleLeaveConversation = async () => {
     if (!conversationId || !user) return;
 
@@ -197,6 +277,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
       });
 
       setShowSettings(false);
+      setShowLeaveConfirm(false);
       onClose();
     } catch (error) {
       console.error('Error leaving conversation:', error);
@@ -207,6 +288,13 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
       });
     }
   };
+
+  const filteredUsers = allUsers.filter(userItem => 
+    userItem.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    userItem.username.toLowerCase().includes(searchQuery.toLowerCase())
+  ).filter(userItem => 
+    !participants.some(p => p.profiles?.id === userItem.id) && userItem.id !== user?.id
+  );
 
   // Cleanup typing timeout on unmount
   useEffect(() => {
@@ -271,7 +359,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowSettings(true)}
+                onClick={handleOpenSettings}
                 className="w-8 h-8 p-0"
               >
                 <Settings className="w-4 h-4" />
@@ -445,10 +533,106 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
       </SheetContent>
 
       {/* Settings Modal */}
-      <AlertDialog open={showSettings} onOpenChange={setShowSettings}>
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurações da Conversa</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Current Participants */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">Participantes ({participants.length})</h3>
+              <ScrollArea className="max-h-32">
+                <div className="space-y-2">
+                  {participants.map((participant) => (
+                    <div key={participant.user_id} className="flex items-center space-x-3 p-2 rounded-lg bg-muted/50">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                          {participant.profiles?.display_name?.[0] || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{participant.profiles?.display_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">@{participant.profiles?.username}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+
+            <Separator />
+
+            {/* Add People */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium">Adicionar Pessoas</h3>
+                <UserPlus className="w-4 h-4 text-muted-foreground" />
+              </div>
+              
+              <Input
+                placeholder="Buscar pessoas..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="mb-3"
+              />
+              
+              <ScrollArea className="max-h-32">
+                <div className="space-y-2">
+                  {filteredUsers.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src={user.avatar_url || ''} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                            {user.display_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{user.display_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addParticipant(user.id)}
+                        className="h-7 px-2"
+                      >
+                        <UserPlus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  {filteredUsers.length === 0 && searchQuery && (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      Nenhuma pessoa encontrada
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            <Separator />
+
+            {/* Leave Conversation */}
+            <Button
+              variant="destructive"
+              onClick={() => setShowLeaveConfirm(true)}
+              className="w-full"
+            >
+              Sair da Conversa
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Leave Confirmation Modal */}
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Configurações da Conversa</AlertDialogTitle>
+            <AlertDialogTitle>Sair da Conversa</AlertDialogTitle>
             <AlertDialogDescription>
               Você tem certeza que deseja sair desta conversa? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
