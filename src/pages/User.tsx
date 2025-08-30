@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Grid3X3, Users, UserPlus, UserMinus } from 'lucide-react';
+import { ArrowLeft, Grid3X3, Users, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import MobileLayout from '@/components/MobileLayout';
 import PostsGrid from '@/components/PostsGrid';
 import FollowersList from '@/components/FollowersList';
+import ProfileChat from '@/components/ProfileChat';
 import { toast } from '@/hooks/use-toast';
 
 interface ProfileData {
@@ -29,6 +30,7 @@ const UserProfile = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [activeView, setActiveView] = useState<'profile' | 'followers' | 'following'>('profile');
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     if (username) {
@@ -228,27 +230,40 @@ const UserProfile = () => {
               </button>
             </div>
 
-            {/* Follow Button */}
+            {/* Action Buttons */}
             {!isOwnProfile && (
-              <Button 
-                onClick={handleFollow}
-                disabled={followLoading}
-                className={`w-full rounded-xl ${
-                  isFollowing 
-                    ? 'bg-muted text-foreground hover:bg-muted/80' 
-                    : 'magic-button'
-                }`}
-                variant={isFollowing ? 'outline' : 'default'}
-              >
-                {followLoading ? (
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                ) : isFollowing ? (
-                  <UserMinus className="w-4 h-4 mr-2" />
-                ) : (
-                  <UserPlus className="w-4 h-4 mr-2" />
-                )}
-                {isFollowing ? 'Deixar de seguir' : 'Seguir'}
-              </Button>
+              <div className="space-y-3">
+                {/* Chat Button - Destacado */}
+                <Button 
+                  onClick={() => setChatOpen(true)}
+                  className="w-full rounded-xl bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  size="lg"
+                >
+                  <MessageCircle className="w-5 h-5 mr-2" />
+                  Enviar Mensagem
+                </Button>
+                
+                {/* Follow Button */}
+                <Button 
+                  onClick={handleFollow}
+                  disabled={followLoading}
+                  className={`w-full rounded-xl ${
+                    isFollowing 
+                      ? 'bg-muted text-foreground hover:bg-muted/80' 
+                      : 'border-primary text-primary hover:bg-primary hover:text-primary-foreground'
+                  }`}
+                  variant="outline"
+                >
+                  {followLoading ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : isFollowing ? (
+                    <UserMinus className="w-4 h-4 mr-2" />
+                  ) : (
+                    <UserPlus className="w-4 h-4 mr-2" />
+                  )}
+                  {isFollowing ? 'Deixar de seguir' : 'Seguir'}
+                </Button>
+              </div>
             )}
 
             {isOwnProfile && (
@@ -293,6 +308,20 @@ const UserProfile = () => {
             />
           )}
         </div>
+        
+        {/* Profile Chat */}
+        {!isOwnProfile && profileData && (
+          <ProfileChat
+            otherUser={{
+              id: profileData.id,
+              display_name: profileData.display_name,
+              username: profileData.username,
+              avatar_url: profileData.avatar_url,
+            }}
+            isOpen={chatOpen}
+            onClose={() => setChatOpen(false)}
+          />
+        )}
       </div>
     </MobileLayout>
   );
