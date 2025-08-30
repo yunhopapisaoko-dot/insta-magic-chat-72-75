@@ -1,0 +1,278 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+
+export interface PublicMessage {
+  id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  sender?: {
+    display_name: string;
+    username: string;
+    avatar_url: string | null;
+  };
+}
+
+interface UseInfinitePublicChatOptions {
+  pageSize?: number;
+  enableAutoScroll?: boolean;
+}
+
+export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}) => {
+  const { pageSize = 20, enableAutoScroll = true } = options;
+  const { user } = useAuth();
+  
+  const [messages, setMessages] = useState<PublicMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+
+  const scrollElementRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
+
+  // Fetch messages with pagination
+  const fetchMessages = useCallback(async (cursor?: string, append = false) => {
+    if (!user) return;
+
+    try {
+      const query = supabase
+        .from('public_chat_messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(pageSize);
+
+      if (cursor) {
+        query.lt('created_at', cursor);
+      }
+
+      const { data: messagesData, error } = await query;
+      if (error) throw error;
+
+      if (messagesData?.length) {
+        // Get unique sender IDs
+        const senderIds = [...new Set(messagesData.map(m => m.sender_id))];
+        
+        // Fetch sender profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url')
+          .in('id', senderIds);
+
+        if (profilesError) throw profilesError;
+
+        // Create profiles map
+        const profilesMap = profiles?.reduce((acc, profile) => {
+          acc[profile.id] = {
+            display_name: profile.display_name,
+            username: profile.username,
+            avatar_url: profile.avatar_url,
+          };
+          return acc;
+        }, {} as Record<string, any>) || {};
+
+        // Add sender info to messages (keep DESC order for now)
+        const messagesWithSenders = messagesData.map(message => ({
+          ...message,
+          sender: profilesMap[message.sender_id]
+        }));
+
+        if (append) {
+          setMessages(prev => {
+            // Reverse new messages to maintain chronological order when prepending
+            const reversedNew = [...messagesWithSenders].reverse();
+            return [...reversedNew, ...prev];
+          });
+        } else {
+          // Reverse for chronological order (oldest first)
+          setMessages([...messagesWithSenders].reverse());
+        }
+
+        setHasMore(messagesData.length === pageSize);
+      } else {
+        if (!append) {
+          setMessages([]);
+        }
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Error fetching public messages:', error);
+      toast({
+        title: "Erro ao carregar mensagens",
+        description: "Não foi possível carregar as mensagens.",
+        variant: "destructive",
+      });
+    }
+  }, [user, pageSize]);
+
+  // Load more messages (older ones)
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || messages.length === 0) return;
+
+    setLoadingMore(true);
+    try {
+      const oldestMessage = messages[0];
+      await fetchMessages(oldestMessage.created_at, true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, messages, fetchMessages]);
+
+  // Send message
+  const sendMessage = useCallback(async (content: string) => {
+    if (!user || !content.trim() || sending) return;
+
+    setSending(true);
+    try {
+      const { error } = await supabase
+        .from('public_chat_messages')
+        .insert({
+          sender_id: user.id,
+          content: content.trim()
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error sending public message:', error);
+      toast({
+        title: "Erro ao enviar mensagem",
+        description: "Não foi possível enviar sua mensagem. Tente novamente.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setSending(false);
+    }
+  }, [user, sending]);
+
+  // Fetch user profile
+  const fetchUserProfile = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, username, avatar_url')
+        .eq('id', user.id)
+        .single();
+      
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  }, [user]);
+
+  // Auto-scroll to bottom
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (scrollElementRef.current) {
+      scrollElementRef.current.scrollTo({
+        top: scrollElementRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    }
+  }, []);
+
+  // Check if user is near bottom
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const element = e.currentTarget;
+    const threshold = 100;
+    const isNear = element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+    setIsNearBottom(isNear);
+
+    // Load more when near top
+    if (element.scrollTop < 100 && hasMore && !loadingMore) {
+      loadMore();
+    }
+  }, [hasMore, loadingMore, loadMore]);
+
+  // Real-time subscription
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('infinite_public_chat')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'public_chat_messages',
+        },
+        async (payload) => {
+          const newMessage = payload.new as PublicMessage;
+          
+          // Get sender profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, username, avatar_url')
+            .eq('id', newMessage.sender_id)
+            .single();
+
+          if (profile) {
+            newMessage.sender = {
+              display_name: profile.display_name,
+              username: profile.username,
+              avatar_url: profile.avatar_url,
+            };
+          }
+
+          setMessages(prev => [...prev, newMessage]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Auto-scroll effect for new messages
+  useEffect(() => {
+    if (messages.length > lastMessageCountRef.current) {
+      const isNewMessage = messages.length > 0;
+      lastMessageCountRef.current = messages.length;
+
+      if (isInitialLoadRef.current) {
+        // Always scroll to bottom on initial load
+        setTimeout(() => scrollToBottom(false), 100);
+        isInitialLoadRef.current = false;
+      } else if (enableAutoScroll && isNearBottom && isNewMessage) {
+        // Only auto-scroll if user is near bottom
+        setTimeout(() => scrollToBottom(true), 100);
+      }
+    }
+  }, [messages.length, enableAutoScroll, isNearBottom, scrollToBottom]);
+
+  // Initial load
+  useEffect(() => {
+    if (user) {
+      setLoading(true);
+      Promise.all([
+        fetchMessages(),
+        fetchUserProfile()
+      ]).finally(() => {
+        setLoading(false);
+      });
+    }
+  }, [user, fetchMessages, fetchUserProfile]);
+
+  return {
+    messages,
+    loading,
+    loadingMore,
+    sending,
+    hasMore,
+    userProfile,
+    isNearBottom,
+    sendMessage,
+    loadMore,
+    scrollToBottom,
+    scrollElementRef,
+    handleScroll,
+  };
+};
