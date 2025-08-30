@@ -72,6 +72,12 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
     commentInputRef.current?.focus();
   };
 
+  const handleEmojiClick = (emoji: string) => {
+    setNewComment(prev => prev + emoji);
+    setShowEmojiPicker(false);
+    commentInputRef.current?.focus();
+  };
+
   const addEmoji = (emoji: string) => {
     setNewComment(prev => prev + emoji);
     setShowEmojiPicker(false);
