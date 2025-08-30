@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -16,6 +17,8 @@ interface Profile {
 
 interface AuthContextType {
   user: Profile | null;
+  supabaseUser: User | null;
+  session: Session | null;
   loading: boolean;
   login: (username: string) => Promise<boolean>;
   register: (username: string, displayName: string) => Promise<boolean>;
@@ -30,6 +33,8 @@ const ADMIN_PASSWORD = '88620787';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<Profile | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -38,20 +43,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return regex.test(username);
   };
 
-  useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('magic-talk-user');
-    const savedAdmin = localStorage.getItem('magic-talk-admin');
-    
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      setUser(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
     }
-    
+  };
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        setSession(session);
+        setSupabaseUser(session?.user ?? null);
+        
+        // Defer profile fetch to avoid deadlock
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setUser(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id);
+      setSession(session);
+      setSupabaseUser(session?.user ?? null);
+      
+      if (session?.user) {
+        setTimeout(() => {
+          fetchUserProfile(session.user.id);
+        }, 0);
+      } else {
+        // Fallback: Check for old localStorage user (backward compatibility)
+        const savedUser = localStorage.getItem('magic-talk-user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+      }
+      
+      setLoading(false);
+    });
+
+    // Check for admin status
+    const savedAdmin = localStorage.getItem('magic-talk-admin');
     if (savedAdmin) {
       setIsAdmin(true);
     }
-    
-    setLoading(false);
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (username: string): Promise<boolean> => {
@@ -81,7 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setUser(data);
-      localStorage.setItem('magic-talk-user', JSON.stringify(data));
+      // Don't store in localStorage anymore - Supabase handles persistence
       
       toast({
         title: "Login realizado",
@@ -155,7 +210,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setUser(data);
-      localStorage.setItem('magic-talk-user', JSON.stringify(data));
+      // Don't store in localStorage anymore - Supabase handles persistence
       
       toast({
         title: "Conta criada",
@@ -174,7 +229,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async (): Promise<void> => {
+    // Sign out from Supabase if authenticated
+    if (supabaseUser) {
+      await supabase.auth.signOut();
+    }
+    
     setUser(null);
+    setSupabaseUser(null);
+    setSession(null);
     setIsAdmin(false);
     localStorage.removeItem('magic-talk-user');
     localStorage.removeItem('magic-talk-admin');
@@ -207,6 +269,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{
       user,
+      supabaseUser,
+      session,
       loading,
       login,
       register,
