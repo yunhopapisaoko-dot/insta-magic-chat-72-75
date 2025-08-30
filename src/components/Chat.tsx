@@ -94,10 +94,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   // Remove fetchMessages since it's handled by useRealtimeMessages
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (instant = false) => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ 
-        behavior: 'smooth',
+        behavior: instant ? 'auto' : 'smooth',
         block: 'end'
       });
     }
@@ -105,8 +105,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   // Auto scroll when new messages arrive
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // First load: scroll instantly to bottom, subsequent messages: smooth scroll
+    const isFirstLoad = messages.length > 0 && !loading;
+    scrollToBottom(isFirstLoad);
+  }, [messages, loading]);
 
   const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {
     const content = messageContent || newMessage.trim();
