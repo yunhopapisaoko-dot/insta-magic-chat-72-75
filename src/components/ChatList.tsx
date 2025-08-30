@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, Search, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useConversations, type Conversation } from '@/hooks/useConversations';
+import { useRealtimeConversations, type Conversation } from '@/hooks/useRealtimeConversations';
 import { useAuth } from '@/hooks/useAuth';
 import Chat from '@/components/Chat';
 import PublicChat from '@/components/PublicChat';
@@ -12,7 +12,7 @@ import MobileLayout from '@/components/MobileLayout';
 
 const ChatList = () => {
   const { user } = useAuth();
-  const { conversations, loading } = useConversations();
+  const { conversations, loading } = useRealtimeConversations();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showPublicChat, setShowPublicChat] = useState(false);

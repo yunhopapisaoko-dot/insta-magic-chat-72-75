@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Send, Image, Smile } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Message } from '@/hooks/useConversations';
 import MobileLayout from '@/components/MobileLayout';
+import MessageStatus from '@/components/ui/MessageStatus';
+import TypingIndicator from '@/components/ui/TypingIndicator';
 
 interface ChatProps {
   conversationId: string;
@@ -24,47 +26,28 @@ interface ChatParticipant {
 
 const Chat = ({ conversationId, onBack }: ChatProps) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { 
+    messages, 
+    typingUsers, 
+    loading, 
+    sending, 
+    sendMessage: realtimeSendMessage,
+    sendTypingIndicator 
+  } = useRealtimeMessages(conversationId);
   const [newMessage, setNewMessage] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchConversationData();
-    fetchMessages();
   }, [conversationId]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, typingUsers]);
 
-  // Set up real-time message subscription
-  useEffect(() => {
-    if (!conversationId) return;
-
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages(prev => [...prev, newMessage]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [conversationId]);
+  // Remove old real-time subscription effect since it's handled by useRealtimeMessages
 
   const fetchConversationData = async () => {
     try {
@@ -101,23 +84,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   };
 
-  const fetchMessages = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      setMessages(data || []);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Remove fetchMessages since it's handled by useRealtimeMessages
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -126,28 +93,42 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending || !user) return;
 
-    setSending(true);
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: user.id,
-          content: newMessage.trim(),
-        });
+    // Clear typing indicator before sending
+    await sendTypingIndicator(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
 
-      if (error) throw error;
-
+    const result = await realtimeSendMessage(newMessage);
+    if (result) {
       setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Erro ao enviar mensagem",
-        description: "Não foi possível enviar sua mensagem. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setSending(false);
+    }
+  };
+
+  const handleMessageChange = async (value: string) => {
+    setNewMessage(value);
+    
+    // Send typing status when user starts typing
+    if (value.trim() && !typingTimeoutRef.current) {
+      await sendTypingIndicator(true);
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to stop typing indicator
+    if (value.trim()) {
+      typingTimeoutRef.current = setTimeout(async () => {
+        await sendTypingIndicator(false);
+        typingTimeoutRef.current = null;
+      }, 2000); // Stop typing after 2 seconds of inactivity
+    } else {
+      // Immediately stop typing if input is empty
+      await sendTypingIndicator(false);
+      typingTimeoutRef.current = null;
     }
   };
 
@@ -157,6 +138,15 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       handleSendMessage();
     }
   };
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -184,7 +174,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   };
 
-  const shouldShowDateSeparator = (currentMessage: Message, previousMessage?: Message) => {
+  const shouldShowDateSeparator = (currentMessage: any, previousMessage?: any) => {
     if (!previousMessage) return true;
     
     const currentDate = new Date(currentMessage.created_at).toDateString();
@@ -265,25 +255,62 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                       </div>
                     )}
                     
-                    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[70%] p-3 rounded-2xl ${
-                        isOwnMessage 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted'
-                      }`}>
-                        {message.content && (
-                          <p className="text-sm leading-relaxed">{message.content}</p>
-                        )}
-                        <div className={`text-xs mt-1 ${
-                          isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                        }`}>
-                          {formatMessageTime(message.created_at)}
-                        </div>
-                      </div>
-                    </div>
+                     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
+                       {!isOwnMessage && (
+                         <Avatar className="w-8 h-8 mt-1">
+                           <AvatarImage src={otherUser?.avatar_url || ''} />
+                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                             {otherUser?.display_name?.[0] || '?'}
+                           </AvatarFallback>
+                         </Avatar>
+                       )}
+                       
+                       <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
+                         {!isOwnMessage && (
+                           <p className="text-xs text-muted-foreground mb-1 px-1">
+                             {otherUser?.display_name || 'Usuário'}
+                           </p>
+                         )}
+                         <div className={`p-3 rounded-2xl ${
+                           isOwnMessage 
+                             ? 'bg-primary text-primary-foreground' 
+                             : 'bg-muted'
+                         }`}>
+                           {message.content && (
+                             <p className="text-sm leading-relaxed">{message.content}</p>
+                           )}
+                           <div className={`flex items-center justify-between mt-1 ${
+                             isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                           }`}>
+                             <span className="text-xs">
+                               {formatMessageTime(message.created_at)}
+                             </span>
+                             {isOwnMessage && (
+                               <MessageStatus 
+                                 status={message.message_status as 'sent' | 'delivered' | 'read' || 'sent'} 
+                                 className="ml-2" 
+                               />
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                       
+                       {isOwnMessage && user && (
+                         <Avatar className="w-8 h-8 mt-1">
+                           <AvatarImage src={user.avatar_url || ''} />
+                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                             {user.display_name?.[0] || '?'}
+                           </AvatarFallback>
+                         </Avatar>
+                       )}
+                     </div>
                   </div>
                 );
               })}
+              
+              {/* Enhanced Typing Indicator */}
+              <TypingIndicator typingUsers={typingUsers} className="px-2" />
+              
               <div ref={messagesEndRef} />
             </>
           )}
@@ -299,7 +326,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               
               <Input
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e) => handleMessageChange(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Digite uma mensagem..."
                 className="flex-1 rounded-full border-0 bg-muted/50"

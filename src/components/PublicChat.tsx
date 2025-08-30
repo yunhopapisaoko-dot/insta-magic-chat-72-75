@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Send, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { usePublicChat } from '@/hooks/usePublicChat';
-import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useRealtimePublicChat } from '@/hooks/useRealtimePublicChat';
 import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
+import TypingIndicator from '@/components/ui/TypingIndicator';
 
 interface PublicChatProps {
   onBack: () => void;
@@ -16,10 +16,16 @@ interface PublicChatProps {
 
 const PublicChat = ({ onBack }: PublicChatProps) => {
   const { user } = useAuth();
-  const { messages, loading, sendMessage, userProfile } = usePublicChat();
-  const { typingUsers, sendTypingStatus } = useTypingIndicator();
+  const { 
+    messages, 
+    typingUsers, 
+    loading, 
+    sending, 
+    sendMessage, 
+    sendTypingIndicator, 
+    userProfile 
+  } = useRealtimePublicChat();
   const [newMessage, setNewMessage] = useState('');
-  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -35,24 +41,16 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     if (!newMessage.trim() || sending || !user || !userProfile) return;
 
     // Clear typing status before sending
-    await sendTypingStatus(false, userProfile.display_name);
+    await sendTypingIndicator(false, userProfile.display_name);
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    setSending(true);
     try {
       await sendMessage(newMessage);
       setNewMessage('');
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Erro ao enviar mensagem",
-        description: "Não foi possível enviar sua mensagem. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setSending(false);
+      // Error handling is done in the hook
     }
   };
 
@@ -63,7 +61,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
 
     // Send typing status when user starts typing
     if (value.trim() && !typingTimeoutRef.current) {
-      await sendTypingStatus(true, userProfile.display_name);
+      await sendTypingIndicator(true, userProfile.display_name);
     }
 
     // Clear existing timeout
@@ -74,12 +72,12 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     // Set timeout to stop typing indicator
     if (value.trim()) {
       typingTimeoutRef.current = setTimeout(async () => {
-        await sendTypingStatus(false, userProfile.display_name);
+        await sendTypingIndicator(false, userProfile.display_name);
         typingTimeoutRef.current = null;
       }, 2000); // Stop typing after 2 seconds of inactivity
     } else {
       // Immediately stop typing if input is empty
-      await sendTypingStatus(false, userProfile.display_name);
+      await sendTypingIndicator(false, userProfile.display_name);
       typingTimeoutRef.current = null;
     }
   };
@@ -237,24 +235,8 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
                 );
               })}
               
-              {/* Typing Indicator */}
-              {typingUsers.length > 0 && (
-                <div className="flex items-center space-x-2 py-2">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {typingUsers.length === 1 
-                      ? `${typingUsers[0].display_name} está digitando...`
-                      : typingUsers.length === 2
-                      ? `${typingUsers[0].display_name} e ${typingUsers[1].display_name} estão digitando...`
-                      : `${typingUsers[0].display_name} e mais ${typingUsers.length - 1} pessoas estão digitando...`
-                    }
-                  </p>
-                </div>
-              )}
+              {/* Enhanced Typing Indicator */}
+              <TypingIndicator typingUsers={typingUsers} className="bg-muted/50 rounded-lg mx-4" />
               
               <div ref={messagesEndRef} />
             </>
