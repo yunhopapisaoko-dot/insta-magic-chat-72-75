@@ -120,7 +120,7 @@ export const usePostInteractions = (postId: string | null) => {
       )
       .subscribe();
 
-    // Subscribe to comments changes
+    // Subscribe to comments changes with realtime updates
     const commentsChannel = supabase
       .channel(`post-comments-${postId}`)
       .on(
@@ -132,32 +132,29 @@ export const usePostInteractions = (postId: string | null) => {
           filter: `post_id=eq.${postId}`,
         },
         async (payload) => {
+          console.log('New comment received:', payload);
+          
           // Fetch the new comment with profile data
-          const { data: comment } = await supabase
-            .from('post_comments')
-            .select('id, content, created_at, user_id')
-            .eq('id', payload.new.id)
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, username, avatar_url')
+            .eq('id', payload.new.user_id)
             .single();
 
-          if (comment) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('display_name, username, avatar_url')
-              .eq('id', comment.user_id)
-              .single();
+          const newComment = {
+            id: payload.new.id,
+            content: payload.new.content,
+            created_at: payload.new.created_at,
+            user_id: payload.new.user_id,
+            profiles: profile || {
+              display_name: 'Usuário',
+              username: 'user',
+              avatar_url: null
+            }
+          };
 
-            const newComment = {
-              ...comment,
-              profiles: profile || {
-                display_name: 'Usuário',
-                username: 'user',
-                avatar_url: null
-              }
-            };
-
-            setComments(prev => [...prev, newComment]);
-            setCommentsCount(prev => prev + 1);
-          }
+          setComments(prev => [...prev, newComment]);
+          setCommentsCount(prev => prev + 1);
         }
       )
       .on(
