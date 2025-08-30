@@ -103,6 +103,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   };
 
+  // Auto scroll when new messages arrive
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {
     const content = messageContent || newMessage.trim();
     if ((!content && !mediaUrl) || sending || !user) return;
@@ -355,7 +360,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         </Card>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ display: 'flex', flexDirection: 'column-reverse' }}>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">

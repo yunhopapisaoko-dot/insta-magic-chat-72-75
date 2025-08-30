@@ -62,7 +62,7 @@ export const useRealtimeMessages = (conversationId: string) => {
       const cachedMessages = messageCache.getCachedMessages(conversationId);
       
       if (cachedMessages.length > 0 && !forceRefresh) {
-        // Ensure messages are sorted chronologically
+        // Ensure messages are sorted chronologically (newest at bottom)
         const sortedMessages = cachedMessages.sort((a, b) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
