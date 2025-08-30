@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -31,12 +31,32 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     reconnectChannels
   } = useRealtimePublicChat();
   const [newMessage, setNewMessage] = useState('');
+  const [isNearBottom, setIsNearBottom] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Check if user is near bottom of chat
+  const checkIfNearBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return false;
+    
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const threshold = 100; // pixels from bottom
+    return scrollHeight - scrollTop - clientHeight < threshold;
+  }, []);
+
+  // Handle scroll events
+  const handleScroll = useCallback(() => {
+    setIsNearBottom(checkIfNearBottom());
+  }, [checkIfNearBottom]);
+
+  // Only auto-scroll if user is near bottom
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, typingUsers]);
+    if (isNearBottom) {
+      scrollToBottom();
+    }
+  }, [messages, typingUsers, isNearBottom]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -176,7 +196,11 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
         </Card>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+          onScroll={handleScroll}
+        >
           {loading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
