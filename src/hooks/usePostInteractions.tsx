@@ -222,6 +222,13 @@ export const usePostInteractions = (postId: string | null) => {
 
     setIsSubmittingComment(true);
     try {
+      // Ensure there's an authenticated Supabase session (use anonymous if needed)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        const { error: anonError } = await supabase.auth.signInAnonymously();
+        if (anonError) throw anonError;
+      }
+
       const { error } = await supabase
         .from('post_comments')
         .insert({
