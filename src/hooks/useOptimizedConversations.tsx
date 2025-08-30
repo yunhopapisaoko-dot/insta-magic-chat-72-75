@@ -55,34 +55,55 @@ export const useOptimizedConversations = () => {
 
       if (otherError) throw otherError;
 
-      // Get profile data for other participants
+      // Get profile data for other participants (if any)
       const otherUserIds = otherParticipants?.map(p => p.user_id) || [];
-      if (otherUserIds.length === 0) {
-        setConversations([]);
-        return;
+      let profiles: any[] = [];
+      
+      if (otherUserIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url')
+          .in('id', otherUserIds);
+
+        if (profilesError) throw profilesError;
+        profiles = profilesData || [];
       }
 
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, username, avatar_url')
-        .in('id', otherUserIds);
+      // Get last messages for each conversation to identify chat names
+      const { data: lastMessages, error: messagesError } = await supabase
+        .from('messages')
+        .select('conversation_id, content, created_at')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (messagesError) console.error('Error fetching messages:', messagesError);
+
+      // Group messages by conversation and get the latest one
+      const lastMessageMap = (lastMessages || []).reduce((acc, message) => {
+        if (!acc[message.conversation_id]) {
+          acc[message.conversation_id] = message;
+        }
+        return acc;
+      }, {} as Record<string, any>);
 
       // Build conversations list
       const conversationsMap = new Map<string, Conversation>();
-      const profilesMap = profiles?.reduce((acc, profile) => {
+      const profilesMap = profiles.reduce((acc, profile) => {
         acc[profile.id] = profile;
         return acc;
-      }, {} as Record<string, any>) || {};
+      }, {} as Record<string, any>);
       
       participantData.forEach((participant) => {
         const conv = participant.conversations;
+        if (!conv) return;
+
+        const lastMessage = lastMessageMap[conv.id];
         const otherParticipant = otherParticipants?.find(
           p => p.conversation_id === participant.conversation_id
         );
         
-        if (conv && otherParticipant) {
+        if (otherParticipant) {
+          // Conversation with other participants
           const profile = profilesMap[otherParticipant.user_id];
           
           if (profile) {
@@ -96,10 +117,59 @@ export const useOptimizedConversations = () => {
                 username: profile.username,
                 avatar_url: profile.avatar_url,
               },
-              last_message: undefined,
+              last_message: lastMessage ? {
+                id: 'temp',
+                conversation_id: conv.id,
+                content: lastMessage.content,
+                created_at: lastMessage.created_at,
+                sender_id: user.id,
+                media_url: null,
+                media_type: null,
+                story_id: null,
+                read_at: null
+              } : undefined,
               unread_count: 0,
             });
           }
+        } else {
+          // Solo conversation (newly created chat without other participants yet)
+          let displayName = 'Novo Chat';
+          
+          // Try to extract chat name from the initial message
+          if (lastMessage?.content) {
+            const publicMatch = lastMessage.content.match(/Chat público "([^"]+)" criado!/);
+            const privateMatch = lastMessage.content.match(/Chat privado "([^"]+)" criado!/);
+            
+            if (publicMatch) {
+              displayName = `🌐 ${publicMatch[1]}`;
+            } else if (privateMatch) {
+              displayName = `🔒 ${privateMatch[1]}`;
+            }
+          }
+          
+          conversationsMap.set(conv.id, {
+            id: conv.id,
+            created_at: conv.created_at,
+            updated_at: conv.updated_at,
+            other_user: {
+              id: 'group',
+              display_name: displayName,
+              username: 'new_chat',
+              avatar_url: null,
+            },
+            last_message: lastMessage ? {
+              id: 'temp',
+              conversation_id: conv.id,
+              content: lastMessage.content,
+              created_at: lastMessage.created_at,
+              sender_id: user.id,
+              media_url: null,
+              media_type: null,
+              story_id: null,
+              read_at: null
+            } : undefined,
+            unread_count: 0,
+          });
         }
       });
 
@@ -124,9 +194,40 @@ export const useOptimizedConversations = () => {
     }
   }, [user]);
 
-  // Initial load
+  // Initial load and realtime setup
   useEffect(() => {
     fetchConversations();
+
+    // Set up realtime subscriptions
+    const conversationsChannel = supabase
+      .channel('conversations-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations'
+        },
+        () => {
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversation_participants'
+        },
+        () => {
+          fetchConversations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(conversationsChannel);
+    };
   }, [fetchConversations]);
 
 
@@ -186,8 +287,7 @@ export const useOptimizedConversations = () => {
             conversation_id: newConv.id,
             sender_id: user.id,
             content: 'Oi! Vi seu story 👋',
-            story_id: storyId,
-            message_status: 'sent'
+            story_id: storyId
           });
 
         if (messageError) console.error('Error sending initial message:', messageError);
