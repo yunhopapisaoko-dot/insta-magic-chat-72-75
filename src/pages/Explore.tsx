@@ -174,7 +174,7 @@ const Explore = () => {
           description: `Iniciando conversa com ${displayName}`,
         });
         console.log('Navigating to /messages with conversation:', conversationId);
-        navigate('/messages');
+        navigate(`/messages?chat=${conversationId}`);
       } else {
         console.error('createOrGetConversation returned null');
         throw new Error('Failed to create conversation');

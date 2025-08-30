@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, Search, Users } from 'lucide-react';
@@ -14,14 +15,25 @@ import { LoadingFeedback } from '@/components/ui/LoadingFeedback';
 
 const ChatList = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { 
     conversations, 
     loading, 
     error
   } = useOptimizedConversations();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(
+    searchParams.get('chat') || null
+  );
   const [showPublicChat, setShowPublicChat] = useState(false);
+
+  // Auto-open chat from URL parameter
+  useEffect(() => {
+    const chatId = searchParams.get('chat');
+    if (chatId && chatId !== selectedConversation) {
+      setSelectedConversation(chatId);
+    }
+  }, [searchParams, selectedConversation]);
 
   const filteredConversations = conversations.filter(conv =>
     conv.other_user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -48,11 +60,18 @@ const ChatList = () => {
     return message.length > 40 ? `${message.substring(0, 40)}...` : message;
   };
 
+  const handleBackToList = () => {
+    setSelectedConversation(null);
+    // Remove chat parameter from URL
+    searchParams.delete('chat');
+    setSearchParams(searchParams);
+  };
+
   if (selectedConversation) {
     return (
       <Chat 
         conversationId={selectedConversation}
-        onBack={() => setSelectedConversation(null)}
+        onBack={handleBackToList}
       />
     );
   }
