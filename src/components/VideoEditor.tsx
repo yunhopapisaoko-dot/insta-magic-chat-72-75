@@ -26,7 +26,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [startTime, setStartTime] = useState(0);
-  const [endTime, setEndTime] = useState(60);
+  const [endTime, setEndTime] = useState(600); // 10 minutes
   const [selectedFilter, setSelectedFilter] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string>('');
 
@@ -47,8 +47,8 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
       setEndTime(videoDuration);
       
       // Since we validate duration on upload, this should never happen
-      if (videoDuration > 60) {
-        alert('Este vídeo é muito longo. Selecione um vídeo de até 1 minuto.');
+      if (videoDuration > 600) { // 10 minutes
+        alert('Este vídeo é muito longo. Selecione um vídeo de até 10 minutos.');
       }
     }
   }, []);
@@ -107,9 +107,9 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
     // Prevent unnecessary updates if values haven't changed
     if (newStart === startTime && newEnd === endTime) return;
     
-    // Ensure the trimmed duration doesn't exceed 60 seconds
-    if (newEnd - newStart > 60) {
-      const maxEnd = newStart + 60;
+    // Ensure the trimmed duration doesn't exceed 10 minutes
+    if (newEnd - newStart > 600) {
+      const maxEnd = newStart + 600;
       setStartTime(newStart);
       setEndTime(maxEnd);
       if (videoRef.current) {
@@ -144,13 +144,13 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
 
     try {
       // Check video duration limits
-      if (endTime - startTime > 60) {
-        alert('O vídeo deve ter no máximo 1 minuto. Ajuste o tempo de corte.');
+      if (endTime - startTime > 600) { // 10 minutes
+        alert('O vídeo deve ter no máximo 10 minutos. Ajuste o tempo de corte.');
         return;
       }
 
-      // If video is already under 60 seconds and no edits needed, save original
-      if (duration <= 60 && startTime === 0 && endTime >= duration && selectedFilter === 0) {
+      // If video is already under 10 minutes and no edits needed, save original
+      if (duration <= 600 && startTime === 0 && endTime >= duration && selectedFilter === 0) {
         onSave(videoFile);
         return;
       }
@@ -193,13 +193,13 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
     <div className="space-y-6">
       <div className="text-center">
         <h3 className="text-lg font-semibold mb-2">Editar Vídeo</h3>
-        {duration > 60 && (
+        {duration > 600 && (
           <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg mb-4">
             <p className="text-sm font-medium">
               ⚠️ Vídeo muito longo ({formatTime(duration)})
             </p>
             <p className="text-xs mt-1">
-              Você deve cortá-lo para no máximo 1 minuto antes de publicar.
+              Você deve cortá-lo para no máximo 10 minutos antes de publicar.
             </p>
           </div>
         )}
@@ -251,7 +251,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
           {/* Trim Range */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Recortar (máx. 1 min)</span>
+              <span className="text-sm font-medium">Recortar (máx. 10 min)</span>
               <Badge variant="secondary">
                 {formatTime(endTime - startTime)}
               </Badge>
@@ -259,7 +259,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
             <Slider
               value={[startTime, endTime]}
               onValueChange={handleTrimRange}
-              max={Math.min(duration, 60)}
+              max={Math.min(duration, 600)} // 10 minutes max
               step={0.1}
               className="w-full"
             />

@@ -37,17 +37,17 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   const [isSaving, setIsSaving] = useState(false);
   const [validationComplete, setValidationComplete] = useState(false);
   
-  // Throttled current time to prevent excessive re-renders
-  const [throttledCurrentTime, setThrottledCurrentTime] = useState(0);
-  const lastUpdateTimeRef = useRef<number>(0);
+  // Stable current time to prevent trembling
+  const [stableCurrentTime, setStableCurrentTime] = useState(0);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { 
     validateVideo, 
     isValidating, 
     validationProgress 
   } = useVideoValidation({
-    maxDurationSeconds: 60,
-    maxSizeBytes: 100 * 1024 * 1024 // 100MB
+    maxDurationSeconds: 600, // 10 minutes
+    maxSizeBytes: 500 * 1024 * 1024 // 500MB
   });
   
   const [validationResult, setValidationResult] = useState<any>(null);
@@ -56,49 +56,39 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     autoPlay: false, 
     loop: false,
     onPlayStateChange: useCallback((playing) => {
-      if (playing && throttledCurrentTime >= endTime) {
+      if (playing && stableCurrentTime >= endTime) {
         ctrl.videoRef.current!.currentTime = startTime;
       }
-    }, [startTime, endTime, throttledCurrentTime])
+    }, [startTime, endTime, stableCurrentTime])
   });
 
-  // More aggressive throttling to prevent UI trembling
+  // Ultra-stable time updates to completely eliminate trembling
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    const updateThrottledTime = () => {
-      const now = Date.now();
-      // Only update if enough time has passed (throttle to 300ms)
-      if (now - lastUpdateTimeRef.current < 300) return;
+    const updateTime = () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
       
-      lastUpdateTimeRef.current = now;
-      setThrottledCurrentTime(ctrl.currentTime);
+      updateTimeoutRef.current = setTimeout(() => {
+        setStableCurrentTime(ctrl.currentTime);
+      }, ctrl.isPlaying ? 500 : 100); // Very slow updates when playing
     };
 
-    if (ctrl.isPlaying) {
-      timeoutId = setInterval(updateThrottledTime, 300); // Update every 300ms instead of 100ms
-    } else {
-      // Immediate update when paused, but still throttled
-      const now = Date.now();
-      if (now - lastUpdateTimeRef.current >= 100) {
-        setThrottledCurrentTime(ctrl.currentTime);
-        lastUpdateTimeRef.current = now;
-      }
-    }
-
+    updateTime();
+    
     return () => {
-      if (timeoutId) {
-        clearInterval(timeoutId);
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
       }
     };
   }, [ctrl.currentTime, ctrl.isPlaying]);
 
-  // Auto-pause at end time (throttled)
+  // Auto-pause at end time (with stable time)
   useEffect(() => {
-    if (ctrl.isPlaying && throttledCurrentTime >= endTime) {
+    if (ctrl.isPlaying && stableCurrentTime >= endTime) {
       ctrl.videoRef.current?.pause();
     }
-  }, [throttledCurrentTime, endTime, ctrl.isPlaying]);
+  }, [stableCurrentTime, endTime, ctrl.isPlaying]);
 
   useEffect(() => {
     const url = URL.createObjectURL(videoFile);
@@ -123,13 +113,13 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
 
   useEffect(() => {
     if (ctrl.duration > 0) {
-      setEndTime(Math.min(ctrl.duration, 60));
+      setEndTime(Math.min(ctrl.duration, 600)); // 10 minutes max
       setTimelineStart(0);
     }
   }, [ctrl.duration]);
 
   const getVisibleDuration = useMemo(() => {
-    return Math.min(ctrl.duration, 60) / zoomLevel;
+    return Math.min(ctrl.duration, 600) / zoomLevel; // 10 minutes max
   }, [ctrl.duration, zoomLevel]);
 
   const getTimelineEnd = useMemo(() => {
@@ -138,12 +128,12 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
 
   const trimmedDuration = useMemo(() => endTime - startTime, [endTime, startTime]);
   const currentTimeInRange = useMemo(() => 
-    Math.max(startTime, Math.min(endTime, throttledCurrentTime)), 
-    [startTime, endTime, throttledCurrentTime]
+    Math.max(startTime, Math.min(endTime, stableCurrentTime)), 
+    [startTime, endTime, stableCurrentTime]
   );
   const timelineProgress = useMemo(() => 
-    ((throttledCurrentTime - timelineStart) / getVisibleDuration) * 100, 
-    [throttledCurrentTime, timelineStart, getVisibleDuration]
+    ((stableCurrentTime - timelineStart) / getVisibleDuration) * 100, 
+    [stableCurrentTime, timelineStart, getVisibleDuration]
   );
   const startPercent = useMemo(() => 
     ((startTime - timelineStart) / getVisibleDuration) * 100, 
@@ -168,7 +158,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     if (zoomLevel > 1) {
       const newZoom = zoomLevel / 2;
       const centerTime = timelineStart + getVisibleDuration / 2;
-      const newVisibleDuration = Math.min(ctrl.duration, 60) / newZoom;
+      const newVisibleDuration = Math.min(ctrl.duration, 600) / newZoom; // 10 minutes max
       const newStart = Math.max(0, centerTime - newVisibleDuration / 2);
       setZoomLevel(newZoom);
       setTimelineStart(newStart);
@@ -176,13 +166,11 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   }, [zoomLevel, timelineStart, getVisibleDuration, ctrl.duration]);
 
   const handleTimelineSeek = useCallback((value: number[]) => {
-    const time = timelineStart + (value[0] / 100) * getVisibleDuration;
-    const seekTime = time / ctrl.duration;
-    // Prevent unnecessary updates if seeking to same position
-    if (Math.abs(seekTime - (throttledCurrentTime / ctrl.duration)) > 0.01) {
-      ctrl.seekToPercent(seekTime);
+    if (ctrl.videoRef.current) {
+      const time = timelineStart + (value[0] / 100) * getVisibleDuration;
+      ctrl.videoRef.current.currentTime = time;
     }
-  }, [timelineStart, getVisibleDuration, ctrl.duration, ctrl.seekToPercent, throttledCurrentTime]);
+  }, [timelineStart, getVisibleDuration]);
 
   const handleTrimChange = useCallback((values: number[]) => {
     const [newStart, newEnd] = values;
@@ -190,17 +178,12 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     const actualStart = timelineStart + (newStart / 100) * visibleDuration;
     const actualEnd = timelineStart + (newEnd / 100) * visibleDuration;
     
-    // Prevent unnecessary updates if values haven't changed significantly
-    if (Math.abs(actualStart - startTime) < 0.1 && Math.abs(actualEnd - endTime) < 0.1) {
-      return;
-    }
-    
-    // Ensure max 1 minute duration
-    if (actualEnd - actualStart <= 60) {
+    // Ensure max 10 minute duration
+    if (actualEnd - actualStart <= 600) {
       setStartTime(actualStart);
       setEndTime(actualEnd);
     }
-  }, [timelineStart, getVisibleDuration, startTime, endTime]);
+  }, [timelineStart, getVisibleDuration]);
 
   const jumpToStart = () => {
     ctrl.seekToPercent(startTime / ctrl.duration);
@@ -232,10 +215,10 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   }, [timelineStart, getVisibleDuration, ctrl.duration]);
 
   const handleSave = async () => {
-    if (trimmedDuration > 60) {
+    if (trimmedDuration > 600) { // 10 minutes
       toast({
         title: "Duração muito longa",
-        description: "O vídeo recortado deve ter no máximo 1 minuto",
+        description: "O vídeo recortado deve ter no máximo 10 minutos",
         variant: "destructive",
       });
       return;
@@ -334,7 +317,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
         {/* Time Display */}
         <div className="flex justify-between items-center text-sm text-muted-foreground mb-4">
           <span>{formatTime(currentTimeInRange)}</span>
-          <Badge variant={trimmedDuration <= 60 ? "default" : "destructive"}>
+          <Badge variant={trimmedDuration <= 600 ? "default" : "destructive"}>
             Duração: {formatTime(trimmedDuration)}
           </Badge>
           <span>{formatTime(ctrl.duration)}</span>
@@ -433,7 +416,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
           {/* Trim Range Slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Área de Recorte</span>
+              <span className="text-sm font-medium">Área de Recorte (máx. 10 min)</span>
               <div className="flex gap-2">
                 <Badge variant="outline">{formatTime(startTime)}</Badge>
                 <Badge variant="outline">{formatTime(endTime)}</Badge>
@@ -485,13 +468,13 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
         </div>
 
         {/* Validation Warning */}
-        {trimmedDuration > 60 && (
+        {trimmedDuration > 600 && (
           <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg mt-4">
             <p className="text-sm font-medium">
               ⚠️ Duração muito longa ({formatTime(trimmedDuration)})
             </p>
             <p className="text-xs mt-1">
-              O vídeo deve ter no máximo 1 minuto para ser salvo.
+              O vídeo deve ter no máximo 10 minutos para ser salvo.
             </p>
           </div>
         )}
@@ -510,7 +493,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
             onClick={handleSave}
             disabled={
               isSaving || 
-              trimmedDuration > 60 || 
+              trimmedDuration > 600 || // 10 minutes
               trimmedDuration <= 0 ||
               (validationResult && !validationResult.isValid) ||
               !validationComplete
