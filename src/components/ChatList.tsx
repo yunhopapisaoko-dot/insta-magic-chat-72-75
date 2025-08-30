@@ -104,16 +104,7 @@ const ChatList = () => {
 
         {/* Conversations List */}
         <div className="space-y-2">
-          {loading ? (
-            <LoadingFeedback
-              isLoading={loading}
-              operation="Carregando conversas"
-              showNetworkStatus={true}
-              showBatteryStatus={deviceOptimization.isMobile}
-              showPerformanceHints={true}
-              className="py-8"
-            />
-          ) : error ? (
+          {error ? (
             <Card className="card-shadow border-0">
               <CardContent className="p-8 text-center">
                 <MessageCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
