@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import TypingIndicator from '@/components/ui/TypingIndicator';
 
 interface ChatProps {
   conversationId: string;
@@ -468,22 +469,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               })}
               
               {/* Typing Indicator */}
-              {typingUsers.length > 0 && (
-                <div className="flex items-center space-x-2 px-2">
-                  <Avatar className="w-6 h-6">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                      {typingUsers[0].display_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="bg-muted p-3 rounded-2xl">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
+              <TypingIndicator typingUsers={typingUsers} className="px-2" />
               
               <div ref={messagesEndRef} />
             </>
