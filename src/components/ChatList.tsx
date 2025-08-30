@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useRealtimeConversations, type Conversation } from '@/hooks/useRealtimeConversations';
 import { useAuth } from '@/hooks/useAuth';
 import Chat from '@/components/Chat';
-import PublicChat from '@/components/PublicChat';
+import SimplePublicChat from '@/components/SimplePublicChat';
 import MobileLayout from '@/components/MobileLayout';
 
 const ChatList = () => {
@@ -53,7 +53,7 @@ const ChatList = () => {
 
   if (showPublicChat) {
     return (
-      <PublicChat 
+      <SimplePublicChat 
         onBack={() => setShowPublicChat(false)}
       />
     );
