@@ -7,8 +7,6 @@ import { Image, X, Send, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import VideoEditor from './VideoEditor';
-import VideoTrimEditor from './VideoTrimEditor';
 import { useVideoValidation } from '@/hooks/useVideoValidation';
 import VideoValidationStatus from '@/components/ui/VideoValidationStatus';
 import { useVideoCompression } from '@/hooks/useVideoCompression';
@@ -26,7 +24,7 @@ interface CreatePostProps {
 
 const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
   const { user } = useAuth();
-  const [step, setStep] = useState<'media' | 'video-edit' | 'caption'>('media');
+  const [step, setStep] = useState<'media' | 'caption'>('media');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -146,7 +144,7 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
           setVideoPreview(url);
         }
         
-        setStep('video-edit');
+        setStep('caption');
         return;
       }
 
@@ -211,7 +209,7 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
           }
           
           setOptimizationProgress(100);
-          setStep('video-edit');
+          setStep('caption'); // Pular diretamente para caption, sem edição
         } else {
           // Reset video input
           if (videoInputRef.current) {
@@ -260,7 +258,7 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
   };
 
   const handleSubmit = async () => {
-    if (!user || (!imageFile && !processedVideoBlob)) {
+    if (!user || (!imageFile && !processedVideoBlob && !videoFile)) {
       toast({
         title: "Mídia obrigatória",
         description: "Selecione uma foto ou vídeo para continuar",
@@ -285,6 +283,9 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
         mediaType = 'image';
       } else if (processedVideoBlob) {
         mediaUrl = await uploadMedia(processedVideoBlob, true);
+        mediaType = 'video';
+      } else if (videoFile) {
+        mediaUrl = await uploadMedia(videoFile, true);
         mediaType = 'video';
       }
 
@@ -342,24 +343,6 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
     resetForm();
   };
 
-  const handleVideoEditorSave = (editedBlob: Blob, startTime?: number, endTime?: number) => {
-    setProcessedVideoBlob(editedBlob);
-    
-    toast({
-      title: "✅ Vídeo editado com sucesso",
-      description: startTime && endTime ? 
-        `Recorte aplicado: ${Math.floor((endTime - startTime) * 10) / 10}s` :
-        "Edições aplicadas ao vídeo",
-    });
-    
-    setStep('caption');
-  };
-
-  const handleVideoEditorCancel = () => {
-    setVideoFile(null);
-    setVideoPreview(null);
-    setStep('media');
-  };
 
   const handleDialogOpenChange = (open: boolean) => {
     if (!open) {
@@ -373,8 +356,7 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
       <DialogContent className="mobile-container max-w-lg mx-auto">
         <DialogHeader>
           <DialogTitle className="text-center">
-            {step === 'media' ? 'Escolher Mídia' : 
-             step === 'video-edit' ? 'Editar Vídeo' : 'Adicionar Legenda'}
+            {step === 'media' ? 'Escolher Mídia' : 'Adicionar Legenda'}
           </DialogTitle>
           
           {/* Performance indicators */}
@@ -432,7 +414,7 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                     <Video className="w-8 h-8 text-secondary" />
                     <div className="text-center">
                       <p className="font-semibold text-secondary text-sm">Vídeo</p>
-                      <p className="text-xs text-muted-foreground">Máx. 1 min</p>
+                      <p className="text-xs text-muted-foreground">Máx. 10 min</p>
                     </div>
                   </Button>
                 </div>
@@ -463,64 +445,6 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                   Cancelar
                 </Button>
               </div>
-            </div>
-          ) : step === 'video-edit' && videoFile ? (
-            // Video Editor Step
-            <div className="space-y-4">
-              {/* Optimization Status */}
-              {(isOptimizing || isCompressing) && (
-                <div className="space-y-3 p-4 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-sm font-medium">
-                      {isOptimizing ? 'Otimizando vídeo...' : 'Comprimindo...'}
-                    </span>
-                  </div>
-                  <div className="w-full bg-background rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ 
-                        width: `${isOptimizing ? optimizationProgress : 
-                                 compressionProgress ? compressionProgress.progress : 0}%` 
-                      }}
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {isOptimizing ? `${optimizationProgress}%` :
-                     compressionProgress ? `${compressionProgress.stage} - ${compressionProgress.progress}%` :
-                     'Preparando...'}
-                  </div>
-                </div>
-              )}
-              
-              {/* Validation Status */}
-              {(isValidating || validationResult) && (
-                <VideoValidationStatus
-                  isValidating={isValidating}
-                  validationProgress={validationProgress}
-                  validationResult={validationResult}
-                />
-              )}
-              
-              {/* Performance Stats */}
-              {deviceCapabilities && (
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted p-2 rounded text-center">
-                    <div className="font-medium">{deviceCapabilities.isMobile ? 'Móvel' : 'Desktop'}</div>
-                    <div className="text-muted-foreground">Dispositivo</div>
-                  </div>
-                  <div className="bg-muted p-2 rounded text-center">
-                    <div className="font-medium">{optimizationSettings.maxVideoResolution.width}p</div>
-                    <div className="text-muted-foreground">Máx. Resolução</div>
-                  </div>
-                </div>
-              )}
-              
-              <VideoTrimEditor
-                videoFile={videoFile}
-                onSave={handleVideoEditorSave}
-                onCancel={handleVideoEditorCancel}
-              />
             </div>
           ) : (
             // Caption Step
@@ -556,10 +480,10 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                 </div>
               )}
               
-              {processedVideoBlob && (
+              {(processedVideoBlob || videoFile) && (
                 <div className="relative">
                   <video
-                    src={URL.createObjectURL(processedVideoBlob)}
+                    src={processedVideoBlob ? URL.createObjectURL(processedVideoBlob) : (videoFile ? URL.createObjectURL(videoFile) : '')}
                     className="w-full max-h-64 object-cover rounded-xl"
                     controls
                   />
@@ -598,7 +522,7 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={loading || isUploading || (!imageFile && !processedVideoBlob)}
+                  disabled={loading || isUploading || (!imageFile && !processedVideoBlob && !videoFile)}
                   className="flex-1 rounded-xl magic-button"
                 >
                   {loading || isUploading ? (

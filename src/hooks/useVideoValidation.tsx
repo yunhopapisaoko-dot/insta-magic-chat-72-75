@@ -22,8 +22,8 @@ export interface VideoValidationResult {
 }
 
 const DEFAULT_CONFIG: VideoValidationConfig = {
-  maxSizeBytes: 100 * 1024 * 1024, // 100MB
-  maxDurationSeconds: 60, // 1 minute
+  maxSizeBytes: 500 * 1024 * 1024, // 500MB
+  maxDurationSeconds: 600, // 10 minutes
   minDurationSeconds: 0.5, // 0.5 seconds
   allowedFormats: ['video/mp4', 'video/webm', 'video/mov', 'video/avi', 'video/quicktime']
 };
