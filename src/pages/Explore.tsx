@@ -139,7 +139,10 @@ const Explore = () => {
   };
 
   const handleStartChat = async (userId: string, displayName: string) => {
+    console.log('handleStartChat called with:', { userId, displayName, currentUser: user?.id });
+    
     if (!user) {
+      console.log('No user logged in');
       toast({
         title: "Login necessário",
         description: "Faça login para enviar mensagens",
@@ -149,6 +152,7 @@ const Explore = () => {
     }
 
     if (userId === user.id) {
+      console.log('User trying to chat with themselves');
       toast({
         title: "Ação inválida",
         description: "Você não pode conversar consigo mesmo",
@@ -160,14 +164,19 @@ const Explore = () => {
     setStartingChat(userId);
     
     try {
+      console.log('Creating or getting conversation...');
       const conversationId = await createOrGetConversation(userId);
+      console.log('Conversation result:', conversationId);
+      
       if (conversationId) {
         toast({
           title: "Conversa iniciada",
           description: `Iniciando conversa com ${displayName}`,
         });
+        console.log('Navigating to /messages with conversation:', conversationId);
         navigate('/messages');
       } else {
+        console.error('createOrGetConversation returned null');
         throw new Error('Failed to create conversation');
       }
     } catch (error) {

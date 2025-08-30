@@ -156,19 +156,31 @@ export const useConversations = () => {
   };
 
   const createOrGetConversation = async (otherUserId: string, storyId?: string) => {
-    if (!user) return null;
+    console.log('createOrGetConversation called with:', { otherUserId, storyId, currentUser: user?.id });
+    
+    if (!user) {
+      console.error('No user available for conversation creation');
+      return null;
+    }
 
     try {
       // Check if conversation already exists
+      console.log('Checking for existing conversations...');
       const { data: existingParticipants, error: checkError } = await supabase
         .from('conversation_participants')
         .select('conversation_id')
         .eq('user_id', user.id);
 
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('Error checking existing participants:', checkError);
+        throw checkError;
+      }
+
+      console.log('Existing participants for current user:', existingParticipants);
 
       if (existingParticipants?.length) {
         const conversationIds = existingParticipants.map(p => p.conversation_id);
+        console.log('Found conversation IDs for current user:', conversationIds);
         
         const { data: otherUserParticipants, error: otherCheckError } = await supabase
           .from('conversation_participants')
@@ -176,23 +188,36 @@ export const useConversations = () => {
           .eq('user_id', otherUserId)
           .in('conversation_id', conversationIds);
 
-        if (otherCheckError) throw otherCheckError;
+        if (otherCheckError) {
+          console.error('Error checking other user participants:', otherCheckError);
+          throw otherCheckError;
+        }
+
+        console.log('Other user participants in same conversations:', otherUserParticipants);
 
         if (otherUserParticipants?.length) {
+          console.log('Found existing conversation:', otherUserParticipants[0].conversation_id);
           return otherUserParticipants[0].conversation_id;
         }
       }
 
       // Create new conversation
+      console.log('Creating new conversation...');
       const { data: newConv, error: convError } = await supabase
         .from('conversations')
         .insert({})
         .select()
         .single();
 
-      if (convError) throw convError;
+      if (convError) {
+        console.error('Error creating conversation:', convError);
+        throw convError;
+      }
+
+      console.log('New conversation created:', newConv);
 
       // Add participants
+      console.log('Adding participants to conversation...');
       const { error: participantsError } = await supabase
         .from('conversation_participants')
         .insert([
@@ -200,10 +225,16 @@ export const useConversations = () => {
           { conversation_id: newConv.id, user_id: otherUserId }
         ]);
 
-      if (participantsError) throw participantsError;
+      if (participantsError) {
+        console.error('Error adding participants:', participantsError);
+        throw participantsError;
+      }
+
+      console.log('Participants added successfully');
 
       // Add initial message if story context
       if (storyId) {
+        console.log('Adding initial story message...');
         const { error: messageError } = await supabase
           .from('messages')
           .insert({
@@ -216,10 +247,12 @@ export const useConversations = () => {
         if (messageError) console.error('Error sending initial message:', messageError);
       }
 
+      console.log('Refreshing conversations list...');
       fetchConversations();
+      console.log('Returning new conversation ID:', newConv.id);
       return newConv.id;
     } catch (error) {
-      console.error('Error creating conversation:', error);
+      console.error('Error in createOrGetConversation:', error);
       return null;
     }
   };
