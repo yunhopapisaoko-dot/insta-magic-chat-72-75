@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { ArrowLeft, Send, Users, ChevronDown, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useInfinitePublicChat } from '@/hooks/useInfinitePublicChat';
 import MobileLayout from '@/components/MobileLayout';
+import TypingIndicator from '@/components/ui/TypingIndicator';
 import { cn } from '@/lib/utils';
 
 interface InfinitePublicChatProps {
@@ -22,7 +23,9 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
     sending, 
     hasMore,
     isNearBottom,
-    sendMessage, 
+    typingUsers,
+    sendMessage,
+    sendTypingIndicator, 
     userProfile,
     scrollToBottom,
     scrollElementRef,
@@ -30,9 +33,17 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
   } = useInfinitePublicChat({ pageSize: 25, enableAutoScroll: true });
   
   const [newMessage, setNewMessage] = useState('');
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending || !user || !userProfile) return;
+
+    // Clear typing indicator before sending
+    await sendTypingIndicator(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
 
     try {
       await sendMessage(newMessage);
@@ -42,12 +53,47 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
     }
   };
 
+  const handleMessageChange = async (value: string) => {
+    setNewMessage(value);
+    
+    // Send typing status when user starts typing
+    if (value.trim() && !typingTimeoutRef.current) {
+      await sendTypingIndicator(true);
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to stop typing indicator
+    if (value.trim()) {
+      typingTimeoutRef.current = setTimeout(async () => {
+        await sendTypingIndicator(false);
+        typingTimeoutRef.current = null;
+      }, 2000); // Stop typing after 2 seconds of inactivity
+    } else {
+      // Immediately stop typing if input is empty
+      await sendTypingIndicator(false);
+      typingTimeoutRef.current = null;
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -206,6 +252,9 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
                 // Messages
                 messageElements
               )}
+              
+              {/* Typing Indicator */}
+              <TypingIndicator typingUsers={typingUsers} />
             </div>
 
             {/* Scroll indicator */}
@@ -219,7 +268,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
             <div className="flex items-center space-x-2">
               <Input
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e) => handleMessageChange(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Digite uma mensagem..."
                 className="flex-1 rounded-full border-0 bg-muted/50 transition-all duration-200 focus:bg-muted/70"

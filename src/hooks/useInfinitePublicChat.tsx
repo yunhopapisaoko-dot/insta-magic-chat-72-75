@@ -15,6 +15,12 @@ export interface PublicMessage {
   };
 }
 
+interface TypingUser {
+  user_id: string;
+  display_name: string;
+  is_typing: boolean;
+}
+
 interface UseInfinitePublicChatOptions {
   pageSize?: number;
   enableAutoScroll?: boolean;
@@ -31,6 +37,7 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
   const [hasMore, setHasMore] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
 
   const scrollElementRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
@@ -150,6 +157,26 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
     }
   }, [user, sending]);
 
+  // Send typing indicator
+  const sendTypingIndicator = useCallback(async (isTyping: boolean) => {
+    if (!user) return;
+
+    try {
+      const channel = supabase.channel('public_chat_typing');
+      await channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: {
+          user_id: user.id,
+          display_name: user.display_name,
+          is_typing: isTyping
+        }
+      });
+    } catch (error) {
+      console.error('Error sending typing indicator:', error);
+    }
+  }, [user]);
+
   // Fetch user profile
   const fetchUserProfile = useCallback(async () => {
     if (!user) return;
@@ -194,7 +221,7 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
+    const messagesChannel = supabase
       .channel('infinite_public_chat')
       .on(
         'postgres_changes',
@@ -226,8 +253,40 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
       )
       .subscribe();
 
+    // Typing indicator subscription
+    const typingChannel = supabase
+      .channel('public_chat_typing')
+      .on(
+        'broadcast',
+        { event: 'typing' },
+        (payload) => {
+          const { user_id, display_name, is_typing } = payload.payload;
+          
+          if (user_id === user.id) return; // Ignore own typing
+          
+          setTypingUsers(prev => {
+            const filtered = prev.filter(u => u.user_id !== user_id);
+            
+            if (is_typing) {
+              return [...filtered, { user_id, display_name, is_typing }];
+            }
+            
+            return filtered;
+          });
+
+          // Clear typing after timeout
+          if (is_typing) {
+            setTimeout(() => {
+              setTypingUsers(prev => prev.filter(u => u.user_id !== user_id));
+            }, 5000);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(typingChannel);
     };
   }, [user]);
 
@@ -269,7 +328,9 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
     hasMore,
     userProfile,
     isNearBottom,
+    typingUsers,
     sendMessage,
+    sendTypingIndicator,
     loadMore,
     scrollToBottom,
     scrollElementRef,
