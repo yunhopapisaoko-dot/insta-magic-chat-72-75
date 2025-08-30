@@ -39,6 +39,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   
   // Throttled current time to prevent excessive re-renders
   const [throttledCurrentTime, setThrottledCurrentTime] = useState(0);
+  const lastUpdateTimeRef = useRef<number>(0);
   
   const { 
     validateVideo, 
@@ -61,18 +62,28 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     }, [startTime, endTime, throttledCurrentTime])
   });
 
-  // Throttle time updates to reduce re-renders
+  // More aggressive throttling to prevent UI trembling
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
     const updateThrottledTime = () => {
+      const now = Date.now();
+      // Only update if enough time has passed (throttle to 300ms)
+      if (now - lastUpdateTimeRef.current < 300) return;
+      
+      lastUpdateTimeRef.current = now;
       setThrottledCurrentTime(ctrl.currentTime);
     };
 
     if (ctrl.isPlaying) {
-      timeoutId = setInterval(updateThrottledTime, 100); // Update every 100ms instead of every frame
+      timeoutId = setInterval(updateThrottledTime, 300); // Update every 300ms instead of 100ms
     } else {
-      updateThrottledTime(); // Immediate update when paused
+      // Immediate update when paused, but still throttled
+      const now = Date.now();
+      if (now - lastUpdateTimeRef.current >= 100) {
+        setThrottledCurrentTime(ctrl.currentTime);
+        lastUpdateTimeRef.current = now;
+      }
     }
 
     return () => {
@@ -166,8 +177,12 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
 
   const handleTimelineSeek = useCallback((value: number[]) => {
     const time = timelineStart + (value[0] / 100) * getVisibleDuration;
-    ctrl.seekToPercent(time / ctrl.duration);
-  }, [timelineStart, getVisibleDuration, ctrl.duration, ctrl.seekToPercent]);
+    const seekTime = time / ctrl.duration;
+    // Prevent unnecessary updates if seeking to same position
+    if (Math.abs(seekTime - (throttledCurrentTime / ctrl.duration)) > 0.01) {
+      ctrl.seekToPercent(seekTime);
+    }
+  }, [timelineStart, getVisibleDuration, ctrl.duration, ctrl.seekToPercent, throttledCurrentTime]);
 
   const handleTrimChange = useCallback((values: number[]) => {
     const [newStart, newEnd] = values;
@@ -175,12 +190,17 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     const actualStart = timelineStart + (newStart / 100) * visibleDuration;
     const actualEnd = timelineStart + (newEnd / 100) * visibleDuration;
     
+    // Prevent unnecessary updates if values haven't changed significantly
+    if (Math.abs(actualStart - startTime) < 0.1 && Math.abs(actualEnd - endTime) < 0.1) {
+      return;
+    }
+    
     // Ensure max 1 minute duration
     if (actualEnd - actualStart <= 60) {
       setStartTime(actualStart);
       setEndTime(actualEnd);
     }
-  }, [timelineStart, getVisibleDuration]);
+  }, [timelineStart, getVisibleDuration, startTime, endTime]);
 
   const jumpToStart = () => {
     ctrl.seekToPercent(startTime / ctrl.duration);
@@ -293,6 +313,8 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
             ref={ctrl.videoRef}
             src={videoUrl}
             className="w-full max-h-64 object-cover"
+            playsInline
+            preload="metadata"
             {...ctrl.bind}
           />
           
@@ -301,7 +323,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
             <Button
               onClick={ctrl.togglePlay}
               size="lg"
-              className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30 transition-all duration-200"
+              className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30"
               variant="ghost"
             >
               {ctrl.isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
