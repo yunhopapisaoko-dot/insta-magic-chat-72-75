@@ -357,7 +357,14 @@ export const usePostInteractions = (postId: string | null) => {
   }, [user]);
 
   const handleCommentLike = useCallback(async (commentId: string) => {
-    if (!user) return;
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para curtir comentários.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const isLiked = commentLikes.has(commentId);
@@ -383,7 +390,7 @@ export const usePostInteractions = (postId: string | null) => {
         if (error) throw error;
       }
     } catch (error) {
-      console.error('Error liking/unliking comment:', error);
+      console.error('Erro ao curtir comentário:', error);
       toast({
         title: "Erro",
         description: "Não foi possível curtir o comentário.",

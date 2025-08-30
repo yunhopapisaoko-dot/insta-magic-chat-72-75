@@ -130,7 +130,10 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-2">
-                        <div className="flex-1">
+                        <div 
+                          className="flex-1 cursor-pointer"
+                          onClick={() => handleReply(comment.profiles.username, comment.id)}
+                        >
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-sm">
                               {comment.profiles.username}
@@ -138,7 +141,9 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                             <span className="text-xs text-muted-foreground">
                               {formatTimeAgo(comment.created_at)}
                             </span>
-                            <span className="text-xs text-red-500">❤️</span>
+                            {commentLikes.has(comment.id) && (
+                              <span className="text-xs text-red-500">❤️</span>
+                            )}
                           </div>
                           <p className="text-sm mt-1 leading-relaxed">
                             {comment.content}
@@ -146,23 +151,28 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                           
                           <div className="flex items-center gap-4 mt-2">
                             <button 
-                              onClick={() => handleReply(comment.profiles.username, comment.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReply(comment.profiles.username, comment.id);
+                              }}
                               className="text-xs text-muted-foreground font-medium hover:text-foreground"
                             >
                               Responder
                             </button>
                             <button 
-                              onClick={() => handleCommentLike(comment.id)}
-                              className="text-xs text-muted-foreground font-medium hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCommentLike(comment.id);
+                              }}
+                              className={`text-xs font-medium hover:text-foreground transition-colors ${
+                                commentLikes.has(comment.id) 
+                                  ? 'text-red-500' 
+                                  : 'text-muted-foreground'
+                              }`}
                             >
                               Curtir
                             </button>
                           </div>
-                          
-                          {/* Show replies indicator if there are replies */}
-                          <button className="text-xs text-muted-foreground mt-2 flex items-center">
-                            ──── Ver mais 1 resposta
-                          </button>
                         </div>
                         
                         <div className="flex flex-col items-center gap-1">
