@@ -11,7 +11,12 @@ import VideoEditor from './VideoEditor';
 import VideoTrimEditor from './VideoTrimEditor';
 import { useVideoValidation } from '@/hooks/useVideoValidation';
 import VideoValidationStatus from '@/components/ui/VideoValidationStatus';
-import { Loader2 } from 'lucide-react';
+import { useVideoCompression } from '@/hooks/useVideoCompression';
+import { useVideoCache } from '@/hooks/useVideoCache';
+import { useDeviceOptimization } from '@/hooks/useDeviceOptimization';
+import { useMemoryManager } from '@/hooks/useMemoryManager';
+import VideoOptimizerService from '@/services/VideoOptimizerService';
+import { Loader2, Zap, HardDrive, Cpu } from 'lucide-react';
 
 interface CreatePostProps {
   open: boolean;
@@ -40,48 +45,189 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
     validationProgress 
   } = useVideoValidation();
   
+  const {
+    compressVideo,
+    isCompressing,
+    compressionProgress,
+    compressionStats,
+    getRecommendedSettings
+  } = useVideoCompression();
+  
+  const {
+    addToCache,
+    getFromCacheByFile,
+    getCacheStats
+  } = useVideoCache();
+  
+  const {
+    optimizationSettings,
+    deviceCapabilities,
+    networkStatus,
+    shouldPreloadVideo,
+    getOptimalVideoFormat
+  } = useDeviceOptimization();
+  
+  const {
+    memoryStats,
+    registerResource,
+    createManagedURL,
+    getMemoryRecommendations
+  } = useMemoryManager();
+  
   const [validationResult, setValidationResult] = useState<any>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizationProgress, setOptimizationProgress] = useState(0);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check memory before processing
+    const memoryRecommendations = getMemoryRecommendations();
+    if (memoryRecommendations.shouldReduceQuality) {
+      toast({
+        title: "⚠️ Memória baixa",
+        description: "Algumas funcionalidades podem ser limitadas",
+        variant: "destructive",
+      });
+    }
+
     if (file.type.startsWith('image/')) {
-      // Basic image validation
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit for images
+      // Basic image validation with device-specific limits
+      const maxSize = optimizationSettings.maxVideoSize / 5; // Images can be smaller
+      if (file.size > maxSize) {
         toast({
           title: "Imagem muito grande",
-          description: "A imagem deve ter no máximo 10MB",
+          description: `A imagem deve ter no máximo ${(maxSize / 1024 / 1024).toFixed(1)}MB`,
           variant: "destructive",
         });
         return;
       }
 
       setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-        setStep('caption');
-      };
-      reader.readAsDataURL(file);
-    } else if (file.type.startsWith('video/')) {
-      // Comprehensive video validation
-      const result = await validateAndShowFeedback(file);
-      setValidationResult(result);
       
-      if (result.isValid) {
+      // Check cache first
+      const cached = getFromCacheByFile(file);
+      if (cached?.preview) {
+        setImagePreview(cached.preview);
+        setStep('caption');
+        return;
+      }
+
+      // Create managed URL for memory efficiency
+      const { url } = createManagedURL(file, 'high');
+      setImagePreview(url);
+      
+      // Cache image for future use
+      addToCache(file, undefined, { generateThumbnail: true });
+      
+      setStep('caption');
+    } else if (file.type.startsWith('video/')) {
+      // Check if file exceeds device-specific limits
+      if (file.size > optimizationSettings.maxVideoSize) {
+        toast({
+          title: "Vídeo muito grande",
+          description: `O vídeo deve ter no máximo ${(optimizationSettings.maxVideoSize / 1024 / 1024).toFixed(1)}MB para este dispositivo`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check cache first
+      const cached = getFromCacheByFile(file);
+      if (cached) {
         setVideoFile(file);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setVideoPreview(e.target?.result as string);
-          setStep('video-edit');
-        };
-        reader.readAsDataURL(file);
-      } else {
-        // Reset video input
-        if (videoInputRef.current) {
-          videoInputRef.current.value = '';
+        setValidationResult({ isValid: true, errors: [], warnings: [] });
+        
+        if (cached.preview) {
+          setVideoPreview(cached.preview);
+        } else {
+          const { url } = createManagedURL(file, 'high');
+          setVideoPreview(url);
         }
+        
+        setStep('video-edit');
+        return;
+      }
+
+      // Comprehensive video validation
+      setIsOptimizing(true);
+      setOptimizationProgress(10);
+
+      try {
+        const result = await validateAndShowFeedback(file);
+        setValidationResult(result);
+        
+        if (result.isValid) {
+          setOptimizationProgress(30);
+          
+          // Pre-optimize video based on device capabilities
+          const shouldCompress = file.size > optimizationSettings.maxVideoSize * 0.7;
+          const recommendedSettings = getRecommendedSettings(file.size, result.fileInfo?.duration || 0);
+          
+          if (shouldCompress && !memoryRecommendations.shouldReduceQuality) {
+            setOptimizationProgress(50);
+            
+            try {
+              const compressedBlob = await compressVideo(file, {
+                ...recommendedSettings,
+                format: getOptimalVideoFormat()
+              });
+              
+              // Cache both original and compressed versions
+              await addToCache(file, compressedBlob, {
+                generateThumbnail: shouldPreloadVideo(file.size),
+                generatePreview: shouldPreloadVideo(file.size)
+              });
+              
+              setVideoFile(file);
+              setProcessedVideoBlob(compressedBlob);
+              
+              const { url } = createManagedURL(compressedBlob, 'high');
+              setVideoPreview(url);
+              
+              toast({
+                title: "✅ Vídeo otimizado",
+                description: `Tamanho reduzido em ${compressionStats?.compressionRatio || 0}%`,
+              });
+              
+            } catch (compressionError) {
+              console.warn('Compression failed, using original:', compressionError);
+              
+              setVideoFile(file);
+              const { url } = createManagedURL(file, 'high');
+              setVideoPreview(url);
+              
+              // Cache original file
+              addToCache(file, undefined, { generateThumbnail: true });
+            }
+          } else {
+            setVideoFile(file);
+            const { url } = createManagedURL(file, 'high');
+            setVideoPreview(url);
+            
+            // Cache original file
+            addToCache(file, undefined, { generateThumbnail: true });
+          }
+          
+          setOptimizationProgress(100);
+          setStep('video-edit');
+        } else {
+          // Reset video input
+          if (videoInputRef.current) {
+            videoInputRef.current.value = '';
+          }
+        }
+      } catch (error) {
+        console.error('Video processing error:', error);
+        toast({
+          title: "❌ Erro no processamento",
+          description: "Não foi possível processar o vídeo",
+          variant: "destructive",
+        });
+      } finally {
+        setIsOptimizing(false);
+        setTimeout(() => setOptimizationProgress(0), 2000);
       }
     } else {
       toast({
@@ -230,6 +376,30 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
             {step === 'media' ? 'Escolher Mídia' : 
              step === 'video-edit' ? 'Editar Vídeo' : 'Adicionar Legenda'}
           </DialogTitle>
+          
+          {/* Performance indicators */}
+          {(memoryStats.isLowMemory || deviceCapabilities?.isLowEndDevice) && (
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
+              {memoryStats.isLowMemory && (
+                <div className="flex items-center gap-1">
+                  <HardDrive className="w-3 h-3" />
+                  <span>Memória: {memoryStats.percentage.toFixed(0)}%</span>
+                </div>
+              )}
+              {deviceCapabilities?.isLowEndDevice && (
+                <div className="flex items-center gap-1">
+                  <Cpu className="w-3 h-3" />
+                  <span>Dispositivo limitado</span>
+                </div>
+              )}
+              {!networkStatus.isOnline && (
+                <div className="flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  <span>Offline</span>
+                </div>
+              )}
+            </div>
+          )}
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -297,6 +467,32 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
           ) : step === 'video-edit' && videoFile ? (
             // Video Editor Step
             <div className="space-y-4">
+              {/* Optimization Status */}
+              {(isOptimizing || isCompressing) && (
+                <div className="space-y-3 p-4 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="text-sm font-medium">
+                      {isOptimizing ? 'Otimizando vídeo...' : 'Comprimindo...'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-background rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ 
+                        width: `${isOptimizing ? optimizationProgress : 
+                                 compressionProgress ? compressionProgress.progress : 0}%` 
+                      }}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {isOptimizing ? `${optimizationProgress}%` :
+                     compressionProgress ? `${compressionProgress.stage} - ${compressionProgress.progress}%` :
+                     'Preparando...'}
+                  </div>
+                </div>
+              )}
+              
               {/* Validation Status */}
               {(isValidating || validationResult) && (
                 <VideoValidationStatus
@@ -304,6 +500,20 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                   validationProgress={validationProgress}
                   validationResult={validationResult}
                 />
+              )}
+              
+              {/* Performance Stats */}
+              {deviceCapabilities && (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-muted p-2 rounded text-center">
+                    <div className="font-medium">{deviceCapabilities.isMobile ? 'Móvel' : 'Desktop'}</div>
+                    <div className="text-muted-foreground">Dispositivo</div>
+                  </div>
+                  <div className="bg-muted p-2 rounded text-center">
+                    <div className="font-medium">{optimizationSettings.maxVideoResolution.width}p</div>
+                    <div className="text-muted-foreground">Máx. Resolução</div>
+                  </div>
+                </div>
               )}
               
               <VideoTrimEditor
