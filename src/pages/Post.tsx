@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Send } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
 import VideoPlayer from '@/components/ui/VideoPlayer';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
+import { CommentsModal } from '@/components/CommentsModal';
 
 interface Post {
   id: string;
@@ -35,19 +34,13 @@ const PostDetail = () => {
   const { user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
-  const commentInputRef = useRef<HTMLInputElement>(null);
+  const [showComments, setShowComments] = useState(false);
   
   const {
     isLiked,
     likesCount,
-    comments,
     commentsCount,
-    newComment,
-    setNewComment,
-    isSubmittingComment,
     handleLike,
-    handleSubmitComment,
-    handleDeleteComment,
   } = usePostInteractions(id || null);
 
   useEffect(() => {
@@ -132,15 +125,8 @@ const PostDetail = () => {
     return `${diffInDays}d`;
   };
 
-  const focusCommentInput = () => {
-    commentInputRef.current?.focus();
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmitComment();
-    }
+  const openComments = () => {
+    setShowComments(true);
   };
 
   if (loading) {
@@ -278,7 +264,7 @@ const PostDetail = () => {
                       <span className="font-semibold">{likesCount}</span>
                     </button>
                     <button 
-                      onClick={focusCommentInput}
+                      onClick={openComments}
                       className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors"
                     >
                       <MessageCircle className="w-6 h-6" />
@@ -291,87 +277,22 @@ const PostDetail = () => {
                 </div>
               </div>
 
-              {/* Comments Section */}
-              <div className="flex-1 flex flex-col min-h-[40vh]">
-                <ScrollArea className="flex-1 py-4">
-                  {comments.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-12">
-                      <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p className="text-base">Nenhum comentário ainda</p>
-                      <p className="text-sm mt-1">Seja o primeiro a comentar!</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {comments.map((comment) => (
-                        <div key={comment.id} className="flex space-x-3">
-                          <Avatar className="w-9 h-9 flex-shrink-0">
-                            <AvatarImage src={comment.profiles.avatar_url || ''} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
-                              {comment.profiles.display_name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <span className="font-semibold text-sm">{comment.profiles.display_name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatTimeAgo(comment.created_at)}
-                                </span>
-                              </div>
-                              {comment.user_id === user?.id && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  className="w-6 h-6 p-0 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              )}
-                            </div>
-                            <p className="text-sm text-foreground break-words mt-1">{comment.content}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </div>
+              {/* Tap to view comments */}
+              <button 
+                onClick={openComments}
+                className="py-4 text-center text-muted-foreground hover:text-primary transition-colors border-b border-border"
+              >
+                <p className="text-sm">Ver todos os {commentsCount} comentários</p>
+              </button>
             </div>
           </div>
 
-          {/* Comment Input - Fixed at bottom */}
-          <div className="border-t border-border bg-background">
-            <div className="mobile-container p-4">
-              <div className="flex space-x-3">
-                <Avatar className="w-9 h-9 flex-shrink-0">
-                  <AvatarImage src={user?.avatar_url || ''} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
-                    {user?.display_name?.[0] || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 flex space-x-2">
-                  <Input
-                    ref={commentInputRef}
-                    placeholder="Adicione um comentário..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1"
-                    disabled={isSubmittingComment}
-                  />
-                  <Button
-                    onClick={handleSubmitComment}
-                    disabled={!newComment.trim() || isSubmittingComment}
-                    size="sm"
-                    className="px-3"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Comments Modal */}
+          <CommentsModal 
+            isOpen={showComments}
+            onClose={() => setShowComments(false)}
+            postId={id || ''}
+          />
         </div>
       </div>
     </MobileLayout>
