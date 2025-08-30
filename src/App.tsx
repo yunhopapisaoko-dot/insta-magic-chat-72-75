@@ -15,6 +15,7 @@ import Messages from "./pages/Messages";
 import Post from "./pages/Post";
 import User from "./pages/User";
 import Admin from "./pages/Admin";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -98,6 +99,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <User />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/notifications" 
+              element={
+                <ProtectedRoute>
+                  <Notifications />
                 </ProtectedRoute>
               } 
             />

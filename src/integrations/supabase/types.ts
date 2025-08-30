@@ -154,6 +154,48 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_likes: {
         Row: {
           created_at: string
@@ -343,6 +385,18 @@ export type Database = {
       cleanup_expired_stories: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      create_notification: {
+        Args: {
+          p_actor_id?: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_message: string
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

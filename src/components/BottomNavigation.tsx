@@ -1,6 +1,7 @@
 import { Home, Search, Plus, User, MessageCircle } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import NotificationBell from '@/components/NotificationBell';
 
 const BottomNavigation = () => {
   const navItems = [
@@ -8,7 +9,6 @@ const BottomNavigation = () => {
     { icon: Search, path: '/explore', label: 'Explorar' },
     { icon: Plus, path: '/create', label: 'Post', isSpecial: true },
     { icon: MessageCircle, path: '/messages', label: 'Chat' },
-    { icon: User, path: '/profile', label: 'Perfil' },
   ];
 
   return (
@@ -42,6 +42,32 @@ const BottomNavigation = () => {
               </span>
             </NavLink>
           ))}
+          
+          {/* Notifications Bell */}
+          <div className="flex flex-col items-center justify-center p-3">
+            <NotificationBell />
+            <span className="text-xs mt-1 font-medium text-muted-foreground">
+              Avisos
+            </span>
+          </div>
+          
+          {/* Profile Link */}
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              cn(
+                'flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200',
+                isActive 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
+              )
+            }
+          >
+            <User className="w-5 h-5 transition-all duration-200" />
+            <span className="text-xs mt-1 font-medium">
+              Perfil
+            </span>
+          </NavLink>
         </div>
       </div>
     </div>
