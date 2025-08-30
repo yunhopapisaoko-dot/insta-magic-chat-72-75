@@ -62,26 +62,42 @@ export const useRealtimeMessages = (conversationId: string) => {
       const cachedMessages = messageCache.getCachedMessages(conversationId);
       
       if (cachedMessages.length > 0 && !forceRefresh) {
-        setMessages(cachedMessages as RealtimeMessage[]);
+        // Ensure messages are sorted chronologically
+        const sortedMessages = cachedMessages.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        setMessages(sortedMessages as RealtimeMessage[]);
         setLoading(false);
         
-        // Fetch fresh data in background if cache is old
-        setTimeout(() => {
-          messageCache.fetchAndCacheMessages(conversationId);
+        // Fetch fresh data in background if cache is old and reorder if needed
+        setTimeout(async () => {
+          const freshMessages = await messageCache.fetchAndCacheMessages(conversationId, true);
+          const reorderedMessages = (freshMessages as RealtimeMessage[]).sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          setMessages(reorderedMessages);
         }, 1000);
         return;
       } 
       
       // Fetch from server
       const freshMessages = await messageCache.fetchAndCacheMessages(conversationId, forceRefresh);
-      setMessages(freshMessages as RealtimeMessage[]);
+      // Ensure messages are sorted chronologically
+      const sortedMessages = (freshMessages as RealtimeMessage[]).sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      setMessages(sortedMessages);
       
     } catch (error) {
       console.error('Error fetching messages:', error);
       // Fallback to cached data on error
       const cachedMessages = messageCache.getCachedMessages(conversationId);
       if (cachedMessages.length > 0) {
-        setMessages(cachedMessages as RealtimeMessage[]);
+        // Ensure messages are sorted chronologically
+        const sortedMessages = cachedMessages.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        setMessages(sortedMessages as RealtimeMessage[]);
       }
     } finally {
       setLoading(false);
@@ -250,6 +266,7 @@ export const useRealtimeMessages = (conversationId: string) => {
       'postgres_changes:INSERT:messages': async (payload: any) => {
         const newMessage = payload.new as RealtimeMessage;
         console.log('New message received:', newMessage);
+        console.log('Current message time:', new Date(newMessage.created_at).toLocaleTimeString());
         
         // Add to cache
         messageCache.addMessage(conversationId, newMessage);
@@ -260,9 +277,17 @@ export const useRealtimeMessages = (conversationId: string) => {
           
           // Insert message in correct chronological order
           const newMessages = [...prev, newMessage];
-          return newMessages.sort((a, b) => 
+          const sortedMessages = newMessages.sort((a, b) => 
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
+          
+          console.log('Messages after sort:', sortedMessages.map(m => ({
+            id: m.id.slice(-8),
+            time: new Date(m.created_at).toLocaleTimeString(),
+            content: m.content?.slice(0, 20)
+          })));
+          
+          return sortedMessages;
         });
 
         // Auto-mark as delivered if not sender
@@ -346,8 +371,23 @@ export const useRealtimeMessages = (conversationId: string) => {
 
   // Fetch messages on mount
   useEffect(() => {
-    fetchMessages();
+    fetchMessages(true); // Force refresh to ensure correct order
   }, [fetchMessages]);
+
+  // Additional effect to ensure messages stay sorted
+  useEffect(() => {
+    setMessages(prev => {
+      const sorted = [...prev].sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      // Only update if order actually changed to avoid infinite re-renders
+      if (JSON.stringify(prev.map(m => m.id)) !== JSON.stringify(sorted.map(m => m.id))) {
+        console.log('Reordering messages to ensure chronological order');
+        return sorted;
+      }
+      return prev;
+    });
+  }, [messages.length]);
 
   return {
     messages,
