@@ -32,6 +32,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
 
   // Throttled time update to prevent excessive re-renders
   const timeUpdateRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
 
   useEffect(() => {
     const url = URL.createObjectURL(videoFile);
@@ -39,7 +40,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
     return () => URL.revokeObjectURL(url);
   }, [videoFile]);
 
-  const handleLoadedMetadata = () => {
+  const handleLoadedMetadata = useCallback(() => {
     if (videoRef.current) {
       const videoDuration = videoRef.current.duration;
       setDuration(videoDuration);
@@ -50,27 +51,35 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
         alert('Este vídeo é muito longo. Selecione um vídeo de até 1 minuto.');
       }
     }
-  };
+  }, []);
 
   const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
-      // Throttle time updates to prevent excessive re-renders
-      if (timeUpdateRef.current) {
-        clearTimeout(timeUpdateRef.current);
-      }
-      
-      timeUpdateRef.current = setTimeout(() => {
-        if (videoRef.current) {
-          setCurrentTime(videoRef.current.currentTime);
-          
-          // Auto pause at end time
-          if (videoRef.current.currentTime >= endTime) {
-            videoRef.current.pause();
-            setIsPlaying(false);
-          }
-        }
-      }, 100); // Update every 100ms instead of every frame
+    if (!videoRef.current) return;
+    
+    const now = Date.now();
+    // Only update if enough time has passed (throttle to 200ms)
+    if (now - lastUpdateTimeRef.current < 200) return;
+    
+    lastUpdateTimeRef.current = now;
+    
+    // Clear any pending timeout
+    if (timeUpdateRef.current) {
+      clearTimeout(timeUpdateRef.current);
     }
+    
+    // Debounce the state updates
+    timeUpdateRef.current = setTimeout(() => {
+      if (!videoRef.current) return;
+      
+      const currentVideoTime = videoRef.current.currentTime;
+      setCurrentTime(currentVideoTime);
+      
+      // Auto pause at end time
+      if (currentVideoTime >= endTime) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    }, 50);
   }, [endTime]);
 
   const togglePlay = useCallback(() => {
@@ -86,14 +95,17 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
   }, [isPlaying, startTime]);
 
   const handleSeek = useCallback((value: number[]) => {
-    if (videoRef.current) {
+    if (videoRef.current && value[0] !== currentTime) {
       videoRef.current.currentTime = value[0];
       setCurrentTime(value[0]);
     }
-  }, []);
+  }, [currentTime]);
 
   const handleTrimRange = useCallback((value: number[]) => {
     const [newStart, newEnd] = value;
+    
+    // Prevent unnecessary updates if values haven't changed
+    if (newStart === startTime && newEnd === endTime) return;
     
     // Ensure the trimmed duration doesn't exceed 60 seconds
     if (newEnd - newStart > 60) {
@@ -110,7 +122,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
         videoRef.current.currentTime = newStart;
       }
     }
-  }, []);
+  }, [startTime, endTime]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -197,12 +209,14 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
           <video
             ref={videoRef}
             src={videoUrl}
-            className="w-full max-h-64 object-cover transition-all duration-200"
+            className="w-full max-h-64 object-cover"
             style={{ filter: filters[selectedFilter].filter }}
             onLoadedMetadata={handleLoadedMetadata}
             onTimeUpdate={handleTimeUpdate}
             onPause={() => setIsPlaying(false)}
             onPlay={() => setIsPlaying(true)}
+            playsInline
+            preload="metadata"
           />
           
           {/* Play/Pause Overlay */}
