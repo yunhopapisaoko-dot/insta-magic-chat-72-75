@@ -4,15 +4,29 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, Search, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useRealtimeConversations, type Conversation } from '@/hooks/useRealtimeConversations';
+import { useOptimizedConversations } from '@/hooks/useOptimizedConversations';
+import { type Conversation } from '@/hooks/useConversations';
 import { useAuth } from '@/hooks/useAuth';
 import Chat from '@/components/Chat';
 import InfinitePublicChat from '@/components/InfinitePublicChat';
 import MobileLayout from '@/components/MobileLayout';
+import { LoadingFeedback } from '@/components/ui/LoadingFeedback';
 
 const ChatList = () => {
   const { user } = useAuth();
-  const { conversations, loading } = useRealtimeConversations();
+  const { 
+    conversations, 
+    loading, 
+    error,
+    deviceOptimization,
+    connectionStatus,
+    isOnline,
+    cacheStats
+  } = useOptimizedConversations({
+    enablePreloading: true,
+    enableBackgroundSync: true,
+    maxPreloadCount: 10
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showPublicChat, setShowPublicChat] = useState(false);
@@ -91,21 +105,27 @@ const ChatList = () => {
         {/* Conversations List */}
         <div className="space-y-2">
           {loading ? (
-            // Loading skeleton
-            [...Array(5)].map((_, i) => (
-              <Card key={i} className="card-shadow border-0 animate-pulse">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-full bg-muted" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-1/3" />
-                      <div className="h-3 bg-muted rounded w-2/3" />
-                    </div>
-                    <div className="h-3 bg-muted rounded w-12" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <LoadingFeedback
+              isLoading={loading}
+              operation="Carregando conversas"
+              showNetworkStatus={true}
+              showBatteryStatus={deviceOptimization.isMobile}
+              showPerformanceHints={true}
+              className="py-8"
+            />
+          ) : error ? (
+            <Card className="card-shadow border-0">
+              <CardContent className="p-8 text-center">
+                <MessageCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2 text-destructive">Erro ao carregar</h3>
+                <p className="text-muted-foreground mb-4">{error}</p>
+                {!isOnline && (
+                  <p className="text-sm text-muted-foreground">
+                    Verifique sua conexão e tente novamente
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           ) : filteredConversations.length === 0 ? (
             <Card className="card-shadow border-0">
               <CardContent className="p-8 text-center">
