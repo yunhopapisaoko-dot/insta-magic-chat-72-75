@@ -50,14 +50,29 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
     fetchConversationData();
+    isInitialLoadRef.current = true; // Reset flag when conversation changes
   }, [conversationId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, typingUsers]);
+
+  // Scroll to bottom on initial load or when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      if (isInitialLoadRef.current) {
+        // Force immediate scroll to bottom on initial load
+        setTimeout(() => {
+          scrollToBottom();
+          isInitialLoadRef.current = false;
+        }, 100);
+      }
+    }
+  }, [messages.length]);
 
   // Remove old real-time subscription effect since it's handled by useRealtimeMessages
 
@@ -99,7 +114,12 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   // Remove fetchMessages since it's handled by useRealtimeMessages
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      });
+    }
   };
 
   const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {

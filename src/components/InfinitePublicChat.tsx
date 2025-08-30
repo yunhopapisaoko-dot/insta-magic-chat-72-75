@@ -34,6 +34,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
   
   const [newMessage, setNewMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending || !user || !userProfile) return;
@@ -98,6 +99,17 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
       }
     };
   }, []);
+
+  // Ensure we always start at bottom when chat opens
+  useEffect(() => {
+    if (messages.length > 0 && isInitialLoadRef.current) {
+      // Force scroll to bottom on initial load
+      setTimeout(() => {
+        scrollToBottom(false); // Use false for immediate scroll
+        isInitialLoadRef.current = false;
+      }, 200);
+    }
+  }, [messages.length, scrollToBottom]);
 
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -254,11 +266,18 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
                 </div>
               ) : (
                 // Messages
-                messageElements
+                <div className={cn(
+                  "space-y-4"
+                )}>
+                  {messageElements}
+                  
+                  {/* Typing Indicator */}
+                  <TypingIndicator typingUsers={typingUsers} />
+                  
+                  {/* Scroll anchor - always at bottom */}
+                  <div className="h-1" />
+                </div>
               )}
-              
-              {/* Typing Indicator */}
-              <TypingIndicator typingUsers={typingUsers} />
             </div>
 
             {/* Scroll indicator */}
