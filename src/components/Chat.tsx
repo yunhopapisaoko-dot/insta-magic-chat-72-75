@@ -3,17 +3,12 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX } from 'lucide-react';
+import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
+import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
-import MessageStatus from '@/components/ui/MessageStatus';
-import TypingIndicator from '@/components/ui/TypingIndicator';
-import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
-import { NetworkIndicator } from '@/components/ui/NetworkIndicator';
-import { MessageRetryIndicator } from '@/components/ui/MessageRetryIndicator';
 import MediaUpload from '@/components/MediaUpload';
 
 interface ChatProps {
@@ -35,19 +30,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     typingUsers, 
     loading, 
     sending, 
-    sendMessage: realtimeSendMessage,
-    sendTypingIndicator,
     connectionStatus,
-    isOnline,
-    reconnectAttempts,
-    reconnectChannels,
-    connectionQuality,
-    networkMetrics,
-    pendingMessages,
-    retryMessage,
-    getMessageStatus,
-    getRetryCount
-  } = useRealtimeMessages(conversationId);
+    sendMessage,
+    sendTypingIndicator,
+  } = useRealtimeChat(conversationId);
+  
   const [newMessage, setNewMessage] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
@@ -116,8 +103,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       typingTimeoutRef.current = null;
     }
 
-    const result = await realtimeSendMessage(content, mediaUrl, mediaType);
-    if (result) {
+    const success = await sendMessage(content, mediaUrl, mediaType);
+    if (success) {
       setNewMessage('');
       setShowMediaUpload(false);
     }
@@ -245,21 +232,20 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               </div>
               
               <div className="flex items-center gap-2">
-                <NetworkIndicator
-                  quality={connectionQuality}
-                  latency={networkMetrics.latency}
-                  successRate={networkMetrics.successRate}
-                  isValidating={false}
-                  consecutiveFailures={networkMetrics.consecutiveFailures}
-                  onRetry={reconnectChannels}
-                />
-                
-                <ConnectionStatus
-                  status={connectionStatus}
-                  isOnline={isOnline}
-                  reconnectAttempts={reconnectAttempts}
-                  onReconnect={reconnectChannels}
-                />
+                {/* Connection Status Indicator */}
+                <div className="flex items-center gap-1">
+                  {connectionStatus === 'connected' ? (
+                    <Wifi className="w-4 h-4 text-green-500" />
+                  ) : connectionStatus === 'connecting' ? (
+                    <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <WifiOff className="w-4 h-4 text-red-500" />
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {connectionStatus === 'connected' ? 'Online' : 
+                     connectionStatus === 'connecting' ? 'Conectando...' : 'Offline'}
+                  </span>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -344,38 +330,26 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                                 )}
                               </div>
                             )}
-                            <div className={`flex items-center justify-between mt-1 ${
-                              isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                            }`}>
-                              <span className="text-xs">
-                                {formatMessageTime(message.created_at)}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                {isOwnMessage && (
-                                  <MessageStatus 
-                                    status={message.message_status as 'sent' | 'delivered' | 'read' || 'sent'} 
-                                    className="ml-2" 
-                                  />
-                                )}
-                                {/* Show retry indicator for failed messages */}
-                                {isOwnMessage && (
-                                  <MessageRetryIndicator
-                                    status={getMessageStatus(message.id) ? 
-                                      getMessageStatus(message.id) as any : 
-                                      (message.message_status === 'sent' ? 'sent' : 'sending')
-                                    }
-                                    onRetry={async () => {
-                                      await retryMessage(message.id, async () => {
-                                        // The retry logic is handled by the hook
-                                        return true;
-                                      });
-                                    }}
-                                    retryCount={getRetryCount(message.id)}
-                                    maxRetries={3}
-                                  />
-                                )}
-                              </div>
-                            </div>
+                             <div className={`flex items-center justify-between mt-1 ${
+                               isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                             }`}>
+                               <span className="text-xs">
+                                 {formatMessageTime(message.created_at)}
+                               </span>
+                               {isOwnMessage && (
+                                 <div className="flex items-center gap-1">
+                                   {message.message_status === 'read' && (
+                                     <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                   )}
+                                   {message.message_status === 'delivered' && (
+                                     <div className="w-2 h-2 bg-green-500 rounded-full" />
+                                   )}
+                                   {(message.message_status === 'sent' || !message.message_status) && (
+                                     <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                                   )}
+                                 </div>
+                               )}
+                             </div>
                          </div>
                        </div>
                        
@@ -392,8 +366,23 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 );
               })}
               
-              {/* Enhanced Typing Indicator */}
-              <TypingIndicator typingUsers={typingUsers} className="px-2" />
+              {/* Typing Indicator */}
+              {typingUsers.length > 0 && (
+                <div className="flex items-center space-x-2 px-2">
+                  <Avatar className="w-6 h-6">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                      {typingUsers[0].display_name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="bg-muted p-3 rounded-2xl">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div ref={messagesEndRef} />
             </>
