@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Send } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
 import VideoPlayer from '@/components/ui/VideoPlayer';
+import { usePostInteractions } from '@/hooks/usePostInteractions';
 
 interface Post {
   id: string;
@@ -32,15 +35,26 @@ const PostDetail = () => {
   const { user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
+  const commentInputRef = useRef<HTMLInputElement>(null);
+  
+  const {
+    isLiked,
+    likesCount,
+    comments,
+    commentsCount,
+    newComment,
+    setNewComment,
+    isSubmittingComment,
+    handleLike,
+    handleSubmitComment,
+    handleDeleteComment,
+  } = usePostInteractions(id || null);
 
   useEffect(() => {
     if (id) {
       fetchPost();
-      fetchLikeStatus();
     }
-  }, [id, user]);
+  }, [id]);
 
   const fetchPost = async () => {
     try {
@@ -57,7 +71,6 @@ const PostDetail = () => {
       
       if (data) {
         setPost(data);
-        setLikesCount(data.likes_count);
       } else {
         toast({
           title: "Post não encontrado",
@@ -76,54 +89,6 @@ const PostDetail = () => {
       navigate('/feed');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchLikeStatus = async () => {
-    if (!user || !id) return;
-
-    try {
-      const { data } = await supabase
-        .from('post_likes')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('post_id', id)
-        .maybeSingle();
-
-      setIsLiked(!!data);
-    } catch (error) {
-      setIsLiked(false);
-    }
-  };
-
-  const handleLike = async () => {
-    if (!user || !post) return;
-
-    try {
-      if (isLiked) {
-        const { error } = await supabase
-          .from('post_likes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('post_id', post.id);
-
-        if (error) throw error;
-        setIsLiked(false);
-        setLikesCount(prev => prev - 1);
-      } else {
-        const { error } = await supabase
-          .from('post_likes')
-          .insert({
-            user_id: user.id,
-            post_id: post.id,
-          });
-
-        if (error) throw error;
-        setIsLiked(true);
-        setLikesCount(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('Error liking/unliking post:', error);
     }
   };
 
@@ -167,6 +132,17 @@ const PostDetail = () => {
     return `${diffInDays}d`;
   };
 
+  const focusCommentInput = () => {
+    commentInputRef.current?.focus();
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitComment();
+    }
+  };
+
   if (loading) {
     return (
       <MobileLayout>
@@ -201,7 +177,7 @@ const PostDetail = () => {
 
   return (
     <MobileLayout>
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         {/* Header */}
         <div className="sticky top-0 z-50 bg-background border-b border-border">
           <div className="mobile-container py-4">
@@ -220,101 +196,180 @@ const PostDetail = () => {
         </div>
 
         {/* Post Content */}
-        <div className="mobile-container">
-          <div className="bg-background">
-            {/* Post Header */}
-            <div className="flex items-center space-x-3 py-4">
-              <Avatar className="w-12 h-12">
-                <AvatarImage src={post.profiles.avatar_url || ''} />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
-                  {post.profiles.display_name[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <h3 className="font-semibold text-base">{post.profiles.display_name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  @{post.profiles.username} • {formatTimeAgo(post.created_at)}
-                </p>
-              </div>
-              {post.user_id === user?.id && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-10 h-10 p-0">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-background border border-border">
-                    <DropdownMenuItem 
-                      onClick={handleDeletePost}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Deletar post
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-            
-            {/* Post Media */}
-            {post.image_url && (
-              <div className="mb-4">
-                {post.media_type === 'video' ? (
-                  <VideoPlayer
-                    src={post.image_url}
-                    className="w-full rounded-lg max-h-[70vh]"
-                  />
-                ) : (
-                  <img
-                    src={post.image_url}
-                    alt="Post content"
-                    className="w-full rounded-lg object-cover"
-                    style={{ maxHeight: '70vh' }}
-                    loading="lazy"
-                  />
+        <div className="flex-1 flex flex-col">
+          <div className="mobile-container">
+            <div className="bg-background">
+              {/* Post Header */}
+              <div className="flex items-center space-x-3 py-4">
+                <Avatar className="w-12 h-12">
+                  <AvatarImage src={post.profiles.avatar_url || ''} />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
+                    {post.profiles.display_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-base">{post.profiles.display_name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    @{post.profiles.username} • {formatTimeAgo(post.created_at)}
+                  </p>
+                </div>
+                {post.user_id === user?.id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-10 h-10 p-0">
+                        <MoreHorizontal className="w-5 h-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-background border border-border">
+                      <DropdownMenuItem 
+                        onClick={handleDeletePost}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Deletar post
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
-            )}
-
-            {/* Post Content */}
-            {post.content && (
-              <div className="py-3">
-                <p className="text-base leading-relaxed">{post.content}</p>
-              </div>
-            )}
-            
-            {/* Post Actions */}
-            <div className="py-3 border-b border-border">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-4">
-                  <button 
-                    onClick={handleLike}
-                    className={`flex items-center space-x-2 transition-colors ${
-                      isLiked 
-                        ? 'text-red-500 hover:text-red-600' 
-                        : 'text-muted-foreground hover:text-red-500'
-                    }`}
-                  >
-                    <Heart 
-                      className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} 
+              
+              {/* Post Media */}
+              {post.image_url && (
+                <div className="mb-4">
+                  {post.media_type === 'video' ? (
+                    <VideoPlayer
+                      src={post.image_url}
+                      className="w-full rounded-lg max-h-[70vh]"
                     />
-                    <span className="font-semibold">{likesCount}</span>
-                  </button>
-                  <button className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors">
-                    <MessageCircle className="w-6 h-6" />
-                    <span className="font-semibold">{post.comments_count}</span>
+                  ) : (
+                    <img
+                      src={post.image_url}
+                      alt="Post content"
+                      className="w-full rounded-lg object-cover"
+                      style={{ maxHeight: '70vh' }}
+                      loading="lazy"
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Post Content */}
+              {post.content && (
+                <div className="py-3">
+                  <p className="text-base leading-relaxed">{post.content}</p>
+                </div>
+              )}
+              
+              {/* Post Actions */}
+              <div className="py-3 border-b border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-4">
+                    <button 
+                      onClick={handleLike}
+                      className={`flex items-center space-x-2 transition-colors ${
+                        isLiked 
+                          ? 'text-red-500 hover:text-red-600' 
+                          : 'text-muted-foreground hover:text-red-500'
+                      }`}
+                    >
+                      <Heart 
+                        className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} 
+                      />
+                      <span className="font-semibold">{likesCount}</span>
+                    </button>
+                    <button 
+                      onClick={focusCommentInput}
+                      className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <MessageCircle className="w-6 h-6" />
+                      <span className="font-semibold">{commentsCount}</span>
+                    </button>
+                  </div>
+                  <button className="text-muted-foreground hover:text-primary transition-colors">
+                    <Share className="w-6 h-6" />
                   </button>
                 </div>
-                <button className="text-muted-foreground hover:text-primary transition-colors">
-                  <Share className="w-6 h-6" />
-                </button>
+              </div>
+
+              {/* Comments Section */}
+              <div className="flex-1 flex flex-col min-h-[40vh]">
+                <ScrollArea className="flex-1 py-4">
+                  {comments.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-12">
+                      <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-base">Nenhum comentário ainda</p>
+                      <p className="text-sm mt-1">Seja o primeiro a comentar!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {comments.map((comment) => (
+                        <div key={comment.id} className="flex space-x-3">
+                          <Avatar className="w-9 h-9 flex-shrink-0">
+                            <AvatarImage src={comment.profiles.avatar_url || ''} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
+                              {comment.profiles.display_name[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold text-sm">{comment.profiles.display_name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTimeAgo(comment.created_at)}
+                                </span>
+                              </div>
+                              {comment.user_id === user?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  className="w-6 h-6 p-0 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-sm text-foreground break-words mt-1">{comment.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
               </div>
             </div>
+          </div>
 
-            {/* Comments Section Placeholder */}
-            <div className="py-6 text-center text-muted-foreground">
-              <MessageCircle className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm">Os comentários estarão disponíveis em breve</p>
+          {/* Comment Input - Fixed at bottom */}
+          <div className="border-t border-border bg-background">
+            <div className="mobile-container p-4">
+              <div className="flex space-x-3">
+                <Avatar className="w-9 h-9 flex-shrink-0">
+                  <AvatarImage src={user?.avatar_url || ''} />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
+                    {user?.display_name?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 flex space-x-2">
+                  <Input
+                    ref={commentInputRef}
+                    placeholder="Adicione um comentário..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1"
+                    disabled={isSubmittingComment}
+                  />
+                  <Button
+                    onClick={handleSubmitComment}
+                    disabled={!newComment.trim() || isSubmittingComment}
+                    size="sm"
+                    className="px-3"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
