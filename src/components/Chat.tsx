@@ -50,29 +50,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
     fetchConversationData();
-    isInitialLoadRef.current = true; // Reset flag when conversation changes
   }, [conversationId]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, typingUsers]);
-
-  // Scroll to bottom on initial load or when messages change
-  useEffect(() => {
-    if (messages.length > 0) {
-      if (isInitialLoadRef.current) {
-        // Force immediate scroll to bottom on initial load
-        setTimeout(() => {
-          scrollToBottom();
-          isInitialLoadRef.current = false;
-        }, 100);
-      }
-    }
-  }, [messages.length]);
 
   // Remove old real-time subscription effect since it's handled by useRealtimeMessages
 
@@ -374,7 +355,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         </Card>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ display: 'flex', flexDirection: 'column-reverse' }}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">

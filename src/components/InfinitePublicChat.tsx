@@ -34,7 +34,6 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
   
   const [newMessage, setNewMessage] = useState('');
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitialLoadRef = useRef(true);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending || !user || !userProfile) return;
@@ -100,16 +99,6 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
     };
   }, []);
 
-  // Ensure we always start at bottom when chat opens
-  useEffect(() => {
-    if (messages.length > 0 && isInitialLoadRef.current) {
-      // Force scroll to bottom on initial load
-      setTimeout(() => {
-        scrollToBottom(false); // Use false for immediate scroll
-        isInitialLoadRef.current = false;
-      }, 200);
-    }
-  }, [messages.length, scrollToBottom]);
 
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -221,11 +210,11 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
 
         {/* Messages */}
         <div className="flex-1 relative">
-          <div
+            <div
             ref={scrollElementRef}
             onScroll={handleScroll}
             className="absolute inset-0 overflow-y-auto p-4"
-            style={{ scrollBehavior: 'smooth' }}
+            style={{ scrollBehavior: 'smooth', display: 'flex', flexDirection: 'column-reverse' }}
           >
             {/* Load more indicator */}
             {loadingMore && (
