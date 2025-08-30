@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -75,6 +75,7 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
   const [validationResult, setValidationResult] = useState<any>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -181,8 +182,9 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
               setVideoFile(file);
               setProcessedVideoBlob(compressedBlob);
               
-              const { url } = createManagedURL(compressedBlob, 'high');
-              setVideoPreview(url);
+              const compressedUrl = URL.createObjectURL(compressedBlob);
+              setVideoPreviewUrl(compressedUrl);
+              setVideoPreview(compressedUrl);
               
               toast({
                 title: "✅ Vídeo otimizado",
@@ -193,16 +195,18 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
               console.warn('Compression failed, using original:', compressionError);
               
               setVideoFile(file);
-              const { url } = createManagedURL(file, 'high');
-              setVideoPreview(url);
+              const originalUrl = URL.createObjectURL(file);
+              setVideoPreviewUrl(originalUrl);
+              setVideoPreview(originalUrl);
               
               // Cache original file
               addToCache(file, undefined, { generateThumbnail: true });
             }
           } else {
             setVideoFile(file);
-            const { url } = createManagedURL(file, 'high');
-            setVideoPreview(url);
+            const originalUrl = URL.createObjectURL(file);
+            setVideoPreviewUrl(originalUrl);
+            setVideoPreview(originalUrl);
             
             // Cache original file
             addToCache(file, undefined, { generateThumbnail: true });
@@ -328,6 +332,12 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
   };
 
   const resetForm = () => {
+    // Clean up video URL to prevent memory leaks
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+      setVideoPreviewUrl(null);
+    }
+    
     setStep('media');
     setContent('');
     setImageFile(null);
@@ -480,12 +490,13 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                 </div>
               )}
               
-              {(processedVideoBlob || videoFile) && (
+              {videoPreviewUrl && (processedVideoBlob || videoFile) && (
                 <div className="relative">
                   <video
-                    src={processedVideoBlob ? URL.createObjectURL(processedVideoBlob) : (videoFile ? URL.createObjectURL(videoFile) : '')}
+                    src={videoPreviewUrl}
                     className="w-full max-h-64 object-cover rounded-xl"
                     controls
+                    preload="metadata"
                   />
                   <button
                     onClick={removeMedia}
