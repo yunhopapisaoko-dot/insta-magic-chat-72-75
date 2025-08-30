@@ -17,16 +17,8 @@ const ChatList = () => {
   const { 
     conversations, 
     loading, 
-    error,
-    deviceOptimization,
-    connectionStatus,
-    isOnline,
-    cacheStats
-  } = useOptimizedConversations({
-    enablePreloading: true,
-    enableBackgroundSync: true,
-    maxPreloadCount: 10
-  });
+    error
+  } = useOptimizedConversations();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showPublicChat, setShowPublicChat] = useState(false);
@@ -109,12 +101,7 @@ const ChatList = () => {
               <CardContent className="p-8 text-center">
                 <MessageCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2 text-destructive">Erro ao carregar</h3>
-                <p className="text-muted-foreground mb-4">{error}</p>
-                {!isOnline && (
-                  <p className="text-sm text-muted-foreground">
-                    Verifique sua conexão e tente novamente
-                  </p>
-                )}
+                <p className="text-muted-foreground">{error}</p>
               </CardContent>
             </Card>
           ) : filteredConversations.length === 0 ? (
