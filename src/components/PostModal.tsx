@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { isVideoUrl } from '@/lib/utils';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
+import { useRef } from 'react';
 
 interface Post {
   id: string;
@@ -36,6 +37,7 @@ interface PostModalProps {
 
 const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) => {
   const { user } = useAuth();
+  const commentInputRef = useRef<HTMLInputElement>(null);
   const {
     isLiked,
     likesCount,
@@ -48,6 +50,10 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
     handleSubmitComment,
     handleDeleteComment,
   } = usePostInteractions(post?.id || null);
+
+  const focusCommentInput = () => {
+    commentInputRef.current?.focus();
+  };
 
   const handleDeletePost = async () => {
     if (!user || !post) return;
@@ -194,10 +200,13 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                       />
                       <span className="text-sm">{likesCount}</span>
                     </button>
-                    <div className="flex items-center space-x-1 text-muted-foreground">
+                    <button 
+                      onClick={focusCommentInput}
+                      className="flex items-center space-x-1 text-muted-foreground hover:text-primary transition-colors"
+                    >
                       <MessageCircle className="w-5 h-5" />
                       <span className="text-sm">{commentsCount}</span>
-                    </div>
+                    </button>
                   </div>
                   <button className="text-muted-foreground hover:text-primary transition-colors">
                     <Share className="w-5 h-5" />
@@ -260,6 +269,7 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                     </Avatar>
                     <div className="flex-1 flex space-x-2">
                       <Input
+                        ref={commentInputRef}
                         placeholder="Adicione um comentário..."
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
