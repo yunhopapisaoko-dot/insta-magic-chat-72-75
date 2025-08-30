@@ -151,8 +151,11 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                             >
                               Responder
                             </button>
-                            <button className="text-xs text-muted-foreground font-medium hover:text-foreground">
-                              Ocultar
+                            <button 
+                              onClick={() => handleCommentLike(comment.id)}
+                              className="text-xs text-muted-foreground font-medium hover:text-foreground"
+                            >
+                              Curtir
                             </button>
                           </div>
                           
