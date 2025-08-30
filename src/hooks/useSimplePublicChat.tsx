@@ -26,21 +26,19 @@ export const useSimplePublicChat = () => {
     if (!user) return;
 
     try {
-      // Buscar apenas as últimas 15 mensagens para caber numa tela
+      // Buscar as últimas 15 mensagens em ordem cronológica
       const { data: messagesData, error } = await supabase
         .from('public_chat_messages')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
         .limit(15);
 
       if (error) throw error;
 
       if (messagesData?.length) {
-        // Reverter ordem para mostrar mais antigas primeiro
-        const reversedMessages = messagesData.reverse();
         
         // Get unique sender IDs
-        const senderIds = [...new Set(reversedMessages.map(m => m.sender_id))];
+        const senderIds = [...new Set(messagesData.map(m => m.sender_id))];
         
         // Fetch sender profiles
         const { data: profiles, error: profilesError } = await supabase
@@ -60,8 +58,8 @@ export const useSimplePublicChat = () => {
           return acc;
         }, {} as Record<string, any>) || {};
 
-        // Add sender info to messages
-        const messagesWithSenders = reversedMessages.map(message => ({
+        // Add sender info to messages (já em ordem cronológica)
+        const messagesWithSenders = messagesData.map(message => ({
           ...message,
           sender: profilesMap[message.sender_id]
         }));
@@ -152,7 +150,7 @@ export const useSimplePublicChat = () => {
           }
 
           setMessages(prev => {
-            // Manter apenas as últimas 15 mensagens
+            // Adicionar nova mensagem no final e manter apenas as últimas 15
             const newMessages = [...prev, newMessage];
             return newMessages.slice(-15);
           });

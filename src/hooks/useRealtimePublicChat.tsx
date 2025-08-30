@@ -264,7 +264,11 @@ export const useRealtimePublicChat = () => {
         setMessages(prev => {
           // Avoid duplicates
           if (prev.find(m => m.id === newMessage.id)) return prev;
-          return [...prev, newMessage];
+          // Adicionar nova mensagem e manter ordem cronológica
+          const updated = [...prev, newMessage];
+          return updated.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
         });
 
         // Show notification for other users' messages (only if not in foreground)

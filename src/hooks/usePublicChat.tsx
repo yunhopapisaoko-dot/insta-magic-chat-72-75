@@ -141,7 +141,13 @@ export const usePublicChat = () => {
             };
           }
 
-          setMessages(prev => [...prev, newMessage]);
+          setMessages(prev => {
+            // Adicionar nova mensagem no final (mantém ordem cronológica)
+            const updated = [...prev, newMessage];
+            return updated.sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+          });
         }
       )
       .subscribe();
