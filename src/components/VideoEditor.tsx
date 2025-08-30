@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,9 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
   const [selectedFilter, setSelectedFilter] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string>('');
 
+  // Throttled time update to prevent excessive re-renders
+  const timeUpdateRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     const url = URL.createObjectURL(videoFile);
     setVideoUrl(url);
@@ -49,19 +52,28 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
     }
   };
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-      
-      // Auto pause at end time
-      if (videoRef.current.currentTime >= endTime) {
-        videoRef.current.pause();
-        setIsPlaying(false);
+      // Throttle time updates to prevent excessive re-renders
+      if (timeUpdateRef.current) {
+        clearTimeout(timeUpdateRef.current);
       }
+      
+      timeUpdateRef.current = setTimeout(() => {
+        if (videoRef.current) {
+          setCurrentTime(videoRef.current.currentTime);
+          
+          // Auto pause at end time
+          if (videoRef.current.currentTime >= endTime) {
+            videoRef.current.pause();
+            setIsPlaying(false);
+          }
+        }
+      }, 100); // Update every 100ms instead of every frame
     }
-  };
+  }, [endTime]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
@@ -71,16 +83,16 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
       }
       setIsPlaying(!isPlaying);
     }
-  };
+  }, [isPlaying, startTime]);
 
-  const handleSeek = (value: number[]) => {
+  const handleSeek = useCallback((value: number[]) => {
     if (videoRef.current) {
       videoRef.current.currentTime = value[0];
       setCurrentTime(value[0]);
     }
-  };
+  }, []);
 
-  const handleTrimRange = (value: number[]) => {
+  const handleTrimRange = useCallback((value: number[]) => {
     const [newStart, newEnd] = value;
     
     // Ensure the trimmed duration doesn't exceed 60 seconds
@@ -98,7 +110,16 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
         videoRef.current.currentTime = newStart;
       }
     }
-  };
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeUpdateRef.current) {
+        clearTimeout(timeUpdateRef.current);
+      }
+    };
+  }, []);
 
   const processVideo = async () => {
     if (!videoRef.current) return;
@@ -176,7 +197,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
           <video
             ref={videoRef}
             src={videoUrl}
-            className="w-full max-h-64 object-cover"
+            className="w-full max-h-64 object-cover transition-all duration-200"
             style={{ filter: filters[selectedFilter].filter }}
             onLoadedMetadata={handleLoadedMetadata}
             onTimeUpdate={handleTimeUpdate}
@@ -189,7 +210,7 @@ const VideoEditor = ({ videoFile, onSave, onCancel }: VideoEditorProps) => {
             <Button
               onClick={togglePlay}
               size="lg"
-              className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30"
+              className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30 transition-all duration-200"
               variant="ghost"
             >
               {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}

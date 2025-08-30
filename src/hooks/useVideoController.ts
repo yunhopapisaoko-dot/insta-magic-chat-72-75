@@ -52,6 +52,7 @@ export function useVideoController(options?: UseVideoControllerOptions): UseVide
 
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triedDurationFix = useRef(false);
+  const timeUpdateThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearHideControlsTimer = () => {
     if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
@@ -149,15 +150,24 @@ export function useVideoController(options?: UseVideoControllerOptions): UseVide
   const onTimeUpdate = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
-    const ct = v.currentTime;
-    const dur = v.duration;
-
-    if (Number.isFinite(ct)) setCurrentTime(ct);
-
-    if (Number.isFinite(dur) && dur > 0) {
-      const p = (ct / dur) * 100;
-      if (Number.isFinite(p)) setProgress(Math.min(100, Math.max(0, p)));
+    
+    // Throttle time updates to prevent excessive re-renders
+    if (timeUpdateThrottleRef.current) {
+      clearTimeout(timeUpdateThrottleRef.current);
     }
+    
+    timeUpdateThrottleRef.current = setTimeout(() => {
+      if (!v) return;
+      const ct = v.currentTime;
+      const dur = v.duration;
+
+      if (Number.isFinite(ct)) setCurrentTime(ct);
+
+      if (Number.isFinite(dur) && dur > 0) {
+        const p = (ct / dur) * 100;
+        if (Number.isFinite(p)) setProgress(Math.min(100, Math.max(0, p)));
+      }
+    }, 100); // Update every 100ms instead of every frame
   }, []);
 
   const onPlay = useCallback(() => {
@@ -232,7 +242,15 @@ export function useVideoController(options?: UseVideoControllerOptions): UseVide
     }
   }, [isMuted, loop]);
 
-  useEffect(() => () => clearHideControlsTimer(), []);
+  // Cleanup throttle timeout on unmount
+  useEffect(() => {
+    return () => {
+      clearHideControlsTimer();
+      if (timeUpdateThrottleRef.current) {
+        clearTimeout(timeUpdateThrottleRef.current);
+      }
+    };
+  }, []);
 
   return {
     videoRef,

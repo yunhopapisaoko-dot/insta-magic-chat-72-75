@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,9 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   const [isSaving, setIsSaving] = useState(false);
   const [validationComplete, setValidationComplete] = useState(false);
   
+  // Throttled current time to prevent excessive re-renders
+  const [throttledCurrentTime, setThrottledCurrentTime] = useState(0);
+  
   const { 
     validateVideo, 
     isValidating, 
@@ -51,12 +54,40 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   const ctrl = useVideoController({ 
     autoPlay: false, 
     loop: false,
-    onPlayStateChange: (playing) => {
-      if (playing && ctrl.currentTime >= endTime) {
+    onPlayStateChange: useCallback((playing) => {
+      if (playing && throttledCurrentTime >= endTime) {
         ctrl.videoRef.current!.currentTime = startTime;
       }
-    }
+    }, [startTime, endTime, throttledCurrentTime])
   });
+
+  // Throttle time updates to reduce re-renders
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const updateThrottledTime = () => {
+      setThrottledCurrentTime(ctrl.currentTime);
+    };
+
+    if (ctrl.isPlaying) {
+      timeoutId = setInterval(updateThrottledTime, 100); // Update every 100ms instead of every frame
+    } else {
+      updateThrottledTime(); // Immediate update when paused
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearInterval(timeoutId);
+      }
+    };
+  }, [ctrl.currentTime, ctrl.isPlaying]);
+
+  // Auto-pause at end time (throttled)
+  useEffect(() => {
+    if (ctrl.isPlaying && throttledCurrentTime >= endTime) {
+      ctrl.videoRef.current?.pause();
+    }
+  }, [throttledCurrentTime, endTime, ctrl.isPlaying]);
 
   useEffect(() => {
     const url = URL.createObjectURL(videoFile);
@@ -86,50 +117,61 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     }
   }, [ctrl.duration]);
 
-  // Auto-pause at end time
-  useEffect(() => {
-    if (ctrl.isPlaying && ctrl.currentTime >= endTime) {
-      ctrl.videoRef.current?.pause();
-    }
-  }, [ctrl.currentTime, endTime, ctrl.isPlaying]);
-
-  const getVisibleDuration = useCallback(() => {
+  const getVisibleDuration = useMemo(() => {
     return Math.min(ctrl.duration, 60) / zoomLevel;
   }, [ctrl.duration, zoomLevel]);
 
-  const getTimelineEnd = useCallback(() => {
-    return Math.min(timelineStart + getVisibleDuration(), ctrl.duration);
+  const getTimelineEnd = useMemo(() => {
+    return Math.min(timelineStart + getVisibleDuration, ctrl.duration);
   }, [timelineStart, getVisibleDuration, ctrl.duration]);
 
-  const handleZoomIn = () => {
+  const trimmedDuration = useMemo(() => endTime - startTime, [endTime, startTime]);
+  const currentTimeInRange = useMemo(() => 
+    Math.max(startTime, Math.min(endTime, throttledCurrentTime)), 
+    [startTime, endTime, throttledCurrentTime]
+  );
+  const timelineProgress = useMemo(() => 
+    ((throttledCurrentTime - timelineStart) / getVisibleDuration) * 100, 
+    [throttledCurrentTime, timelineStart, getVisibleDuration]
+  );
+  const startPercent = useMemo(() => 
+    ((startTime - timelineStart) / getVisibleDuration) * 100, 
+    [startTime, timelineStart, getVisibleDuration]
+  );
+  const endPercent = useMemo(() => 
+    ((endTime - timelineStart) / getVisibleDuration) * 100, 
+    [endTime, timelineStart, getVisibleDuration]
+  );
+
+  const handleZoomIn = useCallback(() => {
     if (zoomLevel < 8) {
       const newZoom = zoomLevel * 2;
-      const centerTime = timelineStart + getVisibleDuration() / 2;
-      const newStart = Math.max(0, centerTime - (getVisibleDuration() / 2) / 2);
+      const centerTime = timelineStart + getVisibleDuration / 2;
+      const newStart = Math.max(0, centerTime - (getVisibleDuration / 2) / 2);
       setZoomLevel(newZoom);
       setTimelineStart(newStart);
     }
-  };
+  }, [zoomLevel, timelineStart, getVisibleDuration]);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (zoomLevel > 1) {
       const newZoom = zoomLevel / 2;
-      const centerTime = timelineStart + getVisibleDuration() / 2;
+      const centerTime = timelineStart + getVisibleDuration / 2;
       const newVisibleDuration = Math.min(ctrl.duration, 60) / newZoom;
       const newStart = Math.max(0, centerTime - newVisibleDuration / 2);
       setZoomLevel(newZoom);
       setTimelineStart(newStart);
     }
-  };
+  }, [zoomLevel, timelineStart, getVisibleDuration, ctrl.duration]);
 
-  const handleTimelineSeek = (value: number[]) => {
-    const time = timelineStart + (value[0] / 100) * getVisibleDuration();
+  const handleTimelineSeek = useCallback((value: number[]) => {
+    const time = timelineStart + (value[0] / 100) * getVisibleDuration;
     ctrl.seekToPercent(time / ctrl.duration);
-  };
+  }, [timelineStart, getVisibleDuration, ctrl.duration, ctrl.seekToPercent]);
 
-  const handleTrimChange = (values: number[]) => {
+  const handleTrimChange = useCallback((values: number[]) => {
     const [newStart, newEnd] = values;
-    const visibleDuration = getVisibleDuration();
+    const visibleDuration = getVisibleDuration;
     const actualStart = timelineStart + (newStart / 100) * visibleDuration;
     const actualEnd = timelineStart + (newEnd / 100) * visibleDuration;
     
@@ -138,7 +180,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
       setStartTime(actualStart);
       setEndTime(actualEnd);
     }
-  };
+  }, [timelineStart, getVisibleDuration]);
 
   const jumpToStart = () => {
     ctrl.seekToPercent(startTime / ctrl.duration);
@@ -158,20 +200,18 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     ctrl.seekToPercent(newTime / ctrl.duration);
   };
 
-  const moveTimelineLeft = () => {
-    const step = getVisibleDuration() * 0.1;
+  const moveTimelineLeft = useCallback(() => {
+    const step = getVisibleDuration * 0.1;
     setTimelineStart(Math.max(0, timelineStart - step));
-  };
+  }, [timelineStart, getVisibleDuration]);
 
-  const moveTimelineRight = () => {
-    const step = getVisibleDuration() * 0.1;
-    const maxStart = Math.max(0, ctrl.duration - getVisibleDuration());
+  const moveTimelineRight = useCallback(() => {
+    const step = getVisibleDuration * 0.1;
+    const maxStart = Math.max(0, ctrl.duration - getVisibleDuration);
     setTimelineStart(Math.min(maxStart, timelineStart + step));
-  };
+  }, [timelineStart, getVisibleDuration, ctrl.duration]);
 
   const handleSave = async () => {
-    const trimmedDuration = endTime - startTime;
-    
     if (trimmedDuration > 60) {
       toast({
         title: "Duração muito longa",
@@ -232,15 +272,9 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     }
   };
 
-  const trimmedDuration = endTime - startTime;
-  const currentTimeInRange = Math.max(startTime, Math.min(endTime, ctrl.currentTime));
-  const timelineProgress = ((ctrl.currentTime - timelineStart) / getVisibleDuration()) * 100;
-  const startPercent = ((startTime - timelineStart) / getVisibleDuration()) * 100;
-  const endPercent = ((endTime - timelineStart) / getVisibleDuration()) * 100;
-
   return (
     <div className="space-y-6 p-4">
-      <div className="text-center">
+        <div className="text-center">
         <h3 className="text-lg font-semibold mb-2">Editor de Recorte</h3>
         
         {/* Validation Status */}
@@ -267,7 +301,7 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
             <Button
               onClick={ctrl.togglePlay}
               size="lg"
-              className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30"
+              className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30 transition-all duration-200"
               variant="ghost"
             >
               {ctrl.isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
@@ -319,13 +353,13 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <span className="text-xs text-muted-foreground">
-                {formatTime(timelineStart)} - {formatTime(getTimelineEnd())}
+                {formatTime(timelineStart)} - {formatTime(getTimelineEnd)}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={moveTimelineRight}
-                disabled={getTimelineEnd() >= ctrl.duration}
+                disabled={getTimelineEnd >= ctrl.duration}
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -385,8 +419,8 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
             </div>
             <Slider
               value={[
-                ((startTime - timelineStart) / getVisibleDuration()) * 100,
-                ((endTime - timelineStart) / getVisibleDuration()) * 100
+                ((startTime - timelineStart) / getVisibleDuration) * 100,
+                ((endTime - timelineStart) / getVisibleDuration) * 100
               ]}
               onValueChange={handleTrimChange}
               max={100}
