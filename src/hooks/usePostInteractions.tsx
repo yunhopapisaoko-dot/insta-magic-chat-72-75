@@ -367,6 +367,18 @@ export const usePostInteractions = (postId: string | null) => {
     }
 
     try {
+      // Verificar se o usuário está autenticado no Supabase
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (!authUser) {
+        toast({
+          title: "Erro", 
+          description: "Sessão expirada. Faça login novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const isLiked = commentLikes.has(commentId);
       
       if (isLiked) {
@@ -374,7 +386,7 @@ export const usePostInteractions = (postId: string | null) => {
         const { error } = await supabase
           .from('comment_likes')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', authUser.id)
           .eq('comment_id', commentId);
 
         if (error) throw error;
@@ -383,7 +395,7 @@ export const usePostInteractions = (postId: string | null) => {
         const { error } = await supabase
           .from('comment_likes')
           .insert({
-            user_id: user.id,
+            user_id: authUser.id,
             comment_id: commentId,
           });
 
