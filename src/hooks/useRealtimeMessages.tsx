@@ -90,9 +90,9 @@ export const useRealtimeMessages = (conversationId: string) => {
         return;
       } 
       
-      // Fetch from server
+      // Fetch from server in chronological order
       const freshMessages = await messageCache.fetchAndCacheMessages(conversationId, forceRefresh);
-      // Ensure messages are sorted chronologically
+      // Ensure messages are sorted chronologically (oldest first, newest last)
       const sortedMessages = (freshMessages as RealtimeMessage[]).sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
