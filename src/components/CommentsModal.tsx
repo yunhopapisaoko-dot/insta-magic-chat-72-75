@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Heart, MoreHorizontal, Smile } from 'lucide-react';
+import { Heart, MoreHorizontal, Smile, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 
@@ -17,6 +17,7 @@ interface CommentsModalProps {
 export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) => {
   const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const commentInputRef = useRef<HTMLInputElement>(null);
   
   const {
@@ -68,6 +69,12 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
   const handleReply = (username: string, commentId: string) => {
     setReplyingTo(commentId);
     setNewComment(`@${username} `);
+    commentInputRef.current?.focus();
+  };
+
+  const addEmoji = (emoji: string) => {
+    setNewComment(prev => prev + emoji);
+    setShowEmojiPicker(false);
     commentInputRef.current?.focus();
   };
 
@@ -161,20 +168,6 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
             </div>
           </ScrollArea>
 
-          {/* Emoji Bar */}
-          <div className="px-6 py-2 border-t border-border/50">
-            <div className="flex items-center justify-center gap-4">
-              <span className="text-2xl">❤️</span>
-              <span className="text-2xl">🙌</span>
-              <span className="text-2xl">🔥</span>
-              <span className="text-2xl">👏</span>
-              <span className="text-2xl">🥺</span>
-              <span className="text-2xl">😍</span>
-              <span className="text-2xl">😱</span>
-              <span className="text-2xl">😂</span>
-            </div>
-          </div>
-
           {/* Comment Input */}
           <div className="px-6 py-4 border-t border-border/50 bg-background">
             <div className="flex items-center gap-3">
@@ -192,16 +185,47 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="pr-10 bg-muted/50 border-0 rounded-full text-sm"
+                  className="pr-24 bg-muted/50 border-0 rounded-full text-sm"
                   disabled={isSubmittingComment}
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 p-0 rounded-full"
-                >
-                  <Smile className="w-4 h-4 text-muted-foreground" />
-                </Button>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="w-8 h-8 p-0 rounded-full"
+                  >
+                    <Smile className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </div>
+                
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full right-0 mb-2 bg-background border border-border rounded-2xl p-3 shadow-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium">Emojis</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowEmojiPicker(false)}
+                        className="w-6 h-6 p-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['❤️', '🙌', '🔥', '👏', '🥺', '😍', '😱', '😂', '😊', '👍', '💯', '✨'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => addEmoji(emoji)}
+                          className="text-2xl p-2 hover:bg-muted rounded-lg transition-colors"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <Button
@@ -211,7 +235,7 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                 size="sm"
                 className="text-primary font-semibold disabled:text-muted-foreground"
               >
-                Publicar
+                {isSubmittingComment ? 'Enviando...' : 'Publicar'}
               </Button>
             </div>
           </div>
