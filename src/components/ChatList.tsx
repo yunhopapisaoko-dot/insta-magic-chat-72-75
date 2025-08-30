@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, Search, Users, LogOut } from 'lucide-react';
+import { MessageCircle, Search, Users, LogOut, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useOptimizedConversations } from '@/hooks/useOptimizedConversations';
@@ -12,6 +12,7 @@ import Chat from '@/components/Chat';
 import InfinitePublicChat from '@/components/InfinitePublicChat';
 import MobileLayout from '@/components/MobileLayout';
 import { LoadingFeedback } from '@/components/ui/LoadingFeedback';
+import { CreateChatModal } from '@/components/CreateChatModal';
 
 const ChatList = () => {
   const { user, logout } = useAuth();
@@ -28,6 +29,7 @@ const ChatList = () => {
   );
   const [showPublicChat, setShowPublicChat] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showCreateChat, setShowCreateChat] = useState(false);
 
   // Auto-open chat from URL parameter
   useEffect(() => {
@@ -75,6 +77,13 @@ const ChatList = () => {
       await logout();
       navigate('/login');
     }
+  };
+
+  const handleChatCreated = (chatId: string) => {
+    setSelectedConversation(chatId);
+    // Add chat parameter to URL
+    searchParams.set('chat', chatId);
+    setSearchParams(searchParams);
   };
 
   if (selectedConversation) {
@@ -130,6 +139,18 @@ const ChatList = () => {
           <Users className="w-6 h-6 mr-3" />
           <span className="text-lg font-semibold">Chat Público</span>
         </Button>
+
+        {/* Create Chat Button */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Suas Conversas</h2>
+          <Button
+            onClick={() => setShowCreateChat(true)}
+            size="sm"
+            className="w-10 h-10 p-0 rounded-full bg-gradient-to-r from-secondary to-accent hover:from-secondary/90 hover:to-accent/90"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+        </div>
 
         {/* Search */}
         <div className="relative">
@@ -210,6 +231,13 @@ const ChatList = () => {
             ))
           )}
         </div>
+        
+        {/* Create Chat Modal */}
+        <CreateChatModal
+          isOpen={showCreateChat}
+          onClose={() => setShowCreateChat(false)}
+          onChatCreated={handleChatCreated}
+        />
       </div>
     </MobileLayout>
   );
