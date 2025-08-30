@@ -130,7 +130,7 @@ export const useMessageCache = (options: CacheOptions = {}) => {
         existing.push(messageWithCache);
       }
       
-      // Keep only the most recent messages
+      // Keep only the most recent messages, sorted chronologically
       const sorted = existing
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         .slice(-maxSize);

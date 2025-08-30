@@ -257,7 +257,12 @@ export const useRealtimeMessages = (conversationId: string) => {
         setMessages(prev => {
           // Avoid duplicates
           if (prev.find(m => m.id === newMessage.id)) return prev;
-          return [...prev, newMessage];
+          
+          // Insert message in correct chronological order
+          const newMessages = [...prev, newMessage];
+          return newMessages.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
         });
 
         // Auto-mark as delivered if not sender
