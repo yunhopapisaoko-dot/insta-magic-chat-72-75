@@ -52,14 +52,16 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   } = useRealtimeMessages(conversationId || '');
 
   useEffect(() => {
-    if (isOpen && user && otherUser.id) {
+    if (isOpen && user && otherUser.id && !conversationId) {
       initializeConversation();
     }
-  }, [isOpen, user, otherUser.id]);
+  }, [isOpen, user?.id, otherUser.id, conversationId]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, typingUsers]);
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages.length]);
 
   const initializeConversation = async () => {
     if (!user) return;
@@ -251,16 +253,8 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : loading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] p-3 rounded-lg animate-pulse ${
-                    i % 2 === 0 ? 'bg-primary/20' : 'bg-muted'
-                  }`}>
-                    <div className="h-4 bg-muted-foreground/20 rounded w-20" />
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-center h-full">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <>
