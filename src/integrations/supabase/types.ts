@@ -102,9 +102,11 @@ export type Database = {
           content: string | null
           conversation_id: string
           created_at: string
+          delivered_at: string | null
           id: string
           media_type: string | null
           media_url: string | null
+          message_status: string | null
           read_at: string | null
           sender_id: string
           story_id: string | null
@@ -113,9 +115,11 @@ export type Database = {
           content?: string | null
           conversation_id: string
           created_at?: string
+          delivered_at?: string | null
           id?: string
           media_type?: string | null
           media_url?: string | null
+          message_status?: string | null
           read_at?: string | null
           sender_id: string
           story_id?: string | null
@@ -124,9 +128,11 @@ export type Database = {
           content?: string | null
           conversation_id?: string
           created_at?: string
+          delivered_at?: string | null
           id?: string
           media_type?: string | null
           media_url?: string | null
+          message_status?: string | null
           read_at?: string | null
           sender_id?: string
           story_id?: string | null
