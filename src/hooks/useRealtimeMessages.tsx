@@ -275,12 +275,15 @@ export const useRealtimeMessages = (conversationId: string) => {
           const existingIndex = prev.findIndex(m => m.id === newMessage.id);
           if (existingIndex !== -1) return prev;
           
-          // Simply add new message to the end (it should be the newest)
-          const updatedMessages = [...prev, newMessage];
+          // Add new message and sort all messages chronologically
+          const updatedMessages = [...prev, newMessage].sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
           
           console.log('Mensagens ordenadas por tempo:', updatedMessages.map(m => ({
             time: new Date(m.created_at).toLocaleTimeString(),
-            content: m.content?.slice(0, 20) || 'media'
+            content: m.content?.slice(0, 20) || 'media',
+            sender: m.sender_id === user?.id ? 'eu' : 'outro'
           })));
           
           return updatedMessages;
@@ -306,9 +309,16 @@ export const useRealtimeMessages = (conversationId: string) => {
         // Update cache
         messageCache.updateMessage(conversationId, updatedMessage.id, updatedMessage);
         
-        setMessages(prev => prev.map(msg => 
-          msg.id === updatedMessage.id ? updatedMessage : msg
-        ));
+        setMessages(prev => {
+          const updated = prev.map(msg => 
+            msg.id === updatedMessage.id ? updatedMessage : msg
+          );
+          
+          // Ensure chronological order is maintained
+          return updated.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
       }
     };
 
