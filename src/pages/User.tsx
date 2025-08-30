@@ -11,6 +11,7 @@ import FollowersList from '@/components/FollowersList';
 import ProfileChat from '@/components/ProfileChat';
 import ProfileNavigator from '@/components/ProfileNavigator';
 import { toast } from '@/hooks/use-toast';
+import { useConversations } from '@/hooks/useConversations';
 
 interface ProfileData {
   id: string;
@@ -26,6 +27,7 @@ const UserProfile = () => {
   const { username } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { createOrGetConversation } = useConversations();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -33,6 +35,7 @@ const UserProfile = () => {
   const [activeView, setActiveView] = useState<'profile' | 'followers' | 'following'>('profile');
   const [chatOpen, setChatOpen] = useState(false);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
     if (username) {
@@ -128,6 +131,51 @@ const UserProfile = () => {
       });
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!user || !profileData) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para enviar mensagens",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (profileData.id === user.id) {
+      toast({
+        title: "Ação inválida",
+        description: "Você não pode conversar consigo mesmo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setStartingChat(true);
+    
+    try {
+      const conversationId = await createOrGetConversation(profileData.id);
+      
+      if (conversationId) {
+        toast({
+          title: "Conversa iniciada",
+          description: `Iniciando conversa com ${profileData.display_name}`,
+        });
+        navigate(`/messages?chat=${conversationId}`);
+      } else {
+        throw new Error('Failed to create conversation');
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast({
+        title: "Erro ao iniciar conversa",
+        description: "Não foi possível iniciar a conversa. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setStartingChat(false);
     }
   };
 
@@ -247,11 +295,16 @@ const UserProfile = () => {
               <div className="space-y-3">
                 {/* Chat Button - Destacado */}
                 <Button 
-                  onClick={() => setChatOpen(true)}
+                  onClick={handleStartChat}
+                  disabled={startingChat}
                   className="w-full rounded-xl bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                   size="lg"
                 >
-                  <MessageCircle className="w-5 h-5 mr-2" />
+                  {startingChat ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : (
+                    <MessageCircle className="w-5 h-5 mr-2" />
+                  )}
                   Enviar Mensagem
                 </Button>
                 
