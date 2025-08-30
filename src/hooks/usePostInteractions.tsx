@@ -188,7 +188,7 @@ export const usePostInteractions = (postId: string | null) => {
       )
       .subscribe();
 
-    // Subscribe to comment likes changes
+    // Subscribe to comment likes changes - filter by comments from this post
     const commentLikesChannel = supabase
       .channel(`comment-likes-${postId}`)
       .on(
@@ -198,17 +198,28 @@ export const usePostInteractions = (postId: string | null) => {
           schema: 'public',
           table: 'comment_likes',
         },
-        (payload) => {
-          // Update comment likes count
-          setComments(prev => prev.map(comment => 
-            comment.id === payload.new.comment_id 
-              ? { ...comment, likes_count: comment.likes_count + 1 }
-              : comment
-          ));
+        async (payload) => {
+          console.log('Comment like added in real-time:', payload);
           
-          // Update user's liked comments if it's their like
-          if (user && payload.new.user_id === user.id) {
-            setCommentLikes(prev => new Set([...prev, payload.new.comment_id]));
+          // Check if this like is for a comment in our current post
+          const { data: comment } = await supabase
+            .from('post_comments')
+            .select('post_id')
+            .eq('id', payload.new.comment_id)
+            .single();
+            
+          if (comment && comment.post_id === postId) {
+            // Update comment likes count
+            setComments(prev => prev.map(commentItem => 
+              commentItem.id === payload.new.comment_id 
+                ? { ...commentItem, likes_count: commentItem.likes_count + 1 }
+                : commentItem
+            ));
+            
+            // Update user's liked comments if it's their like
+            if (user && payload.new.user_id === user.id) {
+              setCommentLikes(prev => new Set([...prev, payload.new.comment_id]));
+            }
           }
         }
       )
@@ -219,21 +230,32 @@ export const usePostInteractions = (postId: string | null) => {
           schema: 'public',
           table: 'comment_likes',
         },
-        (payload) => {
-          // Update comment likes count
-          setComments(prev => prev.map(comment => 
-            comment.id === payload.old.comment_id 
-              ? { ...comment, likes_count: Math.max(0, comment.likes_count - 1) }
-              : comment
-          ));
+        async (payload) => {
+          console.log('Comment like removed in real-time:', payload);
           
-          // Update user's liked comments if it's their unlike
-          if (user && payload.old.user_id === user.id) {
-            setCommentLikes(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(payload.old.comment_id);
-              return newSet;
-            });
+          // Check if this unlike is for a comment in our current post
+          const { data: comment } = await supabase
+            .from('post_comments')
+            .select('post_id')
+            .eq('id', payload.old.comment_id)
+            .single();
+            
+          if (comment && comment.post_id === postId) {
+            // Update comment likes count
+            setComments(prev => prev.map(commentItem => 
+              commentItem.id === payload.old.comment_id 
+                ? { ...commentItem, likes_count: Math.max(0, commentItem.likes_count - 1) }
+                : commentItem
+            ));
+            
+            // Update user's liked comments if it's their unlike
+            if (user && payload.old.user_id === user.id) {
+              setCommentLikes(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(payload.old.comment_id);
+                return newSet;
+              });
+            }
           }
         }
       )
