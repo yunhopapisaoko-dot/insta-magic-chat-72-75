@@ -357,19 +357,17 @@ export const usePostInteractions = (postId: string | null) => {
   }, [user]);
 
   const handleCommentLike = useCallback(async (commentId: string) => {
-    try {
-      // Obter usuário diretamente do Supabase auth
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !authUser) {
-        toast({
-          title: "Erro",
-          description: "Você precisa estar logado para curtir comentários.",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para curtir comentários.",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    try {
+      console.log('Tentando curtir comentário com usuário:', user.id);
       const isLiked = commentLikes.has(commentId);
       
       if (isLiked) {
@@ -377,19 +375,20 @@ export const usePostInteractions = (postId: string | null) => {
         const { error } = await supabase
           .from('comment_likes')
           .delete()
-          .eq('user_id', authUser.id)
+          .eq('user_id', user.id)
           .eq('comment_id', commentId);
 
         if (error) {
           console.error('Erro ao remover like:', error);
           throw error;
         }
+        console.log('Like removido com sucesso');
       } else {
         // Like
         const { error } = await supabase
           .from('comment_likes')
           .insert({
-            user_id: authUser.id,
+            user_id: user.id,
             comment_id: commentId,
           });
 
@@ -397,6 +396,7 @@ export const usePostInteractions = (postId: string | null) => {
           console.error('Erro ao adicionar like:', error);
           throw error;
         }
+        console.log('Like adicionado com sucesso');
       }
     } catch (error) {
       console.error('Erro ao curtir comentário:', error);
@@ -406,7 +406,7 @@ export const usePostInteractions = (postId: string | null) => {
         variant: "destructive",
       });
     }
-  }, [commentLikes]);
+  }, [user, commentLikes]);
 
   return {
     isLiked,
