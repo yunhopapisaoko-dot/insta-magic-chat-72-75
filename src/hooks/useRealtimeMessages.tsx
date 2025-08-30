@@ -66,6 +66,11 @@ export const useRealtimeMessages = (conversationId: string) => {
         const sortedMessages = cachedMessages.sort((a, b) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
+        console.log('Mensagens carregadas do cache:', sortedMessages.map(m => ({
+          time: new Date(m.created_at).toLocaleTimeString(),
+          content: m.content?.slice(0, 20) || 'media',
+          sender: m.sender_id === user?.id ? 'eu' : 'outro'
+        })));
         setMessages(sortedMessages as RealtimeMessage[]);
         setLoading(false);
         
@@ -75,6 +80,11 @@ export const useRealtimeMessages = (conversationId: string) => {
           const reorderedMessages = (freshMessages as RealtimeMessage[]).sort((a, b) => 
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
+          console.log('Mensagens atualizadas em background:', reorderedMessages.map(m => ({
+            time: new Date(m.created_at).toLocaleTimeString(),
+            content: m.content?.slice(0, 20) || 'media',
+            sender: m.sender_id === user?.id ? 'eu' : 'outro'
+          })));
           setMessages(reorderedMessages);
         }, 1000);
         return;
@@ -86,6 +96,11 @@ export const useRealtimeMessages = (conversationId: string) => {
       const sortedMessages = (freshMessages as RealtimeMessage[]).sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
+      console.log('Mensagens carregadas do servidor:', sortedMessages.map(m => ({
+        time: new Date(m.created_at).toLocaleTimeString(),
+        content: m.content?.slice(0, 20) || 'media',
+        sender: m.sender_id === user?.id ? 'eu' : 'outro'
+      })));
       setMessages(sortedMessages);
       
     } catch (error) {
@@ -185,6 +200,7 @@ export const useRealtimeMessages = (conversationId: string) => {
       const result = await sendMessageToServer(content, mediaUrl, mediaType);
       
       if (result) {
+        console.log('Mensagem enviada com sucesso:', result);
         messageTimeout.markMessageSent(tempMessageId);
         return result;
       } else {
