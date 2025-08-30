@@ -265,29 +265,25 @@ export const useRealtimeMessages = (conversationId: string) => {
     const messageHandlers = {
       'postgres_changes:INSERT:messages': async (payload: any) => {
         const newMessage = payload.new as RealtimeMessage;
-        console.log('New message received:', newMessage);
-        console.log('Current message time:', new Date(newMessage.created_at).toLocaleTimeString());
+        console.log('Nova mensagem recebida:', newMessage);
         
         // Add to cache
         messageCache.addMessage(conversationId, newMessage);
         
         setMessages(prev => {
           // Avoid duplicates
-          if (prev.find(m => m.id === newMessage.id)) return prev;
+          const existingIndex = prev.findIndex(m => m.id === newMessage.id);
+          if (existingIndex !== -1) return prev;
           
-          // Insert message in correct chronological order
-          const newMessages = [...prev, newMessage];
-          const sortedMessages = newMessages.sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
+          // Simply add new message to the end (it should be the newest)
+          const updatedMessages = [...prev, newMessage];
           
-          console.log('Messages after sort:', sortedMessages.map(m => ({
-            id: m.id.slice(-8),
+          console.log('Mensagens ordenadas por tempo:', updatedMessages.map(m => ({
             time: new Date(m.created_at).toLocaleTimeString(),
-            content: m.content?.slice(0, 20)
+            content: m.content?.slice(0, 20) || 'media'
           })));
           
-          return sortedMessages;
+          return updatedMessages;
         });
 
         // Auto-mark as delivered if not sender
@@ -373,21 +369,6 @@ export const useRealtimeMessages = (conversationId: string) => {
   useEffect(() => {
     fetchMessages(true); // Force refresh to ensure correct order
   }, [fetchMessages]);
-
-  // Additional effect to ensure messages stay sorted
-  useEffect(() => {
-    setMessages(prev => {
-      const sorted = [...prev].sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
-      // Only update if order actually changed to avoid infinite re-renders
-      if (JSON.stringify(prev.map(m => m.id)) !== JSON.stringify(sorted.map(m => m.id))) {
-        console.log('Reordering messages to ensure chronological order');
-        return sorted;
-      }
-      return prev;
-    });
-  }, [messages.length]);
 
   return {
     messages,
