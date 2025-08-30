@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ interface Profile {
 
 const Explore = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
@@ -129,6 +131,10 @@ const Explore = () => {
     }
   };
 
+  const handleViewProfile = (username: string) => {
+    navigate(`/user/${username}`);
+  };
+
   const filteredProfiles = profiles.filter(profile =>
     profile.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     profile.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -194,57 +200,60 @@ const Explore = () => {
               </Card>
             ) : (
               <div className="space-y-3">
-                {filteredProfiles.map((profile) => (
-                  <Card key={profile.id} className="card-shadow border-0 hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="w-16 h-16">
-                          <AvatarImage src={profile.avatar_url || ''} />
-                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
-                            {profile.display_name[0] || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{profile.display_name}</h3>
-                          <p className="text-sm text-muted-foreground">@{profile.username}</p>
-                          {profile.bio && (
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                              {profile.bio}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {profile.followers_count} seguidores
-                          </p>
-                        </div>
-                        
-                        {user && user.id !== profile.id && (
-                          <Button
-                            size="sm"
-                            variant={followedUsers.has(profile.id) ? "outline" : "default"}
-                            onClick={() => handleFollow(profile.id)}
-                            className={followedUsers.has(profile.id) 
-                              ? "border-primary text-primary hover:bg-primary/10" 
-                              : "magic-button"
-                            }
-                          >
-                            {followedUsers.has(profile.id) ? (
-                              <>
-                                <UserMinus className="w-4 h-4 mr-1" />
-                                Seguindo
-                              </>
-                            ) : (
-                              <>
-                                <UserPlus className="w-4 h-4 mr-1" />
-                                Seguir
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                 {filteredProfiles.map((profile) => (
+                   <Card key={profile.id} className="card-shadow border-0 hover:shadow-lg transition-shadow cursor-pointer">
+                     <CardContent className="p-4" onClick={() => handleViewProfile(profile.username)}>
+                       <div className="flex items-center space-x-4">
+                         <Avatar className="w-16 h-16 cursor-pointer hover:scale-105 transition-transform">
+                           <AvatarImage src={profile.avatar_url || ''} />
+                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
+                             {profile.display_name[0] || 'U'}
+                           </AvatarFallback>
+                         </Avatar>
+                         
+                         <div className="flex-1 min-w-0 cursor-pointer">
+                           <h3 className="font-semibold truncate hover:text-primary transition-colors">{profile.display_name}</h3>
+                           <p className="text-sm text-muted-foreground hover:text-primary/80 transition-colors">@{profile.username}</p>
+                           {profile.bio && (
+                             <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+                               {profile.bio}
+                             </p>
+                           )}
+                           <p className="text-xs text-muted-foreground mt-1">
+                             {profile.followers_count} seguidores · {profile.following_count} seguindo
+                           </p>
+                         </div>
+                         
+                         {user && user.id !== profile.id && (
+                           <Button
+                             size="sm"
+                             variant={followedUsers.has(profile.id) ? "outline" : "default"}
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleFollow(profile.id);
+                             }}
+                             className={followedUsers.has(profile.id) 
+                               ? "border-primary text-primary hover:bg-primary/10" 
+                               : "magic-button"
+                             }
+                           >
+                             {followedUsers.has(profile.id) ? (
+                               <>
+                                 <UserMinus className="w-4 h-4 mr-1" />
+                                 Seguindo
+                               </>
+                             ) : (
+                               <>
+                                 <UserPlus className="w-4 h-4 mr-1" />
+                                 Seguir
+                               </>
+                             )}
+                           </Button>
+                         )}
+                       </div>
+                     </CardContent>
+                   </Card>
+                 ))}
               </div>
             )}
           </div>
