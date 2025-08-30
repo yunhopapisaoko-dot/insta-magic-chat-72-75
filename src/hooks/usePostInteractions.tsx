@@ -219,15 +219,40 @@ export const usePostInteractions = (postId: string | null) => {
 
     setIsSubmittingComment(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('post_comments')
         .insert({
           post_id: postId,
           user_id: user.id,
           content: newComment.trim(),
-        });
+        })
+        .select('id, content, created_at, user_id')
+        .single();
 
       if (error) throw error;
+
+      // Buscar dados do perfil do usuário atual
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, username, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      // Adicionar comentário imediatamente à lista local
+      const newCommentData = {
+        id: data.id,
+        content: data.content,
+        created_at: data.created_at,
+        user_id: data.user_id,
+        profiles: profile || {
+          display_name: user.display_name || 'Usuário',
+          username: user.username || 'user',
+          avatar_url: user.avatar_url || null
+        }
+      };
+
+      setComments(prev => [...prev, newCommentData]);
+      setCommentsCount(prev => prev + 1);
       setNewComment('');
     } catch (error) {
       console.error('Error creating comment:', error);
