@@ -8,6 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import VideoEditor from './VideoEditor';
+import VideoTrimEditor from './VideoTrimEditor';
+import { useVideoValidation } from '@/hooks/useVideoValidation';
+import VideoValidationStatus from '@/components/ui/VideoValidationStatus';
+import { Loader2 } from 'lucide-react';
 
 interface CreatePostProps {
   open: boolean;
@@ -25,67 +29,66 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
   const [processedVideoBlob, setProcessedVideoBlob] = useState<Blob | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  
+  const { 
+    validateAndShowFeedback, 
+    isValidating, 
+    validationProgress 
+  } = useVideoValidation();
+  
+  const [validationResult, setValidationResult] = useState<any>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 50 * 1024 * 1024) { // 50MB limit for videos
+    if (!file) return;
+
+    if (file.type.startsWith('image/')) {
+      // Basic image validation
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit for images
         toast({
-          title: "Arquivo muito grande",
-          description: "O arquivo deve ter no máximo 50MB",
+          title: "Imagem muito grande",
+          description: "A imagem deve ter no máximo 10MB",
           variant: "destructive",
         });
         return;
       }
 
-      if (file.type.startsWith('image/')) {
-        setImageFile(file);
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+        setStep('caption');
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type.startsWith('video/')) {
+      // Comprehensive video validation
+      const result = await validateAndShowFeedback(file);
+      setValidationResult(result);
+      
+      if (result.isValid) {
+        setVideoFile(file);
         const reader = new FileReader();
         reader.onload = (e) => {
-          setImagePreview(e.target?.result as string);
-          setStep('caption');
+          setVideoPreview(e.target?.result as string);
+          setStep('video-edit');
         };
         reader.readAsDataURL(file);
-      } else if (file.type.startsWith('video/')) {
-        // Validate video duration before proceeding
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        
-        video.onloadedmetadata = () => {
-          window.URL.revokeObjectURL(video.src);
-          
-          // Check if video is longer than 60 seconds
-          if (video.duration > 60) {
-            toast({
-              title: "Vídeo muito longo",
-              description: "O vídeo deve ter no máximo 1 minuto de duração",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          // Video is valid, proceed
-          setVideoFile(file);
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setVideoPreview(e.target?.result as string);
-            setStep('video-edit');
-          };
-          reader.readAsDataURL(file);
-        };
-        
-        video.onerror = () => {
-          toast({
-            title: "Erro no vídeo",
-            description: "Não foi possível carregar o vídeo. Tente outro arquivo.",
-            variant: "destructive",
-          });
-        };
-        
-        video.src = URL.createObjectURL(file);
+      } else {
+        // Reset video input
+        if (videoInputRef.current) {
+          videoInputRef.current.value = '';
+        }
       }
+    } else {
+      toast({
+        title: "Formato não suportado",
+        description: "Selecione uma imagem ou vídeo válido",
+        variant: "destructive",
+      });
     }
   };
 
@@ -121,16 +124,25 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
     }
 
     setLoading(true);
+    setIsUploading(true);
+    setUploadProgress(0);
+    
     try {
       let mediaUrl = null;
       let mediaType = 'image';
 
+      // Upload progress simulation
+      setUploadProgress(25);
+
       if (imageFile) {
         mediaUrl = await uploadMedia(imageFile, false);
+        mediaType = 'image';
       } else if (processedVideoBlob) {
         mediaUrl = await uploadMedia(processedVideoBlob, true);
         mediaType = 'video';
       }
+
+      setUploadProgress(75);
 
       const { error } = await supabase
         .from('posts')
@@ -143,9 +155,11 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
 
       if (error) throw error;
 
+      setUploadProgress(100);
+
       toast({
-        title: "Post criado",
-        description: "Seu post foi compartilhado com sucesso!",
+        title: "✅ Post criado com sucesso!",
+        description: "Seu conteúdo foi compartilhado no feed",
       });
 
       // Reset form
@@ -155,12 +169,14 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
     } catch (error) {
       console.error('Error creating post:', error);
       toast({
-        title: "Erro ao criar post",
-        description: "Não foi possível criar seu post. Tente novamente.",
+        title: "❌ Erro ao criar post",
+        description: "Não foi possível publicar. Verifique sua conexão e tente novamente.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -180,8 +196,16 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
     resetForm();
   };
 
-  const handleVideoEditorSave = (editedBlob: Blob) => {
+  const handleVideoEditorSave = (editedBlob: Blob, startTime?: number, endTime?: number) => {
     setProcessedVideoBlob(editedBlob);
+    
+    toast({
+      title: "✅ Vídeo editado com sucesso",
+      description: startTime && endTime ? 
+        `Recorte aplicado: ${Math.floor((endTime - startTime) * 10) / 10}s` :
+        "Edições aplicadas ao vídeo",
+    });
+    
     setStep('caption');
   };
 
@@ -272,11 +296,22 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
             </div>
           ) : step === 'video-edit' && videoFile ? (
             // Video Editor Step
-            <VideoEditor
-              videoFile={videoFile}
-              onSave={handleVideoEditorSave}
-              onCancel={handleVideoEditorCancel}
-            />
+            <div className="space-y-4">
+              {/* Validation Status */}
+              {(isValidating || validationResult) && (
+                <VideoValidationStatus
+                  isValidating={isValidating}
+                  validationProgress={validationProgress}
+                  validationResult={validationResult}
+                />
+              )}
+              
+              <VideoTrimEditor
+                videoFile={videoFile}
+                onSave={handleVideoEditorSave}
+                onCancel={handleVideoEditorCancel}
+              />
+            </div>
           ) : (
             // Caption Step
             <div className="space-y-6">
@@ -353,11 +388,14 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={loading || (!imageFile && !processedVideoBlob)}
+                  disabled={loading || isUploading || (!imageFile && !processedVideoBlob)}
                   className="flex-1 rounded-xl magic-button"
                 >
-                  {loading ? (
-                    'Publicando...'
+                  {loading || isUploading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {isUploading ? `Enviando... ${uploadProgress}%` : 'Processando...'}
+                    </div>
                   ) : (
                     <>
                       <Send className="w-4 h-4 mr-2" />

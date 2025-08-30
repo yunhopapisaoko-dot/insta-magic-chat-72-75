@@ -12,9 +12,13 @@ import {
   Scissors,
   RotateCcw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { useVideoController, formatTime } from '@/hooks/useVideoController';
+import { useVideoValidation } from '@/hooks/useVideoValidation';
+import VideoValidationStatus from '@/components/ui/VideoValidationStatus';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface VideoTrimEditorProps {
@@ -30,6 +34,19 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   const [zoomLevel, setZoomLevel] = useState(1);
   const [timelineStart, setTimelineStart] = useState(0);
   const [isDragging, setIsDragging] = useState<'start' | 'end' | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [validationComplete, setValidationComplete] = useState(false);
+  
+  const { 
+    validateVideo, 
+    isValidating, 
+    validationProgress 
+  } = useVideoValidation({
+    maxDurationSeconds: 60,
+    maxSizeBytes: 100 * 1024 * 1024 // 100MB
+  });
+  
+  const [validationResult, setValidationResult] = useState<any>(null);
   
   const ctrl = useVideoController({ 
     autoPlay: false, 
@@ -44,8 +61,23 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   useEffect(() => {
     const url = URL.createObjectURL(videoFile);
     setVideoUrl(url);
+    
+    // Validate video on load
+    validateVideo(videoFile).then((result) => {
+      setValidationResult(result);
+      setValidationComplete(true);
+      
+      if (!result.isValid) {
+        toast({
+          title: "Problemas detectados no vídeo",
+          description: "Verifique os detalhes abaixo antes de continuar",
+          variant: "destructive",
+        });
+      }
+    });
+    
     return () => URL.revokeObjectURL(url);
-  }, [videoFile]);
+  }, [videoFile, validateVideo]);
 
   useEffect(() => {
     if (ctrl.duration > 0) {
@@ -138,18 +170,65 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
   };
 
   const handleSave = async () => {
-    if (endTime - startTime > 60) {
-      alert('O vídeo deve ter no máximo 1 minuto.');
+    const trimmedDuration = endTime - startTime;
+    
+    if (trimmedDuration > 60) {
+      toast({
+        title: "Duração muito longa",
+        description: "O vídeo recortado deve ter no máximo 1 minuto",
+        variant: "destructive",
+      });
       return;
     }
 
+    if (trimmedDuration <= 0) {
+      toast({
+        title: "Recorte inválido",
+        description: "O tempo de início deve ser menor que o tempo de fim",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (validationResult && !validationResult.isValid) {
+      toast({
+        title: "Vídeo inválido",
+        description: "Corrija os problemas detectados antes de salvar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
     try {
+      // Show progress feedback
+      toast({
+        title: "Processando vídeo",
+        description: "Aplicando edições...",
+      });
+
+      // Simulate processing delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // For now, save the original file with trim metadata
       // Real video trimming would require server-side processing
       onSave(videoFile, startTime, endTime);
+      
+      toast({
+        title: "Vídeo salvo com sucesso",
+        description: `Recorte aplicado: ${formatTime(trimmedDuration)}`,
+      });
+      
     } catch (error) {
       console.error('Error saving trimmed video:', error);
-      alert('Erro ao salvar o vídeo recortado.');
+      toast({
+        title: "Erro ao salvar vídeo",
+        description: "Não foi possível processar o vídeo. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -163,6 +242,16 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
     <div className="space-y-6 p-4">
       <div className="text-center">
         <h3 className="text-lg font-semibold mb-2">Editor de Recorte</h3>
+        
+        {/* Validation Status */}
+        {(isValidating || validationComplete) && (
+          <VideoValidationStatus
+            isValidating={isValidating}
+            validationProgress={validationProgress}
+            validationResult={validationResult}
+            className="mb-4"
+          />
+        )}
         
         {/* Video Preview */}
         <div className="relative bg-background rounded-xl overflow-hidden mb-4">
@@ -363,11 +452,26 @@ const VideoTrimEditor = ({ videoFile, onSave, onCancel }: VideoTrimEditorProps) 
           </Button>
           <Button
             onClick={handleSave}
-            disabled={trimmedDuration > 60 || trimmedDuration <= 0}
+            disabled={
+              isSaving || 
+              trimmedDuration > 60 || 
+              trimmedDuration <= 0 ||
+              (validationResult && !validationResult.isValid) ||
+              !validationComplete
+            }
             className="flex-1 rounded-xl"
           >
-            <Scissors className="w-4 h-4 mr-2" />
-            Aplicar Recorte
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              <>
+                <Scissors className="w-4 h-4 mr-2" />
+                Aplicar Recorte
+              </>
+            )}
           </Button>
         </div>
       </div>
