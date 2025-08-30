@@ -161,6 +161,8 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
   const sendTypingIndicator = useCallback(async (isTyping: boolean) => {
     if (!user) return;
 
+    console.log('Sending typing indicator:', { isTyping, userId: user.id, displayName: user.display_name });
+
     try {
       const channel = supabase.channel('public_chat_typing');
       await channel.send({
@@ -172,6 +174,7 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
           is_typing: isTyping
         }
       });
+      console.log('Typing indicator sent successfully');
     } catch (error) {
       console.error('Error sending typing indicator:', error);
     }
@@ -260,23 +263,33 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
         'broadcast',
         { event: 'typing' },
         (payload) => {
+          console.log('Typing event received:', payload);
           const { user_id, display_name, is_typing } = payload.payload;
           
-          if (user_id === user.id) return; // Ignore own typing
+          if (user_id === user.id) {
+            console.log('Ignoring own typing indicator');
+            return; // Ignore own typing
+          }
+          
+          console.log('Processing typing from user:', { user_id, display_name, is_typing });
           
           setTypingUsers(prev => {
             const filtered = prev.filter(u => u.user_id !== user_id);
             
             if (is_typing) {
-              return [...filtered, { user_id, display_name, is_typing }];
+              const newTypingUsers = [...filtered, { user_id, display_name, is_typing }];
+              console.log('Updated typing users (adding):', newTypingUsers);
+              return newTypingUsers;
             }
             
+            console.log('Updated typing users (removing):', filtered);
             return filtered;
           });
 
           // Clear typing after timeout
           if (is_typing) {
             setTimeout(() => {
+              console.log('Clearing typing indicator after timeout for user:', user_id);
               setTypingUsers(prev => prev.filter(u => u.user_id !== user_id));
             }, 5000);
           }

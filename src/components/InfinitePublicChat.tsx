@@ -54,10 +54,12 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
   };
 
   const handleMessageChange = async (value: string) => {
+    console.log('Message changed:', value);
     setNewMessage(value);
     
     // Send typing status when user starts typing
     if (value.trim() && !typingTimeoutRef.current) {
+      console.log('Starting to type - sending typing indicator');
       await sendTypingIndicator(true);
     }
 
@@ -69,11 +71,13 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
     // Set timeout to stop typing indicator
     if (value.trim()) {
       typingTimeoutRef.current = setTimeout(async () => {
+        console.log('Stopping typing indicator after timeout');
         await sendTypingIndicator(false);
         typingTimeoutRef.current = null;
       }, 2000); // Stop typing after 2 seconds of inactivity
     } else {
       // Immediately stop typing if input is empty
+      console.log('Input empty - stopping typing indicator');
       await sendTypingIndicator(false);
       typingTimeoutRef.current = null;
     }
