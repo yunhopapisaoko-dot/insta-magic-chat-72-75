@@ -62,7 +62,7 @@ export const useRealtimeConversations = () => {
             .from('messages')
             .select('*')
             .eq('conversation_id', convId)
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: true })
             .limit(1)
             .maybeSingle(),
           

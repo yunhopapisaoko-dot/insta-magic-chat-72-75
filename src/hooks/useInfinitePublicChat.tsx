@@ -51,7 +51,7 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
       const query = supabase
         .from('public_chat_messages')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
         .limit(pageSize);
 
       if (cursor) {

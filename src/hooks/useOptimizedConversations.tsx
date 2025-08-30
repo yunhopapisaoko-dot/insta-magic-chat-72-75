@@ -74,7 +74,7 @@ export const useOptimizedConversations = () => {
         .from('messages')
         .select('conversation_id, content, created_at')
         .in('conversation_id', conversationIds)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (messagesError) console.error('Error fetching messages:', messagesError);
 
