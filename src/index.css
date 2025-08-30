@@ -58,6 +58,11 @@ All colors MUST be HSL.
   --animation-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --animation-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
+  /* Story creation specific colors */
+  --story-upload-bg: 0 0% 100% / 0.1;
+  --story-upload-border: 0 0% 100% / 0.3;
+  --story-upload-hover: 0 0% 100% / 0.5;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
