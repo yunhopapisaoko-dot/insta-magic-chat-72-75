@@ -235,6 +235,11 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
         },
         async (payload) => {
           const newMessage = payload.new as PublicMessage;
+          console.log('Nova mensagem pública recebida (infinito):', {
+            content: newMessage.content,
+            time: new Date(newMessage.created_at).toLocaleTimeString(),
+            sender: newMessage.sender_id === user?.id ? 'eu' : 'outro'
+          });
           
           // Get sender profile
           const { data: profile } = await supabase
@@ -253,10 +258,18 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
 
           setMessages(prev => {
             // Adicionar nova mensagem no final (mantém ordem cronológica)
-            const updated = [...prev, newMessage];
-            return updated.sort((a, b) => 
+            const updated = [...prev, newMessage].sort((a, b) => 
               new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
+            
+            console.log('Chat público (infinito) após ordenação:', updated.slice(-5).map((m, index) => ({
+              index,
+              time: new Date(m.created_at).toLocaleTimeString(),
+              content: m.content?.slice(0, 20) || 'media',
+              sender: m.sender_id === user?.id ? 'eu' : 'outro'
+            })));
+            
+            return updated;
           });
         }
       )

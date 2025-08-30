@@ -281,7 +281,11 @@ export const useRealtimeMessages = (conversationId: string) => {
     const messageHandlers = {
       'postgres_changes:INSERT:messages': async (payload: any) => {
         const newMessage = payload.new as RealtimeMessage;
-        console.log('Nova mensagem recebida:', newMessage);
+        console.log('Nova mensagem recebida (privada):', {
+          content: newMessage.content,
+          time: new Date(newMessage.created_at).toLocaleTimeString(),
+          sender: newMessage.sender_id === user?.id ? 'eu' : 'outro'
+        });
         
         // Add to cache
         messageCache.addMessage(conversationId, newMessage);
@@ -289,14 +293,18 @@ export const useRealtimeMessages = (conversationId: string) => {
         setMessages(prev => {
           // Avoid duplicates
           const existingIndex = prev.findIndex(m => m.id === newMessage.id);
-          if (existingIndex !== -1) return prev;
+          if (existingIndex !== -1) {
+            console.log('Mensagem duplicada ignorada');
+            return prev;
+          }
           
-          // Add new message and sort all messages chronologically
+          // Add new message and sort all messages chronologically (oldest first)
           const updatedMessages = [...prev, newMessage].sort((a, b) => 
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
           
-          console.log('Mensagens ordenadas por tempo:', updatedMessages.map(m => ({
+          console.log('Mensagens privadas após ordenação:', updatedMessages.map((m, index) => ({
+            index,
             time: new Date(m.created_at).toLocaleTimeString(),
             content: m.content?.slice(0, 20) || 'media',
             sender: m.sender_id === user?.id ? 'eu' : 'outro'

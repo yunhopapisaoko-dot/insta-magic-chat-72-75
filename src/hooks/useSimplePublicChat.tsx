@@ -133,6 +133,11 @@ export const useSimplePublicChat = () => {
         },
         async (payload) => {
           const newMessage = payload.new as PublicMessage;
+          console.log('Nova mensagem pública recebida (simples):', {
+            content: newMessage.content,
+            time: new Date(newMessage.created_at).toLocaleTimeString(),
+            sender: newMessage.sender_id === user?.id ? 'eu' : 'outro'
+          });
           
           // Get sender profile
           const { data: profile } = await supabase
@@ -150,9 +155,20 @@ export const useSimplePublicChat = () => {
           }
 
           setMessages(prev => {
-            // Adicionar nova mensagem no final e manter apenas as últimas 15
-            const newMessages = [...prev, newMessage];
-            return newMessages.slice(-15);
+            // Adicionar nova mensagem no final e manter ordem cronológica
+            const newMessages = [...prev, newMessage].sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+            const finalMessages = newMessages.slice(-15); // Manter apenas as últimas 15
+            
+            console.log('Chat público (simples) após ordenação:', finalMessages.map((m, index) => ({
+              index,
+              time: new Date(m.created_at).toLocaleTimeString(),
+              content: m.content?.slice(0, 20) || 'media',
+              sender: m.sender_id === user?.id ? 'eu' : 'outro'
+            })));
+            
+            return finalMessages;
           });
         }
       )

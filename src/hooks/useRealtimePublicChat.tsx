@@ -230,7 +230,11 @@ export const useRealtimePublicChat = () => {
     const messageHandlers = {
       'postgres_changes:INSERT:public_chat_messages': async (payload: any) => {
         const newMessage = payload.new as PublicMessage;
-        console.log('New public message received:', newMessage);
+        console.log('Nova mensagem pública recebida (realtime):', {
+          content: newMessage.content,
+          time: new Date(newMessage.created_at).toLocaleTimeString(),
+          sender: newMessage.sender_id === user?.id ? 'eu' : 'outro'
+        });
         
         // Get sender profile for new message
         const { data: profile } = await supabase
@@ -263,12 +267,24 @@ export const useRealtimePublicChat = () => {
 
         setMessages(prev => {
           // Avoid duplicates
-          if (prev.find(m => m.id === newMessage.id)) return prev;
-          // Adicionar nova mensagem e manter ordem cronológica
-          const updated = [...prev, newMessage];
-          return updated.sort((a, b) => 
+          if (prev.find(m => m.id === newMessage.id)) {
+            console.log('Mensagem pública duplicada ignorada');
+            return prev;
+          }
+          
+          // Adicionar nova mensagem e manter ordem cronológica (mais antigas primeiro)
+          const updated = [...prev, newMessage].sort((a, b) => 
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
+          
+          console.log('Chat público (realtime) após ordenação:', updated.map((m, index) => ({
+            index,
+            time: new Date(m.created_at).toLocaleTimeString(),
+            content: m.content?.slice(0, 20) || 'media',
+            sender: m.sender_id === user?.id ? 'eu' : 'outro'
+          })));
+          
+          return updated;
         });
 
         // Show notification for other users' messages (only if not in foreground)
