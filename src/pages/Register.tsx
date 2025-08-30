@@ -4,12 +4,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MessageCircle, ArrowLeft, UserPlus } from 'lucide-react';
 
 const Register = () => {
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true); // Padrão marcado para novo usuário
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -17,8 +19,13 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     
-    const success = await register(username, displayName);
+    const success = await register(username, displayName, rememberMe);
     if (success) {
+      // Salva as preferências se "Lembrar de mim" estiver marcado
+      if (rememberMe) {
+        localStorage.setItem('magic-talk-saved-username', username);
+        localStorage.setItem('magic-talk-remember-me', 'true');
+      }
       navigate('/feed');
     }
     
@@ -76,6 +83,21 @@ const Register = () => {
               <p className="text-xs text-muted-foreground mt-2">
                 Nome que aparecerá para outros usuários
               </p>
+            </div>
+
+            {/* Opção Lembrar de mim */}
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="remember-me-register" 
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(!!checked)}
+              />
+              <label 
+                htmlFor="remember-me-register" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Lembrar de mim
+              </label>
             </div>
             
             <Button

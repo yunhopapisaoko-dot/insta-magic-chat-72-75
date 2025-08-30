@@ -20,8 +20,8 @@ interface AuthContextType {
   supabaseUser: User | null;
   session: Session | null;
   loading: boolean;
-  login: (username: string) => Promise<boolean>;
-  register: (username: string, displayName: string) => Promise<boolean>;
+  login: (username: string, rememberMe?: boolean) => Promise<boolean>;
+  register: (username: string, displayName: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   adminLogin: (password: string) => boolean;
   isAdmin: boolean;
@@ -90,10 +90,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           fetchUserProfile(session.user.id);
         }, 0);
       } else {
-        // Fallback: Check for old localStorage user (backward compatibility)
+        // Fallback: Check for saved login (quando "lembrar de mim" está ativo)
+        const shouldRememberLogin = localStorage.getItem('magic-talk-remember-login') === 'true';
         const savedUser = localStorage.getItem('magic-talk-user');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
+        
+        if (shouldRememberLogin && savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (error) {
+            console.error('Error parsing saved user:', error);
+            localStorage.removeItem('magic-talk-user');
+            localStorage.removeItem('magic-talk-remember-login');
+          }
         }
       }
       
@@ -109,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (username: string): Promise<boolean> => {
+  const login = async (username: string, rememberMe: boolean = false): Promise<boolean> => {
     if (!validateUsername(username)) {
       toast({
         title: "Formato inválido",
@@ -136,7 +144,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setUser(data);
-      // Don't store in localStorage anymore - Supabase handles persistence
+      
+      // Se "lembrar de mim" estiver ativado, mantém o usuário em localStorage como backup
+      if (rememberMe) {
+        localStorage.setItem('magic-talk-user', JSON.stringify(data));
+        localStorage.setItem('magic-talk-remember-login', 'true');
+      }
       
       toast({
         title: "Login realizado",
@@ -154,7 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const register = async (username: string, displayName: string): Promise<boolean> => {
+  const register = async (username: string, displayName: string, rememberMe: boolean = false): Promise<boolean> => {
     if (!validateUsername(username)) {
       toast({
         title: "Formato inválido",
@@ -210,7 +223,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setUser(data);
-      // Don't store in localStorage anymore - Supabase handles persistence
+      
+      // Se "lembrar de mim" estiver ativado, salva o usuário
+      if (rememberMe) {
+        localStorage.setItem('magic-talk-user', JSON.stringify(data));
+        localStorage.setItem('magic-talk-remember-login', 'true');
+      }
       
       toast({
         title: "Conta criada",
@@ -238,8 +256,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSupabaseUser(null);
     setSession(null);
     setIsAdmin(false);
+    
+    // Limpa todos os dados salvos, incluindo preferências de login
     localStorage.removeItem('magic-talk-user');
     localStorage.removeItem('magic-talk-admin');
+    localStorage.removeItem('magic-talk-saved-username');
+    localStorage.removeItem('magic-talk-remember-me');
+    localStorage.removeItem('magic-talk-remember-login');
     
     toast({
       title: "Logout realizado",

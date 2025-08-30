@@ -1,23 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MessageCircle, ArrowRight } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Carrega o último usuário salvo ao inicializar
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('magic-talk-saved-username');
+    const wasRemembered = localStorage.getItem('magic-talk-remember-me') === 'true';
+    
+    if (savedUsername && wasRemembered) {
+      setUsername(savedUsername);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    const success = await login(username);
+    const success = await login(username, rememberMe);
     if (success) {
+      // Salva ou remove as preferências baseado na opção "Lembrar de mim"
+      if (rememberMe) {
+        localStorage.setItem('magic-talk-saved-username', username);
+        localStorage.setItem('magic-talk-remember-me', 'true');
+      } else {
+        localStorage.removeItem('magic-talk-saved-username');
+        localStorage.removeItem('magic-talk-remember-me');
+      }
       navigate('/feed');
     }
     
@@ -60,6 +81,21 @@ const Login = () => {
               <p className="text-xs text-muted-foreground mt-2">
                 Formato: letras + exatamente 4 números
               </p>
+            </div>
+
+            {/* Opção Lembrar de mim */}
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="remember-me" 
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(!!checked)}
+              />
+              <label 
+                htmlFor="remember-me" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Lembrar de mim
+              </label>
             </div>
             
             <Button
