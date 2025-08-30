@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useWebSocketConnection } from '@/hooks/useWebSocketConnection';
+import { useMessageCache } from '@/hooks/useMessageCache';
 
 interface PublicMessage {
   id: string;
@@ -28,57 +30,127 @@ export const useRealtimePublicChat = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  
+  // WebSocket connection management
+  const wsConnection = useWebSocketConnection({
+    maxReconnectAttempts: 3,
+    reconnectInterval: 2000,
+    heartbeatInterval: 60000, // Longer interval for public chat
+    enableMobileOptimizations: true
+  });
 
-  const fetchMessages = useCallback(async () => {
+  // Use a special cache key for public chat
+  const publicChatCache = useMessageCache({
+    maxSize: 200, // Keep fewer messages for public chat
+    ttl: 4 * 60 * 60 * 1000, // 4 hours
+    persistToStorage: true
+  });
+
+  const fetchMessages = useCallback(async (forceRefresh = false) => {
     if (!user) return;
 
+    setLoading(true);
+
     try {
-      const { data: messagesData, error } = await supabase
-        .from('public_chat_messages')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .limit(100);
-
-      if (error) throw error;
-
-      if (messagesData?.length) {
-        // Get unique sender IDs
-        const senderIds = [...new Set(messagesData.map(m => m.sender_id))];
-        
-        // Fetch sender profiles
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name, username, avatar_url')
-          .in('id', senderIds);
-
-        if (profilesError) throw profilesError;
-
-        // Create profiles map
-        const profilesMap = profiles?.reduce((acc, profile) => {
-          acc[profile.id] = {
-            display_name: profile.display_name,
-            username: profile.username,
-            avatar_url: profile.avatar_url,
-          };
-          return acc;
-        }, {} as Record<string, any>) || {};
-
-        // Add sender info to messages
-        const messagesWithSenders = messagesData.map(message => ({
-          ...message,
-          sender: profilesMap[message.sender_id]
+      // Try to get cached messages first (using a special key for public chat)
+      const cachedMessages = publicChatCache.getCachedMessages('public_chat');
+      
+      if (cachedMessages.length > 0 && !forceRefresh) {
+        // Convert cached messages to public messages format
+        const publicMessages = cachedMessages.map(msg => ({
+          id: msg.id,
+          sender_id: msg.sender_id,
+          content: msg.content,
+          created_at: msg.created_at,
+          sender: undefined // Will be fetched if needed
         }));
-
-        setMessages(messagesWithSenders);
+        
+        setMessages(publicMessages);
+        setLoading(false);
+        
+        // Fetch fresh data in background
+        setTimeout(() => {
+          fetchFreshMessages();
+        }, 1000);
       } else {
-        setMessages([]);
+        await fetchFreshMessages();
       }
     } catch (error) {
       console.error('Error fetching public messages:', error);
+      // Fallback to cached data on error
+      const cachedMessages = publicChatCache.getCachedMessages('public_chat');
+      if (cachedMessages.length > 0) {
+        const publicMessages = cachedMessages.map(msg => ({
+          id: msg.id,
+          sender_id: msg.sender_id,
+          content: msg.content,
+          created_at: msg.created_at,
+          sender: undefined
+        }));
+        setMessages(publicMessages);
+      }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, publicChatCache]);
+
+  const fetchFreshMessages = async () => {
+    const { data: messagesData, error } = await supabase
+      .from('public_chat_messages')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .limit(100);
+
+    if (error) throw error;
+
+    if (messagesData?.length) {
+      // Get unique sender IDs
+      const senderIds = [...new Set(messagesData.map(m => m.sender_id))];
+      
+      // Fetch sender profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .in('id', senderIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create profiles map
+      const profilesMap = profiles?.reduce((acc, profile) => {
+        acc[profile.id] = {
+          display_name: profile.display_name,
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+        };
+        return acc;
+      }, {} as Record<string, any>) || {};
+
+      // Add sender info to messages
+      const messagesWithSenders = messagesData.map(message => ({
+        ...message,
+        sender: profilesMap[message.sender_id]
+      }));
+
+      setMessages(messagesWithSenders);
+      
+      // Cache the messages (convert to cache format)
+      const cachedMessages = messagesData.map(msg => ({
+        ...msg,
+        conversation_id: 'public_chat', // Special ID for public chat
+        delivered_at: null,
+        read_at: null,
+        message_status: null,
+        media_url: null,
+        media_type: null,
+        story_id: null,
+        cached_at: Date.now()
+      }));
+      
+      publicChatCache.setCachedMessages('public_chat', cachedMessages);
+    } else {
+      setMessages([]);
+    }
+  };
 
   const sendMessage = useCallback(async (content: string) => {
     if (!user || !content.trim() || sending) return;
@@ -148,60 +220,65 @@ export const useRealtimePublicChat = () => {
     }
   }, [user]);
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions with connection management
   useEffect(() => {
-    if (!user) return;
+    if (!user || wsConnection.status === 'disconnected') return;
 
-    // Messages subscription
-    const messagesChannel = supabase
-      .channel('public_chat_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'public_chat_messages',
-        },
-        async (payload) => {
-          const newMessage = payload.new as PublicMessage;
-          console.log('New public message received:', newMessage);
-          
-          // Get sender profile for new message
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name, username, avatar_url')
-            .eq('id', newMessage.sender_id)
-            .single();
+    const messagesChannelId = 'public_chat_realtime';
+    const typingChannelId = 'public_typing';
 
-          if (profile) {
-            newMessage.sender = {
-              display_name: profile.display_name,
-              username: profile.username,
-              avatar_url: profile.avatar_url,
-            };
-          }
+    const messageHandlers = {
+      'postgres_changes:INSERT:public_chat_messages': async (payload: any) => {
+        const newMessage = payload.new as PublicMessage;
+        console.log('New public message received:', newMessage);
+        
+        // Get sender profile for new message
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, username, avatar_url')
+          .eq('id', newMessage.sender_id)
+          .single();
 
-          setMessages(prev => {
-            // Avoid duplicates
-            if (prev.find(m => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
-          });
-
-          // Show notification for other users' messages
-          if (newMessage.sender_id !== user.id && profile) {
-            toast({
-              title: `Nova mensagem de ${profile.display_name}`,
-              description: newMessage.content,
-            });
-          }
+        if (profile) {
+          newMessage.sender = {
+            display_name: profile.display_name,
+            username: profile.username,
+            avatar_url: profile.avatar_url,
+          };
         }
-      )
-      .subscribe();
 
-    // Typing indicators subscription
-    const typingChannel = supabase
-      .channel('public_typing')
-      .on('broadcast', { event: 'typing' }, (payload) => {
+        // Add to cache
+        const cachedMessage = {
+          ...newMessage,
+          conversation_id: 'public_chat',
+          delivered_at: null,
+          read_at: null,
+          message_status: null,
+          media_url: null,
+          media_type: null,
+          story_id: null,
+          cached_at: Date.now()
+        };
+        publicChatCache.addMessage('public_chat', cachedMessage);
+
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.find(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
+
+        // Show notification for other users' messages (only if not in foreground)
+        if (newMessage.sender_id !== user.id && profile && document.hidden) {
+          toast({
+            title: `Nova mensagem de ${profile.display_name}`,
+            description: newMessage.content,
+          });
+        }
+      }
+    };
+
+    const typingHandlers = {
+      'broadcast:typing': (payload: any) => {
         const { user_id, display_name, is_typing } = payload.payload;
         
         if (user_id === user.id) return; // Ignore own typing
@@ -215,14 +292,25 @@ export const useRealtimePublicChat = () => {
           
           return filtered;
         });
-      })
-      .subscribe();
+
+        // Clear typing after timeout
+        if (is_typing) {
+          setTimeout(() => {
+            setTypingUsers(prev => prev.filter(u => u.user_id !== user_id));
+          }, 5000);
+        }
+      }
+    };
+
+    // Create channels with connection management
+    wsConnection.createChannel(messagesChannelId, {}, messageHandlers);
+    wsConnection.createChannel(typingChannelId, {}, typingHandlers);
 
     return () => {
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(typingChannel);
+      wsConnection.removeChannel(messagesChannelId);
+      wsConnection.removeChannel(typingChannelId);
     };
-  }, [user]);
+  }, [user, wsConnection, publicChatCache]);
 
   // Fetch initial data
   useEffect(() => {
@@ -239,5 +327,9 @@ export const useRealtimePublicChat = () => {
     sendTypingIndicator,
     fetchMessages,
     userProfile,
+    connectionStatus: wsConnection.status,
+    isOnline: wsConnection.isOnline,
+    reconnectAttempts: wsConnection.reconnectAttempts,
+    reconnectChannels: wsConnection.reconnectChannels
   };
 };

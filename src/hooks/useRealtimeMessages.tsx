@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Message } from '@/hooks/useConversations';
+import { useWebSocketConnection } from '@/hooks/useWebSocketConnection';
+import { useMessageCache } from '@/hooks/useMessageCache';
 
 interface RealtimeMessage extends Message {
   delivered_at?: string | null;
@@ -21,36 +23,65 @@ export const useRealtimeMessages = (conversationId: string) => {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  
+  // WebSocket connection management
+  const wsConnection = useWebSocketConnection({
+    maxReconnectAttempts: 5,
+    reconnectInterval: 2000,
+    heartbeatInterval: 30000,
+    enableMobileOptimizations: true
+  });
 
-  // Fetch initial messages
-  const fetchMessages = useCallback(async () => {
+  // Message cache management
+  const messageCache = useMessageCache({
+    maxSize: 500,
+    ttl: 24 * 60 * 60 * 1000, // 24 hours
+    persistToStorage: true
+  });
+
+  // Fetch initial messages with cache
+  const fetchMessages = useCallback(async (forceRefresh = false) => {
     if (!conversationId || !user) return;
 
+    setLoading(true);
+
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      setMessages((data as RealtimeMessage[]) || []);
+      // Try to get cached messages first
+      const cachedMessages = messageCache.getCachedMessages(conversationId);
+      
+      if (cachedMessages.length > 0 && !forceRefresh) {
+        setMessages(cachedMessages as RealtimeMessage[]);
+        setLoading(false);
+        
+        // Fetch fresh data in background if cache is old
+        setTimeout(() => {
+          messageCache.fetchAndCacheMessages(conversationId);
+        }, 1000);
+      } else {
+        // Fetch from server
+        const freshMessages = await messageCache.fetchAndCacheMessages(conversationId, forceRefresh);
+        setMessages(freshMessages as RealtimeMessage[]);
+      }
       
       // Mark messages as delivered when fetched
-      const undeliveredMessages = data?.filter(
+      const undeliveredMessages = messages.filter(
         msg => msg.sender_id !== user.id && !msg.delivered_at
       );
 
-      if (undeliveredMessages?.length) {
+      if (undeliveredMessages.length > 0) {
         await markMessagesAsDelivered(undeliveredMessages.map(m => m.id));
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
+      // Fallback to cached data on error
+      const cachedMessages = messageCache.getCachedMessages(conversationId);
+      if (cachedMessages.length > 0) {
+        setMessages(cachedMessages as RealtimeMessage[]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [conversationId, user]);
+  }, [conversationId, user, messageCache, messages]);
 
   // Mark messages as delivered
   const markMessagesAsDelivered = async (messageIds: string[]) => {
@@ -138,66 +169,55 @@ export const useRealtimeMessages = (conversationId: string) => {
     }
   }, [conversationId, user]);
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions with connection management
   useEffect(() => {
-    if (!conversationId || !user) return;
+    if (!conversationId || !user || wsConnection.status === 'disconnected') return;
 
-    // Messages subscription
-    const messagesChannel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        async (payload) => {
-          const newMessage = payload.new as RealtimeMessage;
-          console.log('New message received:', newMessage);
+    const messagesChannelId = `messages:${conversationId}`;
+    const typingChannelId = `typing:${conversationId}`;
+
+    const messageHandlers = {
+      'postgres_changes:INSERT:messages': async (payload: any) => {
+        const newMessage = payload.new as RealtimeMessage;
+        console.log('New message received:', newMessage);
+        
+        // Add to cache
+        messageCache.addMessage(conversationId, newMessage);
+        
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.find(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
+
+        // Auto-mark as delivered if not sender
+        if (newMessage.sender_id !== user.id) {
+          await markMessagesAsDelivered([newMessage.id]);
           
-          setMessages(prev => {
-            // Avoid duplicates
-            if (prev.find(m => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
-          });
-
-          // Auto-mark as delivered if not sender
-          if (newMessage.sender_id !== user.id) {
-            await markMessagesAsDelivered([newMessage.id]);
-            
-            // Show toast notification
+          // Show toast notification only if not in foreground
+          if (document.hidden) {
             toast({
               title: "Nova mensagem",
               description: newMessage.content || "Mensagem recebida",
             });
           }
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const updatedMessage = payload.new as RealtimeMessage;
-          console.log('Message updated:', updatedMessage);
-          
-          setMessages(prev => prev.map(msg => 
-            msg.id === updatedMessage.id ? updatedMessage : msg
-          ));
-        }
-      )
-      .subscribe();
+      },
+      'postgres_changes:UPDATE:messages': (payload: any) => {
+        const updatedMessage = payload.new as RealtimeMessage;
+        console.log('Message updated:', updatedMessage);
+        
+        // Update cache
+        messageCache.updateMessage(conversationId, updatedMessage.id, updatedMessage);
+        
+        setMessages(prev => prev.map(msg => 
+          msg.id === updatedMessage.id ? updatedMessage : msg
+        ));
+      }
+    };
 
-    // Typing indicators subscription
-    const typingChannel = supabase
-      .channel(`typing:${conversationId}`)
-      .on('broadcast', { event: 'typing' }, (payload) => {
+    const typingHandlers = {
+      'broadcast:typing': (payload: any) => {
         const { user_id, display_name, is_typing } = payload.payload;
         
         if (user_id === user.id) return; // Ignore own typing
@@ -211,14 +231,28 @@ export const useRealtimeMessages = (conversationId: string) => {
           
           return filtered;
         });
-      })
-      .subscribe();
+
+        // Clear typing after timeout
+        if (is_typing) {
+          setTimeout(() => {
+            setTypingUsers(prev => prev.filter(u => u.user_id !== user_id));
+          }, 5000);
+        }
+      }
+    };
+
+    // Create channels with connection management
+    wsConnection.createChannel(messagesChannelId, {
+      filter: `conversation_id=eq.${conversationId}`
+    }, messageHandlers);
+
+    wsConnection.createChannel(typingChannelId, {}, typingHandlers);
 
     return () => {
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(typingChannel);
+      wsConnection.removeChannel(messagesChannelId);
+      wsConnection.removeChannel(typingChannelId);
     };
-  }, [conversationId, user, markMessagesAsDelivered]);
+  }, [conversationId, user, wsConnection, messageCache]);
 
   // Auto-mark visible messages as read
   useEffect(() => {
@@ -248,6 +282,11 @@ export const useRealtimeMessages = (conversationId: string) => {
     sendMessage,
     sendTypingIndicator,
     markMessagesAsRead,
-    fetchMessages
+    fetchMessages,
+    connectionStatus: wsConnection.status,
+    isOnline: wsConnection.isOnline,
+    reconnectAttempts: wsConnection.reconnectAttempts,
+    reconnectChannels: wsConnection.reconnectChannels,
+    cacheStats: messageCache.getCacheStats()
   };
 };

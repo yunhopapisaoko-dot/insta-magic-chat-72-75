@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
 import MessageStatus from '@/components/ui/MessageStatus';
 import TypingIndicator from '@/components/ui/TypingIndicator';
+import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 
 interface ChatProps {
   conversationId: string;
@@ -32,7 +33,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     loading, 
     sending, 
     sendMessage: realtimeSendMessage,
-    sendTypingIndicator 
+    sendTypingIndicator,
+    connectionStatus,
+    isOnline,
+    reconnectAttempts,
+    reconnectChannels
   } = useRealtimeMessages(conversationId);
   const [newMessage, setNewMessage] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
@@ -199,27 +204,36 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         {/* Header */}
         <Card className="card-shadow border-0 rounded-none">
           <CardHeader className="py-4 px-6">
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-                className="w-8 h-8 p-0"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={otherUser.avatar_url || ''} />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                  {otherUser.display_name[0]}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div>
-                <h2 className="font-semibold text-lg">{otherUser.display_name}</h2>
-                <p className="text-sm text-muted-foreground">@{otherUser.username}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBack}
+                  className="w-8 h-8 p-0"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={otherUser.avatar_url || ''} />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+                    {otherUser.display_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <div>
+                  <h2 className="font-semibold text-lg">{otherUser.display_name}</h2>
+                  <p className="text-sm text-muted-foreground">@{otherUser.username}</p>
+                </div>
               </div>
+              
+              <ConnectionStatus
+                status={connectionStatus}
+                isOnline={isOnline}
+                reconnectAttempts={reconnectAttempts}
+                onReconnect={reconnectChannels}
+              />
             </div>
           </CardHeader>
         </Card>
