@@ -267,11 +267,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : messages.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
                 <AvatarImage src={otherUser?.avatar_url || ''} />
