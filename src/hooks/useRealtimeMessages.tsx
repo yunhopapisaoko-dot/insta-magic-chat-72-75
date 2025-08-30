@@ -5,6 +5,8 @@ import { toast } from '@/hooks/use-toast';
 import { Message } from '@/hooks/useConversations';
 import { useWebSocketConnection } from '@/hooks/useWebSocketConnection';
 import { useMessageCache } from '@/hooks/useMessageCache';
+import { useConnectionValidator } from '@/hooks/useConnectionValidator';
+import { useMessageTimeout } from '@/hooks/useMessageTimeout';
 
 interface RealtimeMessage extends Message {
   delivered_at?: string | null;
@@ -24,7 +26,7 @@ export const useRealtimeMessages = (conversationId: string) => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   
-  // WebSocket connection management
+  // Connection and validation management
   const wsConnection = useWebSocketConnection({
     maxReconnectAttempts: 5,
     reconnectInterval: 2000,
@@ -32,11 +34,21 @@ export const useRealtimeMessages = (conversationId: string) => {
     enableMobileOptimizations: true
   });
 
+  const connectionValidator = useConnectionValidator();
+  
   // Message cache management
   const messageCache = useMessageCache({
     maxSize: 500,
     ttl: 24 * 60 * 60 * 1000, // 24 hours
     persistToStorage: true
+  });
+
+  // Timeout and retry management
+  const messageTimeout = useMessageTimeout({
+    sendTimeout: 30000,
+    deliveryTimeout: 60000,
+    maxRetries: 3,
+    retryDelay: 2000
   });
 
   // Fetch initial messages with cache
@@ -115,38 +127,101 @@ export const useRealtimeMessages = (conversationId: string) => {
     }
   }, []);
 
-  // Send message with real-time feedback
+  // Send message with enhanced validation and timeout handling
   const sendMessage = useCallback(async (content: string) => {
     if (!user || !content.trim() || sending) return null;
 
-    setSending(true);
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: user.id,
-          content: content.trim(),
-          message_status: 'sent'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return data;
-    } catch (error) {
-      console.error('Error sending message:', error);
+    // Validate connection before sending
+    const connectionInfo = connectionValidator.getConnectionInfo();
+    if (!connectionInfo.isHealthy && connectionInfo.quality === 'offline') {
       toast({
-        title: "Erro ao enviar mensagem",
-        description: "Não foi possível enviar sua mensagem. Tente novamente.",
+        title: "Sem conexão",
+        description: "Não é possível enviar mensagens sem conexão com a internet.",
         variant: "destructive",
       });
+      return null;
+    }
+
+    // Generate temporary message ID
+    const tempMessageId = `temp_${Date.now()}_${Math.random()}`;
+    
+    setSending(true);
+    
+    try {
+      // Add to timeout monitoring
+      messageTimeout.addPendingMessage(
+        tempMessageId,
+        content,
+        (messageId) => {
+          console.warn('Message timeout:', messageId);
+          toast({
+            title: "Timeout na mensagem",
+            description: "A mensagem está demorando para ser enviada. Verificando conexão...",
+            variant: "destructive",
+          });
+        },
+        async (messageId) => {
+          // Retry logic
+          console.log('Retrying message:', messageId);
+          try {
+            const result = await sendMessageToServer(content);
+            return result ? true : false;
+          } catch (error) {
+            console.error('Retry failed:', error);
+            return false;
+          }
+        }
+      );
+
+      const result = await sendMessageToServer(content);
+      
+      if (result) {
+        messageTimeout.markMessageSent(tempMessageId);
+        return result;
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Enhanced error feedback based on connection quality
+      const connectionInfo = connectionValidator.getConnectionInfo();
+      let errorMessage = "Não foi possível enviar sua mensagem.";
+      
+      if (connectionInfo.quality === 'poor') {
+        errorMessage = "Conexão instável. A mensagem será enviada quando a conexão melhorar.";
+      } else if (connectionInfo.quality === 'offline') {
+        errorMessage = "Sem conexão. A mensagem será enviada quando a conexão for restabelecida.";
+      }
+      
+      toast({
+        title: "Erro ao enviar mensagem",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
       return null;
     } finally {
       setSending(false);
     }
-  }, [conversationId, user, sending]);
+  }, [user, sending, connectionValidator, messageTimeout]);
+
+  // Helper function to send message to server
+  const sendMessageToServer = async (content: string) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user!.id,
+        content: content.trim(),
+        message_status: 'sent'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  };
 
   // Send typing indicator
   const sendTypingIndicator = useCallback(async (isTyping: boolean) => {
@@ -287,6 +362,15 @@ export const useRealtimeMessages = (conversationId: string) => {
     isOnline: wsConnection.isOnline,
     reconnectAttempts: wsConnection.reconnectAttempts,
     reconnectChannels: wsConnection.reconnectChannels,
-    cacheStats: messageCache.getCacheStats()
+    cacheStats: messageCache.getCacheStats(),
+    // Enhanced validation data
+    connectionQuality: connectionValidator.getConnectionInfo().quality,
+    networkMetrics: connectionValidator.getConnectionInfo(),
+    // Timeout management
+    pendingMessages: messageTimeout.pendingMessages,
+    hasTimeouts: messageTimeout.hasTimeouts,
+    retryMessage: messageTimeout.retryMessage,
+    getMessageStatus: messageTimeout.getMessageStatus,
+    getRetryCount: messageTimeout.getRetryCount
   };
 };

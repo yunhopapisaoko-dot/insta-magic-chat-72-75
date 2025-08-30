@@ -9,6 +9,7 @@ import { useRealtimePublicChat } from '@/hooks/useRealtimePublicChat';
 import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
 import TypingIndicator from '@/components/ui/TypingIndicator';
+import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 
 interface PublicChatProps {
   onBack: () => void;
@@ -23,7 +24,11 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     sending, 
     sendMessage, 
     sendTypingIndicator, 
-    userProfile 
+    userProfile,
+    connectionStatus,
+    isOnline,
+    reconnectAttempts,
+    reconnectChannels
   } = useRealtimePublicChat();
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -139,24 +144,33 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
         {/* Header */}
         <Card className="card-shadow border-0 rounded-none">
           <CardHeader className="py-4 px-6">
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-                className="w-8 h-8 p-0"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Users className="w-7 h-7 text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBack}
+                  className="w-8 h-8 p-0"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
+                
+                <div>
+                  <h2 className="font-semibold text-xl">Pousada teste</h2>
+                  <p className="text-sm text-muted-foreground">Chat da pousada - Todos podem participar</p>
+                </div>
               </div>
               
-              <div>
-                <h2 className="font-semibold text-xl">Pousada teste</h2>
-                <p className="text-sm text-muted-foreground">Chat da pousada - Todos podem participar</p>
-              </div>
+              <ConnectionStatus
+                status={connectionStatus}
+                isOnline={isOnline}
+                reconnectAttempts={reconnectAttempts}
+                onReconnect={reconnectChannels}
+              />
             </div>
           </CardHeader>
         </Card>

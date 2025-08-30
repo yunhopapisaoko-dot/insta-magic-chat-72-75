@@ -12,6 +12,8 @@ import MobileLayout from '@/components/MobileLayout';
 import MessageStatus from '@/components/ui/MessageStatus';
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
+import { NetworkIndicator } from '@/components/ui/NetworkIndicator';
+import { MessageRetryIndicator } from '@/components/ui/MessageRetryIndicator';
 
 interface ChatProps {
   conversationId: string;
@@ -37,7 +39,13 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     connectionStatus,
     isOnline,
     reconnectAttempts,
-    reconnectChannels
+    reconnectChannels,
+    connectionQuality,
+    networkMetrics,
+    pendingMessages,
+    retryMessage,
+    getMessageStatus,
+    getRetryCount
   } = useRealtimeMessages(conversationId);
   const [newMessage, setNewMessage] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
@@ -228,12 +236,23 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 </div>
               </div>
               
-              <ConnectionStatus
-                status={connectionStatus}
-                isOnline={isOnline}
-                reconnectAttempts={reconnectAttempts}
-                onReconnect={reconnectChannels}
-              />
+              <div className="flex items-center gap-2">
+                <NetworkIndicator
+                  quality={connectionQuality}
+                  latency={networkMetrics.latency}
+                  successRate={networkMetrics.successRate}
+                  isValidating={false}
+                  consecutiveFailures={networkMetrics.consecutiveFailures}
+                  onRetry={reconnectChannels}
+                />
+                
+                <ConnectionStatus
+                  status={connectionStatus}
+                  isOnline={isOnline}
+                  reconnectAttempts={reconnectAttempts}
+                  onReconnect={reconnectChannels}
+                />
+              </div>
             </div>
           </CardHeader>
         </Card>
@@ -293,19 +312,38 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                            {message.content && (
                              <p className="text-sm leading-relaxed">{message.content}</p>
                            )}
-                           <div className={`flex items-center justify-between mt-1 ${
-                             isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                           }`}>
-                             <span className="text-xs">
-                               {formatMessageTime(message.created_at)}
-                             </span>
-                             {isOwnMessage && (
-                               <MessageStatus 
-                                 status={message.message_status as 'sent' | 'delivered' | 'read' || 'sent'} 
-                                 className="ml-2" 
-                               />
-                             )}
-                           </div>
+                            <div className={`flex items-center justify-between mt-1 ${
+                              isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                            }`}>
+                              <span className="text-xs">
+                                {formatMessageTime(message.created_at)}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {isOwnMessage && (
+                                  <MessageStatus 
+                                    status={message.message_status as 'sent' | 'delivered' | 'read' || 'sent'} 
+                                    className="ml-2" 
+                                  />
+                                )}
+                                {/* Show retry indicator for failed messages */}
+                                {isOwnMessage && (
+                                  <MessageRetryIndicator
+                                    status={getMessageStatus(message.id) ? 
+                                      getMessageStatus(message.id) as any : 
+                                      (message.message_status === 'sent' ? 'sent' : 'sending')
+                                    }
+                                    onRetry={async () => {
+                                      await retryMessage(message.id, async () => {
+                                        // The retry logic is handled by the hook
+                                        return true;
+                                      });
+                                    }}
+                                    retryCount={getRetryCount(message.id)}
+                                    maxRetries={3}
+                                  />
+                                )}
+                              </div>
+                            </div>
                          </div>
                        </div>
                        
