@@ -68,13 +68,13 @@ const ChatList = () => {
           <MessageCircle className="w-6 h-6 text-primary" />
         </div>
 
-        {/* Pousada Chat Button */}
+        {/* Public Chat Button */}
         <Button
           onClick={() => setShowPublicChat(true)}
-          className="w-full rounded-xl mb-4 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 p-4"
+          className="w-full rounded-xl mb-4 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 p-4 shadow-lg"
         >
           <Users className="w-6 h-6 mr-3" />
-          <span className="text-lg font-semibold">Pousada teste</span>
+          <span className="text-lg font-semibold">Chat Público</span>
         </Button>
 
         {/* Search */}

@@ -128,8 +128,8 @@ export const useRealtimeMessages = (conversationId: string) => {
   }, []);
 
   // Send message with enhanced validation and timeout handling
-  const sendMessage = useCallback(async (content: string) => {
-    if (!user || !content.trim() || sending) return null;
+  const sendMessage = useCallback(async (content: string, mediaUrl?: string, mediaType?: string) => {
+    if (!user || (!content.trim() && !mediaUrl) || sending) return null;
 
     // Validate connection before sending
     const connectionInfo = connectionValidator.getConnectionInfo();
@@ -164,7 +164,7 @@ export const useRealtimeMessages = (conversationId: string) => {
           // Retry logic
           console.log('Retrying message:', messageId);
           try {
-            const result = await sendMessageToServer(content);
+            const result = await sendMessageToServer(content, mediaUrl, mediaType);
             return result ? true : false;
           } catch (error) {
             console.error('Retry failed:', error);
@@ -173,7 +173,7 @@ export const useRealtimeMessages = (conversationId: string) => {
         }
       );
 
-      const result = await sendMessageToServer(content);
+      const result = await sendMessageToServer(content, mediaUrl, mediaType);
       
       if (result) {
         messageTimeout.markMessageSent(tempMessageId);
@@ -207,13 +207,15 @@ export const useRealtimeMessages = (conversationId: string) => {
   }, [user, sending, connectionValidator, messageTimeout]);
 
   // Helper function to send message to server
-  const sendMessageToServer = async (content: string) => {
+  const sendMessageToServer = async (content: string, mediaUrl?: string, mediaType?: string) => {
     const { data, error } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
         sender_id: user!.id,
-        content: content.trim(),
+        content: content.trim() || null,
+        media_url: mediaUrl || null,
+        media_type: mediaType || null,
         message_status: 'sent'
       })
       .select()

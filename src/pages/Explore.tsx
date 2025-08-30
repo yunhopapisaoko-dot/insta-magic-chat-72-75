@@ -4,12 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, TrendingUp, Hash, MapPin, Users, UserPlus, UserMinus } from 'lucide-react';
+import { Search, TrendingUp, Hash, MapPin, Users, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useConversations } from '@/hooks/useConversations';
 
 interface Profile {
   id: string;
@@ -24,10 +25,12 @@ interface Profile {
 const Explore = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { createOrGetConversation } = useConversations();
   const [searchQuery, setSearchQuery] = useState('');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [startingChat, setStartingChat] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfiles();
@@ -135,6 +138,50 @@ const Explore = () => {
     navigate(`/user/${username}`);
   };
 
+  const handleStartChat = async (userId: string, displayName: string) => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para enviar mensagens",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (userId === user.id) {
+      toast({
+        title: "Ação inválida",
+        description: "Você não pode conversar consigo mesmo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setStartingChat(userId);
+    
+    try {
+      const conversationId = await createOrGetConversation(userId);
+      if (conversationId) {
+        toast({
+          title: "Conversa iniciada",
+          description: `Iniciando conversa com ${displayName}`,
+        });
+        navigate('/messages');
+      } else {
+        throw new Error('Failed to create conversation');
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast({
+        title: "Erro ao iniciar conversa",
+        description: "Não foi possível iniciar a conversa. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setStartingChat(null);
+    }
+  };
+
   const filteredProfiles = profiles.filter(profile =>
     profile.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     profile.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -224,32 +271,53 @@ const Explore = () => {
                            </p>
                          </div>
                          
-                         {user && user.id !== profile.id && (
-                           <Button
-                             size="sm"
-                             variant={followedUsers.has(profile.id) ? "outline" : "default"}
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               handleFollow(profile.id);
-                             }}
-                             className={followedUsers.has(profile.id) 
-                               ? "border-primary text-primary hover:bg-primary/10" 
-                               : "magic-button"
-                             }
-                           >
-                             {followedUsers.has(profile.id) ? (
-                               <>
-                                 <UserMinus className="w-4 h-4 mr-1" />
-                                 Seguindo
-                               </>
-                             ) : (
-                               <>
-                                 <UserPlus className="w-4 h-4 mr-1" />
-                                 Seguir
-                               </>
-                             )}
-                           </Button>
-                         )}
+                          {user && user.id !== profile.id && (
+                            <div className="flex gap-2">
+                              {/* Chat Button */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartChat(profile.id, profile.display_name);
+                                }}
+                                disabled={startingChat === profile.id}
+                                className="border-primary text-primary hover:bg-primary/10 w-10 h-8 p-0"
+                              >
+                                {startingChat === profile.id ? (
+                                  <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <MessageCircle className="w-4 h-4" />
+                                )}
+                              </Button>
+                              
+                              {/* Follow Button */}
+                              <Button
+                                size="sm"
+                                variant={followedUsers.has(profile.id) ? "outline" : "default"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFollow(profile.id);
+                                }}
+                                className={followedUsers.has(profile.id) 
+                                  ? "border-primary text-primary hover:bg-primary/10" 
+                                  : "magic-button"
+                                }
+                              >
+                                {followedUsers.has(profile.id) ? (
+                                  <>
+                                    <UserMinus className="w-4 h-4 mr-1" />
+                                    Seguindo
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus className="w-4 h-4 mr-1" />
+                                    Seguir
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          )}
                        </div>
                      </CardContent>
                    </Card>

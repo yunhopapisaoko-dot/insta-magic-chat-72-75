@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Image, Smile } from 'lucide-react';
+import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,7 @@ import TypingIndicator from '@/components/ui/TypingIndicator';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 import { NetworkIndicator } from '@/components/ui/NetworkIndicator';
 import { MessageRetryIndicator } from '@/components/ui/MessageRetryIndicator';
+import MediaUpload from '@/components/MediaUpload';
 
 interface ChatProps {
   conversationId: string;
@@ -49,6 +50,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   } = useRealtimeMessages(conversationId);
   const [newMessage, setNewMessage] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -103,8 +105,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || sending || !user) return;
+  const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {
+    const content = messageContent || newMessage.trim();
+    if ((!content && !mediaUrl) || sending || !user) return;
 
     // Clear typing indicator before sending
     await sendTypingIndicator(false);
@@ -113,10 +116,15 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       typingTimeoutRef.current = null;
     }
 
-    const result = await realtimeSendMessage(newMessage);
+    const result = await realtimeSendMessage(content, mediaUrl, mediaType);
     if (result) {
       setNewMessage('');
+      setShowMediaUpload(false);
     }
+  };
+
+  const handleMediaSelected = (url: string, type: 'image' | 'video') => {
+    handleSendMessage('', url, type);
   };
 
   const handleMessageChange = async (value: string) => {
@@ -310,8 +318,31 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                              : 'bg-muted'
                          }`}>
                            {message.content && (
-                             <p className="text-sm leading-relaxed">{message.content}</p>
-                           )}
+                            <p className="text-sm leading-relaxed">{message.content}</p>
+                            )}
+                            
+                            {/* Media Content */}
+                            {message.media_url && (
+                              <div className="mt-2">
+                                {message.media_type === 'video' ? (
+                                  <video
+                                    src={message.media_url}
+                                    controls
+                                    className="max-w-full rounded-lg"
+                                    style={{ maxHeight: '200px' }}
+                                    playsInline
+                                  />
+                                ) : (
+                                  <img
+                                    src={message.media_url}
+                                    alt="Imagem compartilhada"
+                                    className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                    style={{ maxHeight: '200px' }}
+                                    onClick={() => window.open(message.media_url!, '_blank')}
+                                  />
+                                )}
+                              </div>
+                            )}
                             <div className={`flex items-center justify-between mt-1 ${
                               isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
                             }`}>
@@ -370,11 +401,22 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
         {/* Input */}
         <Card className="card-shadow border-0 rounded-none">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-3">
+            {/* Media Upload */}
+            {showMediaUpload && (
+              <MediaUpload
+                onMediaSelected={handleMediaSelected}
+                disabled={sending}
+                className="w-full"
+              />
+            )}
+            
+            {/* Message Input */}
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" className="w-9 h-9 p-0">
-                <Image className="w-4 h-4" />
-              </Button>
+              <MediaUpload
+                onMediaSelected={handleMediaSelected}
+                disabled={sending}
+              />
               
               <Input
                 value={newMessage}
@@ -390,7 +432,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               </Button>
               
               <Button
-                onClick={handleSendMessage}
+                onClick={() => handleSendMessage()}
                 disabled={!newMessage.trim() || sending}
                 size="sm"
                 className="rounded-full w-9 h-9 p-0"
