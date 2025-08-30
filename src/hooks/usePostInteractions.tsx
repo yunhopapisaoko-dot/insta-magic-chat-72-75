@@ -8,6 +8,7 @@ interface Comment {
   content: string;
   created_at: string;
   user_id: string;
+  likes_count: number;
   profiles: {
     display_name: string;
     username: string;
@@ -23,6 +24,7 @@ export const usePostInteractions = (postId: string | null) => {
   const [commentsCount, setCommentsCount] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentLikes, setCommentLikes] = useState<Set<string>>(new Set());
 
   // Fetch initial data
   useEffect(() => {
@@ -56,7 +58,7 @@ export const usePostInteractions = (postId: string | null) => {
       // Get comments with profile data
       const { data: commentsData } = await supabase
         .from('post_comments')
-        .select('id, content, created_at, user_id')
+        .select('id, content, created_at, user_id, likes_count')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -81,6 +83,19 @@ export const usePostInteractions = (postId: string | null) => {
           })
         );
         setComments(commentsWithProfiles);
+        
+        // Check which comments the user has liked
+        if (user && commentsData.length > 0) {
+          const { data: userCommentLikes } = await supabase
+            .from('comment_likes')
+            .select('comment_id')
+            .eq('user_id', user.id)
+            .in('comment_id', commentsData.map(c => c.id));
+          
+          if (userCommentLikes) {
+            setCommentLikes(new Set(userCommentLikes.map(like => like.comment_id)));
+          }
+        }
       }
     };
 
@@ -146,6 +161,7 @@ export const usePostInteractions = (postId: string | null) => {
             content: payload.new.content,
             created_at: payload.new.created_at,
             user_id: payload.new.user_id,
+            likes_count: payload.new.likes_count || 0,
             profiles: profile || {
               display_name: 'Usuário',
               username: 'user',
@@ -172,9 +188,61 @@ export const usePostInteractions = (postId: string | null) => {
       )
       .subscribe();
 
+    // Subscribe to comment likes changes
+    const commentLikesChannel = supabase
+      .channel(`comment-likes-${postId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comment_likes',
+        },
+        (payload) => {
+          // Update comment likes count
+          setComments(prev => prev.map(comment => 
+            comment.id === payload.new.comment_id 
+              ? { ...comment, likes_count: comment.likes_count + 1 }
+              : comment
+          ));
+          
+          // Update user's liked comments if it's their like
+          if (user && payload.new.user_id === user.id) {
+            setCommentLikes(prev => new Set([...prev, payload.new.comment_id]));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'comment_likes',
+        },
+        (payload) => {
+          // Update comment likes count
+          setComments(prev => prev.map(comment => 
+            comment.id === payload.old.comment_id 
+              ? { ...comment, likes_count: Math.max(0, comment.likes_count - 1) }
+              : comment
+          ));
+          
+          // Update user's liked comments if it's their unlike
+          if (user && payload.old.user_id === user.id) {
+            setCommentLikes(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(payload.old.comment_id);
+              return newSet;
+            });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(likesChannel);
       supabase.removeChannel(commentsChannel);
+      supabase.removeChannel(commentLikesChannel);
     };
   }, [postId]);
 
@@ -244,6 +312,7 @@ export const usePostInteractions = (postId: string | null) => {
         content: data.content,
         created_at: data.created_at,
         user_id: data.user_id,
+        likes_count: 0,
         profiles: profile || {
           display_name: user.display_name || 'Usuário',
           username: user.username || 'user',
@@ -287,6 +356,42 @@ export const usePostInteractions = (postId: string | null) => {
     }
   }, [user]);
 
+  const handleCommentLike = useCallback(async (commentId: string) => {
+    if (!user) return;
+
+    try {
+      const isLiked = commentLikes.has(commentId);
+      
+      if (isLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from('comment_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('comment_id', commentId);
+
+        if (error) throw error;
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('comment_likes')
+          .insert({
+            user_id: user.id,
+            comment_id: commentId,
+          });
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error liking/unliking comment:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível curtir o comentário.",
+        variant: "destructive",
+      });
+    }
+  }, [user, commentLikes]);
+
   return {
     isLiked,
     likesCount,
@@ -295,8 +400,10 @@ export const usePostInteractions = (postId: string | null) => {
     newComment,
     setNewComment,
     isSubmittingComment,
+    commentLikes,
     handleLike,
     handleSubmitComment,
     handleDeleteComment,
+    handleCommentLike,
   };
 };

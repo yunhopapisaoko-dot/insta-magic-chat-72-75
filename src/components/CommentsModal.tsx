@@ -25,8 +25,10 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
     newComment,
     setNewComment,
     isSubmittingComment,
+    commentLikes,
     handleSubmitComment,
     handleDeleteComment,
+    handleCommentLike,
   } = usePostInteractions(postId);
 
   useEffect(() => {
@@ -161,10 +163,21 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                         </div>
                         
                         <div className="flex flex-col items-center gap-1">
-                          <button className="p-1 hover:bg-muted rounded-full transition-colors">
-                            <Heart className="w-3 h-3 text-muted-foreground" />
+                          <button 
+                            onClick={() => handleCommentLike(comment.id)}
+                            className="p-1 hover:bg-muted rounded-full transition-colors"
+                          >
+                            <Heart 
+                              className={`w-3 h-3 transition-colors ${
+                                commentLikes.has(comment.id) 
+                                  ? 'fill-red-500 text-red-500' 
+                                  : 'text-muted-foreground'
+                              }`} 
+                            />
                           </button>
-                          <span className="text-xs text-muted-foreground">1</span>
+                          <span className="text-xs text-muted-foreground">
+                            {comment.likes_count}
+                          </span>
                         </div>
                       </div>
                     </div>
