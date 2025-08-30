@@ -405,6 +405,18 @@ export const usePostInteractions = (postId: string | null) => {
           throw error;
         }
         console.log('Like removido com sucesso');
+        
+        // Update local state immediately for better UX
+        setCommentLikes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(commentId);
+          return newSet;
+        });
+        setComments(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? { ...comment, likes_count: Math.max(0, comment.likes_count - 1) }
+            : comment
+        ));
       } else {
         // Like
         const { error } = await supabase
@@ -419,6 +431,14 @@ export const usePostInteractions = (postId: string | null) => {
           throw error;
         }
         console.log('Like adicionado com sucesso');
+        
+        // Update local state immediately for better UX
+        setCommentLikes(prev => new Set([...prev, commentId]));
+        setComments(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? { ...comment, likes_count: comment.likes_count + 1 }
+            : comment
+        ));
       }
     } catch (error) {
       console.error('Erro ao curtir comentário:', error);
