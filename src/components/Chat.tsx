@@ -303,8 +303,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   return (
     <MobileLayout>
       <div className="flex flex-col h-screen">
-        {/* Header */}
-        <Card className="card-shadow border-0 rounded-none">
+        {/* Fixed Header */}
+        <Card className="card-shadow border-0 rounded-none sticky top-0 z-10 bg-background">
           <CardHeader className="py-4 px-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -359,8 +359,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           </CardHeader>
         </Card>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Messages - with padding top to account for fixed header */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pt-6">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
