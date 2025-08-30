@@ -357,16 +357,19 @@ export const usePostInteractions = (postId: string | null) => {
   }, [user]);
 
   const handleCommentLike = useCallback(async (commentId: string) => {
-    if (!user?.id) {
-      toast({
-        title: "Erro",
-        description: "Você precisa estar logado para curtir comentários.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
+      // Obter usuário diretamente do Supabase auth
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para curtir comentários.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const isLiked = commentLikes.has(commentId);
       
       if (isLiked) {
@@ -374,20 +377,26 @@ export const usePostInteractions = (postId: string | null) => {
         const { error } = await supabase
           .from('comment_likes')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', authUser.id)
           .eq('comment_id', commentId);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao remover like:', error);
+          throw error;
+        }
       } else {
         // Like
         const { error } = await supabase
           .from('comment_likes')
           .insert({
-            user_id: user.id,
+            user_id: authUser.id,
             comment_id: commentId,
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao adicionar like:', error);
+          throw error;
+        }
       }
     } catch (error) {
       console.error('Erro ao curtir comentário:', error);
@@ -397,7 +406,7 @@ export const usePostInteractions = (postId: string | null) => {
         variant: "destructive",
       });
     }
-  }, [user, commentLikes]);
+  }, [commentLikes]);
 
   return {
     isLiked,
