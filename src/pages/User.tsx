@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import MobileLayout from '@/components/MobileLayout';
 import PostsGrid from '@/components/PostsGrid';
+import FollowersList from '@/components/FollowersList';
 import { toast } from '@/hooks/use-toast';
 
 interface ProfileData {
@@ -27,6 +28,7 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [activeView, setActiveView] = useState<'profile' | 'followers' | 'following'>('profile');
 
   useEffect(() => {
     if (username) {
@@ -210,14 +212,20 @@ const UserProfile = () => {
                 <p className="text-xl font-bold">0</p>
                 <p className="text-sm text-muted-foreground">Posts</p>
               </div>
-              <div className="text-center">
+              <button 
+                className="text-center hover:bg-muted/50 rounded-lg p-2 transition-colors"
+                onClick={() => setActiveView('followers')}
+              >
                 <p className="text-xl font-bold">{profileData.followers_count || 0}</p>
                 <p className="text-sm text-muted-foreground">Seguidores</p>
-              </div>
-              <div className="text-center">
+              </button>
+              <button 
+                className="text-center hover:bg-muted/50 rounded-lg p-2 transition-colors"
+                onClick={() => setActiveView('following')}
+              >
                 <p className="text-xl font-bold">{profileData.following_count || 0}</p>
                 <p className="text-sm text-muted-foreground">Seguindo</p>
-              </div>
+              </button>
             </div>
 
             {/* Follow Button */}
@@ -255,17 +263,35 @@ const UserProfile = () => {
             )}
           </div>
 
-          {/* Posts Grid */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center border-b border-border">
-              <button className="flex items-center space-x-2 pb-3 border-b-2 border-primary">
-                <Grid3X3 className="w-4 h-4" />
-                <span className="font-medium">Posts</span>
-              </button>
-            </div>
+          {/* Content based on active view */}
+          {activeView === 'profile' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-center border-b border-border">
+                <button className="flex items-center space-x-2 pb-3 border-b-2 border-primary">
+                  <Grid3X3 className="w-4 h-4" />
+                  <span className="font-medium">Posts</span>
+                </button>
+              </div>
 
-            <PostsGrid userId={profileData.id} onPostUpdate={fetchProfile} />
-          </div>
+              <PostsGrid userId={profileData.id} onPostUpdate={fetchProfile} />
+            </div>
+          )}
+
+          {activeView === 'followers' && (
+            <FollowersList 
+              userId={profileData.id} 
+              type="followers" 
+              onBack={() => setActiveView('profile')}
+            />
+          )}
+
+          {activeView === 'following' && (
+            <FollowersList 
+              userId={profileData.id} 
+              type="following" 
+              onBack={() => setActiveView('profile')}
+            />
+          )}
         </div>
       </div>
     </MobileLayout>
