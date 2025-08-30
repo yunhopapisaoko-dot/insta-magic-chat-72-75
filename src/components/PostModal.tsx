@@ -2,13 +2,15 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { X, Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { X, Heart, MessageCircle, Share, MoreHorizontal, Trash2, Send } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { isVideoUrl } from '@/lib/utils';
+import { usePostInteractions } from '@/hooks/usePostInteractions';
 
 interface Post {
   id: string;
@@ -34,66 +36,18 @@ interface PostModalProps {
 
 const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) => {
   const { user } = useAuth();
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-
-  useEffect(() => {
-    if (post) {
-      setLikesCount(post.likes_count);
-      fetchLikeStatus();
-    }
-  }, [post, user]);
-
-  const fetchLikeStatus = async () => {
-    if (!user || !post) return;
-
-    try {
-      const { data } = await supabase
-        .from('post_likes')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('post_id', post.id)
-        .single();
-
-      setIsLiked(!!data);
-    } catch (error) {
-      // No like found
-      setIsLiked(false);
-    }
-  };
-
-  const handleLike = async () => {
-    if (!user || !post) return;
-
-    try {
-      if (isLiked) {
-        // Unlike
-        const { error } = await supabase
-          .from('post_likes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('post_id', post.id);
-
-        if (error) throw error;
-        setIsLiked(false);
-        setLikesCount(prev => prev - 1);
-      } else {
-        // Like
-        const { error } = await supabase
-          .from('post_likes')
-          .insert({
-            user_id: user.id,
-            post_id: post.id,
-          });
-
-        if (error) throw error;
-        setIsLiked(true);
-        setLikesCount(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('Error liking/unliking post:', error);
-    }
-  };
+  const {
+    isLiked,
+    likesCount,
+    comments,
+    commentsCount,
+    newComment,
+    setNewComment,
+    isSubmittingComment,
+    handleLike,
+    handleSubmitComment,
+    handleDeleteComment,
+  } = usePostInteractions(post?.id || null);
 
   const handleDeletePost = async () => {
     if (!user || !post) return;
@@ -136,12 +90,19 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
     return `${diffInDays}d`;
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitComment();
+    }
+  };
+
   if (!post) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden">
-        <div className="relative">
+      <DialogContent className="max-w-lg p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="relative flex-1 flex flex-col">
           <Button
             variant="ghost"
             size="sm"
@@ -151,8 +112,8 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
             <X className="w-4 h-4" />
           </Button>
           
-          <Card className="border-0 shadow-none">
-            <CardContent className="p-0">
+          <Card className="border-0 shadow-none flex-1 flex flex-col">
+            <CardContent className="p-0 flex-1 flex flex-col">
               {/* Post Header */}
               <div className="flex items-center space-x-3 p-4 pb-3">
                 <Avatar className="w-10 h-10">
@@ -217,7 +178,7 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
               )}
               
               {/* Post Actions */}
-              <div className="px-4 py-3 border-t border-border">
+              <div className="px-4 py-3 border-t border-b border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <button 
@@ -233,14 +194,89 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                       />
                       <span className="text-sm">{likesCount}</span>
                     </button>
-                    <button className="flex items-center space-x-1 text-muted-foreground hover:text-primary transition-colors">
+                    <div className="flex items-center space-x-1 text-muted-foreground">
                       <MessageCircle className="w-5 h-5" />
-                      <span className="text-sm">{post.comments_count}</span>
-                    </button>
+                      <span className="text-sm">{commentsCount}</span>
+                    </div>
                   </div>
                   <button className="text-muted-foreground hover:text-primary transition-colors">
                     <Share className="w-5 h-5" />
                   </button>
+                </div>
+              </div>
+
+              {/* Comments Section */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <ScrollArea className="flex-1 px-4 py-3">
+                  {comments.length === 0 ? (
+                    <div className="text-center text-muted-foreground text-sm py-8">
+                      Nenhum comentário ainda. Seja o primeiro a comentar!
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {comments.map((comment) => (
+                        <div key={comment.id} className="flex space-x-3">
+                          <Avatar className="w-8 h-8 flex-shrink-0">
+                            <AvatarImage src={comment.profiles.avatar_url || ''} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                              {comment.profiles.display_name[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold text-sm">{comment.profiles.display_name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTimeAgo(comment.created_at)}
+                                </span>
+                              </div>
+                              {comment.user_id === user?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  className="w-6 h-6 p-0 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-sm text-foreground break-words">{comment.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+
+                {/* Comment Input */}
+                <div className="p-4 border-t border-border">
+                  <div className="flex space-x-2">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarImage src={user?.avatar_url || ''} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                        {user?.display_name?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 flex space-x-2">
+                      <Input
+                        placeholder="Adicione um comentário..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className="flex-1"
+                        disabled={isSubmittingComment}
+                      />
+                      <Button
+                        onClick={handleSubmitComment}
+                        disabled={!newComment.trim() || isSubmittingComment}
+                        size="sm"
+                        className="px-3"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
