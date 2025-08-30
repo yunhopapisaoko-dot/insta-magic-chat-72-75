@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Smile, X, ArrowLeft } from 'lucide-react';
+import { Send, Smile, X, ArrowLeft, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useRealtimeConversations } from '@/hooks/useRealtimeConversations';
@@ -13,6 +13,9 @@ import TypingIndicator from '@/components/ui/TypingIndicator';
 import MediaUpload from '@/components/MediaUpload';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 import { NetworkIndicator } from '@/components/ui/NetworkIndicator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface ProfileChatProps {
   otherUser: {
@@ -33,6 +36,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   const { cacheConversation } = useProfileNavigation();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -174,6 +178,36 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     return currentDate !== previousDate;
   };
 
+  const handleLeaveConversation = async () => {
+    if (!conversationId || !user) return;
+
+    try {
+      // Remove user from conversation participants
+      const { error } = await supabase
+        .from('conversation_participants')
+        .delete()
+        .eq('conversation_id', conversationId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Conversa encerrada",
+        description: "Você saiu da conversa.",
+      });
+
+      setShowSettings(false);
+      onClose();
+    } catch (error) {
+      console.error('Error leaving conversation:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível sair da conversa.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Cleanup typing timeout on unmount
   useEffect(() => {
     return () => {
@@ -233,6 +267,15 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
                 reconnectAttempts={reconnectAttempts}
                 onReconnect={reconnectChannels}
               />
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSettings(true)}
+                className="w-8 h-8 p-0"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
               
               <Button
                 variant="ghost"
@@ -400,6 +443,27 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
           </div>
         </div>
       </SheetContent>
+
+      {/* Settings Modal */}
+      <AlertDialog open={showSettings} onOpenChange={setShowSettings}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Configurações da Conversa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem certeza que deseja sair desta conversa? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleLeaveConversation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sair da Conversa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 };
