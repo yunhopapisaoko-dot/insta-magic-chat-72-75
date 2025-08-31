@@ -322,22 +322,19 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
     };
   }, [user]);
 
-  // Auto-scroll effect for new messages
+  // Auto-scroll effect for new messages - DISABLED for static behavior
   useEffect(() => {
     if (messages.length > lastMessageCountRef.current) {
-      const isNewMessage = messages.length > 0;
       lastMessageCountRef.current = messages.length;
 
-      if (isInitialLoadRef.current) {
-        // Always scroll to bottom on initial load
+      if (isInitialLoadRef.current && messages.length > 0) {
+        // Only scroll to bottom on initial load, no animation
         setTimeout(() => scrollToBottom(false), 100);
         isInitialLoadRef.current = false;
-      } else if (enableAutoScroll && isNearBottom && isNewMessage) {
-        // Only auto-scroll if user is near bottom
-        setTimeout(() => scrollToBottom(true), 100);
       }
+      // Removed auto-scroll for new messages to keep screen static
     }
-  }, [messages.length, enableAutoScroll, isNearBottom, scrollToBottom]);
+  }, [messages.length, scrollToBottom]);
 
   // Initial load
   useEffect(() => {

@@ -110,12 +110,12 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   // Load messages at bottom position without scrolling
   useEffect(() => {
-    if (messages.length > 0 && !loading && !hasInitialScrolled && messagesEndRef.current) {
-      // Position at bottom instantly without animation
+    if (messages.length > 0 && !loading && !hasInitialScrolled && messagesEndRef.current && conversationId) {
+      // Position at bottom instantly without animation - ONLY on initial load
       messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
       setHasInitialScrolled(true);
     }
-  }, [messages.length, loading, hasInitialScrolled]);
+  }, [messages.length, loading, hasInitialScrolled, conversationId]);
 
   // Reset scroll state when conversation changes
   useEffect(() => {
