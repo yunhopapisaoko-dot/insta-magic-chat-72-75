@@ -378,7 +378,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
         </DialogHeader>
 
         <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6">
+          <div className="space-y-6 pb-4">
             {/* Chat Photo and Name - Centered */}
             <div className="text-center space-y-4">
               <div className="flex flex-col items-center space-y-3">
@@ -627,33 +627,86 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                   Adicionar
                 </Button>
               </div>
+               
+              {/* Participant list */}
+              <div className="space-y-2">
+                {participants.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nenhum participante no momento</p>
+                    <p className="text-xs">Adicione pessoas para começar a conversar!</p>
+                  </div>
+                ) : (
+                  participants.map((participant) => (
+                    <div key={participant.user_id} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
+                          {participant.profiles?.display_name?.[0] || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {participant.profiles?.display_name || 'Usuário'}
+                          {participant.user_id === chatInfo.creatorId && (
+                            <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                              Criador
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          @{participant.profiles?.username || 'unknown'}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Footer Actions - Movidos para dentro do scroll */}
+            <div className="space-y-3">
+              {/* Delete Chat Button - Only for creator */}
+              {chatInfo && user?.id === chatInfo.creatorId && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="w-full">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Deletar Chat
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Deletar Chat Público</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Todas as mensagens e dados do chat serão permanentemente deletados.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteChat}
+                        disabled={isDeleting}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {isDeleting ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}
+                        {isDeleting ? 'Deletando...' : 'Deletar Chat'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
               
-               {/* Participant list */}
-               <div className="space-y-2 max-h-60 overflow-y-auto">
-                 {participants.map((participant) => (
-                   <div key={participant.user_id} className="flex items-center space-x-3 p-2 rounded-lg bg-muted/30">
-                     <Avatar className="w-8 h-8">
-                       <AvatarImage src={participant.profiles?.avatar_url || ''} />
-                       <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                         {participant.profiles?.display_name?.[0] || '?'}
-                       </AvatarFallback>
-                     </Avatar>
-                     <div className="flex-1 min-w-0">
-                       <p className="text-sm font-medium truncate">
-                         {participant.profiles?.display_name || 'Usuário'}
-                         {participant.user_id === chatInfo.creatorId && (
-                           <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                             Criador
-                           </span>
-                         )}
-                       </p>
-                       <p className="text-xs text-muted-foreground truncate">
-                         @{participant.profiles?.username || 'unknown'}
-                       </p>
-                     </div>
-                   </div>
-                 ))}
-               </div>
+              {/* Close Button */}
+              <Button onClick={onClose} variant="outline" className="w-full">
+                Fechar
+              </Button>
             </div>
           </div>
         </ScrollArea>
@@ -747,49 +800,6 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             </div>
           </div>
         )}
-
-        {/* Footer Actions */}
-        <div className="space-y-3 pt-4 border-t">
-          {/* Delete Chat Button - Only for creator */}
-          {chatInfo && user?.id === chatInfo.creatorId && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="w-full">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Deletar Chat
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Deletar Chat Público</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. Todas as mensagens e dados do chat serão permanentemente deletados.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteChat}
-                    disabled={isDeleting}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    {isDeleting ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    ) : (
-                      <Trash2 className="w-4 h-4 mr-2" />
-                    )}
-                    {isDeleting ? 'Deletando...' : 'Deletar Chat'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          
-          {/* Close Button */}
-          <Button onClick={onClose} variant="outline" className="w-full">
-            Fechar
-          </Button>
-        </div>
 
         {/* Wallpaper Settings Modal */}
         <WallpaperSettings
