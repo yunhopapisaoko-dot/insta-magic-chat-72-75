@@ -105,11 +105,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   };
 
-  // Auto scroll when new messages arrive
-  useEffect(() => {
-    // Always scroll to bottom when messages change
-    scrollToBottom(false);
-  }, [messages]);
+  // Removed auto scroll to keep chat position fixed
 
   // Mark conversation as read when viewing
   useEffect(() => {
