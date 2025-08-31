@@ -774,11 +774,12 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
         )}
 
         {/* Footer Actions */}
-        <div className="flex gap-2 pt-4 border-t">
+        <div className="space-y-3 pt-4 border-t">
+          {/* Delete Chat Button - Only for creator */}
           {chatInfo && user?.id === chatInfo.creatorId && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="flex-1">
+                <Button variant="destructive" size="sm" className="w-full">
                   <Trash2 className="w-4 h-4 mr-2" />
                   Deletar Chat
                 </Button>
@@ -809,7 +810,8 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             </AlertDialog>
           )}
           
-          <Button onClick={onClose} variant="outline" className="flex-1">
+          {/* Close Button */}
+          <Button onClick={onClose} variant="outline" className="w-full">
             Fechar
           </Button>
         </div>
