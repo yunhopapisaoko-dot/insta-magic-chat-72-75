@@ -24,7 +24,7 @@ export const useOptimizedConversations = () => {
     setError(null);
 
     try {
-      // Get user's conversation participants with basic info
+      // Get user's private conversation participants
       const { data: participantData, error: participantError } = await supabase
         .from('conversation_participants')
         .select(`
@@ -39,12 +39,36 @@ export const useOptimizedConversations = () => {
 
       if (participantError) throw participantError;
 
-      if (!participantData?.length) {
+      // Get public chats (conversations with public messages) for all users
+      const { data: publicChats, error: publicError } = await supabase
+        .from('messages')
+        .select(`
+          conversation_id,
+          content,
+          created_at,
+          conversations:conversation_id (
+            id,
+            created_at,
+            updated_at
+          )
+        `)
+        .ilike('content', '%🌐 Chat Público%')
+        .order('created_at', { ascending: true });
+
+      if (publicError) throw publicError;
+
+      // Combine participant conversations with public chats
+      const allConversationIds = new Set([
+        ...(participantData?.map(p => p.conversation_id) || []),
+        ...(publicChats?.map(p => p.conversation_id) || [])
+      ]);
+
+      if (allConversationIds.size === 0) {
         setConversations([]);
         return;
       }
 
-      const conversationIds = participantData.map(p => p.conversation_id);
+      const conversationIds = Array.from(allConversationIds);
 
       // Get other participants for each conversation
       const { data: otherParticipants, error: otherError } = await supabase
@@ -93,7 +117,8 @@ export const useOptimizedConversations = () => {
         return acc;
       }, {} as Record<string, any>);
       
-      participantData.forEach((participant) => {
+      // Build conversations from user's private conversations
+      participantData?.forEach((participant) => {
         const conv = participant.conversations;
         if (!conv) return;
 
@@ -171,6 +196,40 @@ export const useOptimizedConversations = () => {
             unread_count: 0,
           });
         }
+      });
+
+      // Add public chats that aren't already in user's conversations
+      publicChats?.forEach((publicChat) => {
+        const conv = publicChat.conversations;
+        if (!conv || conversationsMap.has(conv.id)) return;
+
+        // Extract chat name from public message
+        const chatNameMatch = publicChat.content?.match(/: "([^"]+)"/);
+        const chatName = chatNameMatch ? chatNameMatch[1] : 'Chat Público';
+        
+        conversationsMap.set(conv.id, {
+          id: conv.id,
+          created_at: conv.created_at,
+          updated_at: conv.updated_at,
+          other_user: {
+            id: 'public',
+            display_name: `🌐 ${chatName}`,
+            username: 'public_chat',
+            avatar_url: null,
+          },
+          last_message: {
+            id: 'temp',
+            conversation_id: conv.id,
+            content: 'Chat público disponível para todos',
+            created_at: publicChat.created_at,
+            sender_id: 'system',
+            media_url: null,
+            media_type: null,
+            story_id: null,
+            read_at: null
+          },
+          unread_count: 0,
+        });
       });
 
       // Sort by last activity

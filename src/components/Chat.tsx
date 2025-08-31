@@ -55,72 +55,132 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    fetchConversationData();
-  }, [conversationId]);
+    if (conversationId && user) {
+      checkAndJoinPublicChat();
+      fetchOtherUser();
+    }
+  }, [conversationId, user]);
 
-  // Remove old real-time subscription effect since it's handled by useRealtimeMessages
+  // Check if this is a public chat and auto-join user if needed
+  const checkAndJoinPublicChat = async () => {
+    if (!user || !conversationId) return;
 
-  const fetchConversationData = async () => {
     try {
-      // Get other participant
+      // Check if this conversation has public messages
+      const { data: publicMessage, error: publicError } = await supabase
+        .from('messages')
+        .select('content')
+        .eq('conversation_id', conversationId)
+        .ilike('content', '%🌐 Chat Público%')
+        .limit(1)
+        .single();
+
+      if (publicError && publicError.code !== 'PGRST116') throw publicError;
+
+      if (publicMessage) {
+        // This is a public chat, check if user is already a participant
+        const { data: participant, error: participantError } = await supabase
+          .from('conversation_participants')
+          .select('id')
+          .eq('conversation_id', conversationId)
+          .eq('user_id', user.id)
+          .limit(1);
+
+        if (participantError) throw participantError;
+
+        // If user is not a participant, add them
+        if (!participant?.length) {
+          const { error: joinError } = await supabase
+            .from('conversation_participants')
+            .insert({
+              conversation_id: conversationId,
+              user_id: user.id
+            });
+
+          if (joinError) throw joinError;
+          
+          console.log('Auto-joined public chat:', conversationId);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking/joining public chat:', error);
+    }
+  };
+
+  const fetchOtherUser = async () => {
+    if (!conversationId || !user) return;
+
+    try {
+      // First check if this is a public chat
+      const { data: publicMessage, error: publicError } = await supabase
+        .from('messages')
+        .select('content')
+        .eq('conversation_id', conversationId)
+        .ilike('content', '%🌐 Chat Público%')
+        .limit(1)
+        .single();
+
+      if (!publicError && publicMessage) {
+        // This is a public chat, extract name from message
+        const chatNameMatch = publicMessage.content?.match(/: "([^"]+)"/);
+        const chatName = chatNameMatch ? chatNameMatch[1] : 'Chat Público';
+        
+        setOtherUser({
+          id: 'public',
+          display_name: `🌐 ${chatName}`,
+          username: 'public_chat',
+          avatar_url: null
+        });
+        return;
+      }
+
+      // Regular private chat - get other user
       const { data: participants, error } = await supabase
         .from('conversation_participants')
-        .select('user_id')
+        .select(`
+          user_id,
+          profiles:user_id (
+            id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
         .eq('conversation_id', conversationId)
-        .neq('user_id', user?.id);
+        .neq('user_id', user.id);
 
       if (error) throw error;
-      
-      if (participants?.[0]) {
-        const userId = participants[0].user_id;
-        
-        // Get profile data
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('display_name, username, avatar_url')
-          .eq('id', userId)
-          .single();
 
-        if (profileError) throw profileError;
-
+      if (participants?.length > 0) {
+        const firstParticipant = participants[0];
+        if (firstParticipant.profiles && typeof firstParticipant.profiles === 'object' && !('error' in (firstParticipant.profiles || {}))) {
+          const profile = firstParticipant.profiles as any;
+          setOtherUser({
+            id: profile.id,
+            display_name: profile.display_name,
+            username: profile.username,
+            avatar_url: profile.avatar_url
+          });
+        } else {
+          setOtherUser({
+            id: 'unknown',
+            display_name: 'Usuário',
+            username: 'unknown',
+            avatar_url: null
+          });
+        }
+      } else {
         setOtherUser({
-          id: userId,
-          display_name: profile.display_name,
-          username: profile.username,
-          avatar_url: profile.avatar_url,
+          id: 'unknown',
+          display_name: 'Usuário',
+          username: 'unknown',
+          avatar_url: null
         });
       }
     } catch (error) {
-      console.error('Error fetching conversation data:', error);
+      console.error('Error fetching other user:', error);
     }
   };
-
-  // Remove fetchMessages since it's handled by useRealtimeMessages
-
-  const scrollToBottom = (instant = false) => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: instant ? 'auto' : 'smooth',
-        block: 'end'
-      });
-    }
-  };
-
-  // Removed auto scroll to keep chat position fixed
-
-  // Load messages at bottom position without scrolling
-  useEffect(() => {
-    if (messages.length > 0 && !loading && !hasInitialScrolled && messagesEndRef.current && conversationId) {
-      // Position at bottom instantly without animation - ONLY on initial load
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
-      setHasInitialScrolled(true);
-    }
-  }, [messages.length, loading, hasInitialScrolled, conversationId]);
-
-  // Reset scroll state when conversation changes
-  useEffect(() => {
-    setHasInitialScrolled(false);
-  }, [conversationId]);
 
   // Mark conversation as read when viewing
   useEffect(() => {
