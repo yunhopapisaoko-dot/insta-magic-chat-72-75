@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
@@ -39,6 +40,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     sendMessage,
     sendTypingIndicator,
   } = useRealtimeChat(conversationId);
+  const { markConversationAsRead } = useUnreadMessages();
   
   const [newMessage, setNewMessage] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
@@ -109,6 +111,13 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     const isFirstLoad = messages.length > 0 && !loading;
     scrollToBottom(isFirstLoad);
   }, [messages, loading]);
+
+  // Mark conversation as read when viewing
+  useEffect(() => {
+    if (conversationId && messages.length > 0) {
+      markConversationAsRead(conversationId);
+    }
+  }, [conversationId, messages, markConversationAsRead]);
 
   const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {
     const content = messageContent || newMessage.trim();
