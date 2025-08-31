@@ -13,6 +13,8 @@ import { toast } from '@/hooks/use-toast';
 import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2, UserPlus, Palette } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
+import { useAuth } from '@/hooks/useAuth';
+
 
 interface PublicChatSettingsProps {
   isOpen: boolean;
@@ -53,7 +55,7 @@ interface Profile {
 }
 
 export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicChatSettingsProps) => {
-  const user = JSON.parse(localStorage.getItem('auth_user') || 'null') as User | null;
+  const { user } = useAuth();
   const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
