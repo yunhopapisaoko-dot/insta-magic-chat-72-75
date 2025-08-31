@@ -256,18 +256,25 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
           )}
 
           {step === 'details' && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-4">
               {chatType === 'public' && (
-                <div className="space-y-4">
-                  {/* Chat Image */}
-                  <div className="space-y-2">
-                    <Label>Foto do Chat</Label>
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">Configuração do Chat Público</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Configure as informações do seu grupo público
+                    </p>
+                  </div>
+
+                  {/* Foto de Capa */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Foto de Capa</Label>
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden border-2 border-dashed border-muted-foreground/30">
                         {chatImageUrl ? (
-                          <img src={chatImageUrl} alt="Chat" className="w-full h-full object-cover" />
+                          <img src={chatImageUrl} alt="Foto de Capa" className="w-full h-full object-cover rounded-lg" />
                         ) : (
-                          <Camera className="w-8 h-8 text-white" />
+                          <Camera className="w-8 h-8 text-muted-foreground" />
                         )}
                       </div>
                       <div>
@@ -277,62 +284,89 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              // Simulate upload for now - in production you'd upload to storage
                               const url = URL.createObjectURL(file);
                               setChatImageUrl(url);
                             }
                           }}
                           className="hidden"
-                          id="chat-image-upload"
+                          id="group-cover-upload"
                         />
-                        <label htmlFor="chat-image-upload">
+                        <label htmlFor="group-cover-upload">
                           <Button variant="outline" size="sm" type="button" asChild>
                             <span className="cursor-pointer">
                               <Camera className="w-4 h-4 mr-2" />
-                              {chatImageUrl ? 'Trocar Foto' : 'Adicionar Foto'}
+                              {chatImageUrl ? 'Alterar Foto' : 'Escolher Foto'}
                             </span>
                           </Button>
                         </label>
                       </div>
+                      {chatImageUrl && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Prévia da foto de capa do grupo
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Chat Name */}
+                  {/* Nome do Grupo */}
                   <div className="space-y-2">
-                    <Label htmlFor="chat-name">Nome do Chat</Label>
+                    <Label htmlFor="group-name" className="text-sm font-medium">
+                      Nome do Grupo <span className="text-destructive">*</span>
+                    </Label>
                     <Input
-                      id="chat-name"
-                      placeholder="Nome do chat público..."
+                      id="group-name"
+                      placeholder="Digite o nome do grupo..."
                       value={chatName}
                       onChange={(e) => setChatName(e.target.value)}
                       maxLength={50}
+                      className="h-11"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {chatName.length}/50 caracteres
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">
+                        Campo obrigatório
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {chatName.length}/50
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Chat Description */}
+                  {/* Descrição */}
                   <div className="space-y-2">
-                    <Label htmlFor="chat-description">Descrição do Chat</Label>
+                    <Label htmlFor="group-description" className="text-sm font-medium">
+                      Descrição
+                    </Label>
                     <Textarea
-                      id="chat-description"
-                      placeholder="Descreva sobre o que é este chat..."
+                      id="group-description"
+                      placeholder="Descreva sobre o que é este grupo... (opcional)"
                       value={chatDescription}
                       onChange={(e) => setChatDescription(e.target.value)}
                       maxLength={200}
-                      rows={3}
+                      rows={4}
+                      className="resize-none"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {chatDescription.length}/200 caracteres
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">
+                        Campo opcional
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {chatDescription.length}/200
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                    <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center">
-                      <Globe className="w-4 h-4 mr-2" />
-                      Este chat será público e todos poderão participar
-                    </p>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start space-x-3">
+                      <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                          Chat Público
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          Qualquer pessoa poderá encontrar e participar deste grupo. As mensagens serão visíveis para todos os membros.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -447,6 +481,8 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
               </div>
             ) : step === 'invite' ? (
               'Criar Chat'
+            ) : step === 'details' && chatType === 'public' ? (
+              'Criar Grupo'
             ) : (
               'Próximo'
             )}
