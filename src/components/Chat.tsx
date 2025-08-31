@@ -107,10 +107,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   // Auto scroll when new messages arrive
   useEffect(() => {
-    // First load: scroll instantly to bottom, subsequent messages: smooth scroll
-    const isFirstLoad = messages.length > 0 && !loading;
-    scrollToBottom(isFirstLoad);
-  }, [messages, loading]);
+    // Always scroll to bottom when messages change
+    scrollToBottom(false);
+  }, [messages]);
 
   // Mark conversation as read when viewing
   useEffect(() => {
