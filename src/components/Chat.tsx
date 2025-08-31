@@ -107,10 +107,23 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   // Auto scroll when new messages arrive
   useEffect(() => {
-    // First load: scroll instantly to bottom, subsequent messages: smooth scroll
-    const isFirstLoad = messages.length > 0 && !loading;
-    scrollToBottom(isFirstLoad);
-  }, [messages, loading]);
+    if (messages.length > 0) {
+      // Use timeout to ensure DOM has updated
+      setTimeout(() => {
+        scrollToBottom(false); // Always use smooth scroll
+      }, 100);
+    }
+  }, [messages]);
+
+  // Scroll to bottom after sending message
+  useEffect(() => {
+    if (!sending && newMessage === '') {
+      // Message was just sent (newMessage cleared and not sending anymore)
+      setTimeout(() => {
+        scrollToBottom(false);
+      }, 100);
+    }
+  }, [sending, newMessage]);
 
   // Mark conversation as read when viewing
   useEffect(() => {
