@@ -383,8 +383,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           </CardHeader>
         </Card>
 
-        {/* Messages - with padding top to account for fixed header */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Messages - with padding for fixed header and input */}
+        <div className="flex-1 overflow-y-auto p-4 pb-24">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
@@ -508,8 +508,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           )}
         </div>
 
-        {/* Input */}
-        <Card className="card-shadow border-0 rounded-none">
+        {/* Input - Fixed at bottom */}
+        <Card className="card-shadow border-0 rounded-none fixed bottom-0 left-0 right-0 z-20 bg-background">
           <CardContent className="p-4 space-y-3">
             {/* Media Upload */}
             {showMediaUpload && (
