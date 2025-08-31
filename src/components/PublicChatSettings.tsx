@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload } from 'lucide-react';
+import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PublicChatSettingsProps {
@@ -57,6 +58,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
   const [editPhoto, setEditPhoto] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [chatPhoto, setChatPhoto] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (isOpen && conversationId) {
@@ -315,6 +317,45 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleDeleteChat = async () => {
+    setIsDeleting(true);
+    try {
+      // Delete all messages from the conversation
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      // Delete all participants
+      await supabase
+        .from('conversation_participants')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      // Delete the conversation itself
+      await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId);
+
+      toast({
+        title: "Chat deletado",
+        description: "O chat público foi deletado com sucesso.",
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível deletar o chat.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (loading || !chatInfo) {
@@ -660,8 +701,43 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
           </div>
         )}
 
-        <div className="pt-4">
-          <Button onClick={onClose} className="w-full">
+        <div className="pt-4 space-y-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                {isDeleting ? 'Deletando...' : 'Deletar Chat'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Deletar Chat Público</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja deletar este chat público? Esta ação não pode ser desfeita.
+                  Todas as mensagens e participantes serão removidos permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteChat}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Deletar Chat
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
+          <Button onClick={onClose} variant="outline" className="w-full">
             Fechar
           </Button>
         </div>
