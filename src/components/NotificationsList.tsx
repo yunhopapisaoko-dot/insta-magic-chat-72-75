@@ -19,6 +19,8 @@ const NotificationsList = () => {
         return <Heart className="w-4 h-4 text-red-500" />;
       case 'comment':
         return <MessageCircle className="w-4 h-4 text-blue-500" />;
+      case 'comment_like':
+        return <Heart className="w-4 h-4 text-pink-500" />;
       case 'follow':
         return <UserPlus className="w-4 h-4 text-green-500" />;
       case 'mention':
@@ -37,6 +39,10 @@ const NotificationsList = () => {
     // Navigate based on notification type
     if (notification.entity_type === 'post' && notification.entity_id) {
       navigate(`/post/${notification.entity_id}`);
+    } else if (notification.entity_type === 'comment' && notification.entity_id) {
+      // For comment likes, we need to navigate to the post that contains the comment
+      // We'll need to fetch the post_id from the comment
+      navigate('/feed'); // Fallback for now
     } else if (notification.entity_type === 'user' && notification.actor_id) {
       // Get username from profiles to navigate to user profile
       // For now, navigate to feed if we can't get username
