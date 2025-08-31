@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn } from 'lucide-react';
+import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -20,6 +20,7 @@ import { PublicChatSettings } from '@/components/PublicChatSettings';
 import { MessageContextMenu } from '@/components/MessageContextMenu';
 import { MessageBubble } from '@/components/MessageBubble';
 import { useLongPress } from '@/hooks/useLongPress';
+import { WallpaperSettings } from '@/components/WallpaperSettings';
 
 interface ChatProps {
   conversationId: string;
@@ -82,6 +83,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     content: string;
     senderName: string;
   } | null>(null);
+  const [showWallpaperSettings, setShowWallpaperSettings] = useState(false);
+  const [currentWallpaper, setCurrentWallpaper] = useState<{
+    type: 'color' | 'image';
+    value: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -89,8 +95,25 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     if (conversationId && user) {
       checkPublicChatStatus();
       fetchOtherUser();
+      loadWallpaper();
     }
   }, [conversationId, user]);
+
+  const loadWallpaper = () => {
+    if (!user || !conversationId) return;
+    
+    const wallpaperKey = `wallpaper_${user.id}_${conversationId}`;
+    const stored = localStorage.getItem(wallpaperKey);
+    
+    if (stored) {
+      try {
+        const wallpaper = JSON.parse(stored);
+        setCurrentWallpaper(wallpaper);
+      } catch (error) {
+        console.error('Error loading wallpaper:', error);
+      }
+    }
+  };
 
   const checkPublicChatStatus = async () => {
     if (!user || !conversationId) return;
@@ -614,7 +637,23 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         </Card>
 
         {/* Messages - with bottom padding to account for fixed input */}
-        <div className="flex-1 overflow-y-auto p-4 pb-32" style={{ scrollBehavior: 'auto' }}>
+        <div 
+          className="flex-1 overflow-y-auto p-4 pb-32 relative" 
+          style={{ 
+            scrollBehavior: 'auto',
+            backgroundColor: currentWallpaper?.type === 'color' ? currentWallpaper.value : undefined
+          }}
+        >
+          {/* Background Image */}
+          {currentWallpaper?.type === 'image' && (
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+              style={{ 
+                backgroundImage: `url(${currentWallpaper.value})`,
+                zIndex: -1
+              }}
+            />
+          )}
           {!isParticipant && isPublicChat ? (
             // Join Public Chat View
             <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
@@ -846,6 +885,16 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                   </div>
                 </div>
 
+                {/* Wallpaper Button */}
+                <Button 
+                  variant="outline" 
+                  className="w-full gap-2" 
+                  onClick={() => setShowWallpaperSettings(true)}
+                >
+                  <Palette className="w-4 h-4" />
+                  Papel de Parede
+                </Button>
+
                 {/* Add More People Button */}
                 <Button 
                   variant="outline" 
@@ -970,6 +1019,17 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           onDelete={handleDeleteMessage}
           onEdit={handleEditMessage}
           onReply={handleReplyMessage}
+        />
+
+        {/* Wallpaper Settings Modal */}
+        <WallpaperSettings
+          isOpen={showWallpaperSettings}
+          onClose={() => setShowWallpaperSettings(false)}
+          conversationId={conversationId}
+          currentWallpaper={currentWallpaper}
+          onWallpaperChange={(wallpaper) => {
+            setCurrentWallpaper(wallpaper);
+          }}
         />
       </div>
     );
