@@ -102,9 +102,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  };
+  // Removed scrollToBottom function to prevent auto-scroll
 
   const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {
     const content = messageContent || newMessage.trim();

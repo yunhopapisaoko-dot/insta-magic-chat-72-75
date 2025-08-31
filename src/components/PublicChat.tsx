@@ -63,9 +63,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
 
   // Removed auto-scroll to keep chat position fixed
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  };
+  // Removed scrollToBottom function to prevent auto-scroll
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending || !user || !userProfile) return;
