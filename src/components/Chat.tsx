@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus } from 'lucide-react';
+import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import TypingIndicator from '@/components/ui/TypingIndicator';
+import { PublicChatSettings } from '@/components/PublicChatSettings';
 
 interface ChatProps {
   conversationId: string;
@@ -46,23 +47,27 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPublicSettings, setShowPublicSettings] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [participants, setParticipants] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
+  const [isPublicChat, setIsPublicChat] = useState(false);
+  const [isParticipant, setIsParticipant] = useState(true);
+  const [joining, setJoining] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (conversationId && user) {
-      checkAndJoinPublicChat();
+      checkPublicChatStatus();
       fetchOtherUser();
     }
   }, [conversationId, user]);
 
-  // Check if this is a public chat and auto-join user if needed
-  const checkAndJoinPublicChat = async () => {
+  // Check if this is a public chat and if user is a participant
+  const checkPublicChatStatus = async () => {
     if (!user || !conversationId) return;
 
     try {
@@ -75,10 +80,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         .limit(1)
         .single();
 
-      if (publicError && publicError.code !== 'PGRST116') throw publicError;
+      const isPublic = !publicError && publicMessage;
+      setIsPublicChat(!!isPublic);
 
-      if (publicMessage) {
-        // This is a public chat, check if user is already a participant
+      if (isPublic) {
+        // Check if user is already a participant
         const { data: participant, error: participantError } = await supabase
           .from('conversation_participants')
           .select('id')
@@ -88,22 +94,51 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
         if (participantError) throw participantError;
 
-        // If user is not a participant, add them
-        if (!participant?.length) {
-          const { error: joinError } = await supabase
-            .from('conversation_participants')
-            .insert({
-              conversation_id: conversationId,
-              user_id: user.id
-            });
+        const isUserParticipant = participant?.length > 0;
+        setIsParticipant(isUserParticipant);
 
-          if (joinError) throw joinError;
-          
-          console.log('Auto-joined public chat:', conversationId);
+        // Auto-join if user is participant
+        if (isUserParticipant) {
+          console.log('User is already a participant in public chat:', conversationId);
         }
+      } else {
+        setIsParticipant(true); // For private chats, assume user is participant if they can access
       }
     } catch (error) {
-      console.error('Error checking/joining public chat:', error);
+      console.error('Error checking public chat status:', error);
+    }
+  };
+
+  const joinPublicChat = async () => {
+    if (!user || !conversationId) return;
+
+    setJoining(true);
+    try {
+      const { error } = await supabase
+        .from('conversation_participants')
+        .insert({
+          conversation_id: conversationId,
+          user_id: user.id
+        });
+
+      if (error) throw error;
+
+      setIsParticipant(true);
+      toast({
+        title: "Sucesso",
+        description: "Você entrou no chat público!",
+      });
+      
+      console.log('Successfully joined public chat:', conversationId);
+    } catch (error) {
+      console.error('Error joining public chat:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível entrar no chat.",
+        variant: "destructive",
+      });
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -341,9 +376,13 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   };
 
   const handleOpenSettings = () => {
-    setShowSettings(true);
-    fetchParticipants();
-    fetchAllUsers();
+    if (isPublicChat) {
+      setShowPublicSettings(true);
+    } else {
+      setShowSettings(true);
+      fetchParticipants();
+      fetchAllUsers();
+    }
   };
 
   const handleLeaveConversation = async () => {
@@ -441,7 +480,36 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
         {/* Messages - with bottom padding to account for fixed input */}
         <div className="flex-1 overflow-y-auto p-4 pb-32" style={{ scrollBehavior: 'auto' }}>
-          {messages.length === 0 ? (
+          {!isParticipant && isPublicChat ? (
+            // Join Public Chat View
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
+              <Avatar className="w-20 h-20">
+                <AvatarImage src={otherUser?.avatar_url || ''} />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl font-semibold">
+                  {otherUser?.display_name?.[0] || '🌐'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-4">
+                <h3 className="font-semibold text-xl">{otherUser?.display_name}</h3>
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  Este é um chat público. Clique em "Entrar" para participar da conversa.
+                </p>
+                <Button 
+                  onClick={joinPublicChat}
+                  disabled={joining}
+                  size="lg"
+                  className="gap-2"
+                >
+                  {joining ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <LogIn className="w-4 h-4" />
+                  )}
+                  {joining ? 'Entrando...' : 'Entrar no Chat'}
+                </Button>
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
                 <AvatarImage src={otherUser?.avatar_url || ''} />
@@ -565,53 +633,62 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         </div>
 
         {/* Fixed Input - always at bottom */}
-        <Card className="card-shadow border-0 rounded-none fixed bottom-0 left-0 right-0 z-20 bg-background border-t">
-          <CardContent className="p-4 space-y-3">
-            {/* Media Upload */}
-            {showMediaUpload && (
-              <MediaUpload
-                onMediaSelected={handleMediaSelected}
-                disabled={sending}
-                className="w-full"
-              />
-            )}
-            
-            {/* Message Input */}
-            <div className="flex items-center space-x-2">
-              <MediaUpload
-                onMediaSelected={handleMediaSelected}
-                disabled={sending}
-              />
+        {isParticipant && (
+          <Card className="card-shadow border-0 rounded-none fixed bottom-0 left-0 right-0 z-20 bg-background border-t">
+            <CardContent className="p-4 space-y-3">
+              {/* Media Upload */}
+              {showMediaUpload && (
+                <MediaUpload
+                  onMediaSelected={handleMediaSelected}
+                  disabled={sending}
+                  className="w-full"
+                />
+              )}
               
-              <Input
-                value={newMessage}
-                onChange={(e) => handleMessageChange(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Digite uma mensagem..."
-                className="flex-1 rounded-full border-0 bg-muted/50"
-                disabled={sending}
-              />
-              
-              <Button variant="ghost" size="sm" className="w-9 h-9 p-0">
-                <Smile className="w-4 h-4" />
-              </Button>
-              
-              <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSendMessage();
-                }}
-                disabled={!newMessage.trim() || sending}
-                size="sm"
-                className="rounded-full w-9 h-9 p-0"
-                type="button"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {/* Message Input */}
+              <div className="flex items-center space-x-2">
+                <MediaUpload
+                  onMediaSelected={handleMediaSelected}
+                  disabled={sending}
+                />
+                
+                <Input
+                  value={newMessage}
+                  onChange={(e) => handleMessageChange(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Digite uma mensagem..."
+                  className="flex-1 rounded-full border-0 bg-muted/50"
+                  disabled={sending}
+                />
+                
+                <Button variant="ghost" size="sm" className="w-9 h-9 p-0">
+                  <Smile className="w-4 h-4" />
+                </Button>
+                
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSendMessage();
+                  }}
+                  disabled={!newMessage.trim() || sending}
+                  size="sm"
+                  className="rounded-full w-9 h-9 p-0"
+                  type="button"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Public Chat Settings Modal */}
+        <PublicChatSettings
+          isOpen={showPublicSettings}
+          onClose={() => setShowPublicSettings(false)}
+          conversationId={conversationId}
+        />
 
         {/* Settings Modal */}
         <Dialog open={showSettings} onOpenChange={setShowSettings}>
