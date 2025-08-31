@@ -313,7 +313,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   return (
     <MobileLayout>
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen relative">
         {/* Fixed Header */}
         <Card className="card-shadow border-0 rounded-none sticky top-0 z-10 bg-background">
           <CardHeader className="py-4 px-6">
@@ -370,8 +370,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           </CardHeader>
         </Card>
 
-        {/* Messages - with padding top to account for fixed header */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Messages - with bottom padding to account for fixed input */}
+        <div className="flex-1 overflow-y-auto p-4 pb-32">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
@@ -495,8 +495,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           )}
         </div>
 
-        {/* Input */}
-        <Card className="card-shadow border-0 rounded-none">
+        {/* Fixed Input - always at bottom */}
+        <Card className="card-shadow border-0 rounded-none fixed bottom-0 left-0 right-0 z-20 bg-background border-t">
           <CardContent className="p-4 space-y-3">
             {/* Media Upload */}
             {showMediaUpload && (
