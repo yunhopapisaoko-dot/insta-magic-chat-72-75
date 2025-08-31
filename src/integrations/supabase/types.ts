@@ -67,20 +67,43 @@ export type Database = {
       conversations: {
         Row: {
           created_at: string
+          creator_id: string | null
+          description: string | null
           id: string
+          is_public: boolean | null
+          name: string | null
+          photo_url: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          creator_id?: string | null
+          description?: string | null
           id?: string
+          is_public?: boolean | null
+          name?: string | null
+          photo_url?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          creator_id?: string | null
+          description?: string | null
           id?: string
+          is_public?: boolean | null
+          name?: string | null
+          photo_url?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       follows: {
         Row: {

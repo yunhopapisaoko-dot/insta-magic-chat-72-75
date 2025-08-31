@@ -91,10 +91,16 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
 
     setIsCreating(true);
     try {
-      // Create conversation (simplified - metadata will be stored in first message)
+      // Create conversation with metadata
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
-        .insert({})
+        .insert({
+          creator_id: user.id,
+          is_public: chatType === 'public',
+          name: chatName,
+          description: chatDescription,
+          photo_url: chatImageUrl || null
+        })
         .select()
         .single();
 

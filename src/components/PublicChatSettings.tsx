@@ -19,6 +19,12 @@ interface PublicChatSettingsProps {
   conversationId: string;
 }
 
+interface User {
+  id: string;
+  display_name: string;
+  avatar_url?: string;
+}
+
 interface ChatInfo {
   name: string;
   description: string;
@@ -46,6 +52,7 @@ interface Profile {
 }
 
 export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicChatSettingsProps) => {
+  const user = JSON.parse(localStorage.getItem('auth_user') || 'null') as User | null;
   const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,15 +84,37 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
   const fetchChatInfo = async () => {
     setLoading(true);
     try {
-      // Set default chat info without relying on system messages
-      setChatInfo({
-        name: 'Chat Público',
-        description: '',
-        creatorId: '',
-        creatorName: 'Usuário',
-        creatorAvatar: '',
-        createdAt: new Date().toISOString()
-      });
+      // Get conversation info from database
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select(`
+          id,
+          name,
+          description,
+          photo_url,
+          creator_id,
+          created_at,
+          profiles!conversations_creator_id_fkey (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('id', conversationId)
+        .single();
+
+      if (convError) throw convError;
+
+      if (conversation && conversation.profiles) {
+        setChatInfo({
+          name: conversation.name || 'Chat Público',
+          description: conversation.description || '',
+          creatorId: conversation.creator_id || '',
+          creatorName: conversation.profiles.display_name || 'Usuário',
+          creatorAvatar: conversation.profiles.avatar_url || '',
+          createdAt: conversation.created_at
+        });
+        setChatPhoto(conversation.photo_url);
+      }
     } catch (error) {
       console.error('Error fetching chat info:', error);
     } finally {
@@ -210,7 +239,19 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
     if (!chatInfo || !editName.trim()) return;
 
     try {
-      // Update chat info without creating system messages
+      // Update conversation in database
+      const { error: updateError } = await supabase
+        .from('conversations')
+        .update({
+          name: editName,
+          description: editDescription,
+          photo_url: editPhoto || chatPhoto
+        })
+        .eq('id', conversationId);
+
+      if (updateError) throw updateError;
+
+      // Update local state
       setChatInfo({
         ...chatInfo,
         name: editName,
@@ -341,23 +382,25 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Informações do Chat</h3>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setIsEditingInfo(true)}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Editar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {chatInfo && user?.id === chatInfo.creatorId && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setIsEditingInfo(true)}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
               
               {isEditingInfo ? (

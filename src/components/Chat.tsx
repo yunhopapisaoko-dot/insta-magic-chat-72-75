@@ -96,7 +96,22 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     if (!user || !conversationId) return;
 
     try {
-      // Check if this conversation has many participants (indicates public chat)
+      // Check if this conversation is marked as public
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('is_public, creator_id, name, photo_url')
+        .eq('id', conversationId)
+        .single();
+
+      if (convError) {
+        console.error('Error checking conversation:', convError);
+        return;
+      }
+
+      setIsPublicChat(conversation?.is_public || false);
+      setChatPhoto(conversation?.photo_url || null);
+
+      // Check if user is a participant
       const { data: participants, error: participantsError } = await supabase
         .from('conversation_participants')
         .select('user_id')

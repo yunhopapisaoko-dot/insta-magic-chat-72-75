@@ -31,6 +31,11 @@ export const useOptimizedConversations = () => {
           conversation_id,
           conversations:conversation_id (
             id,
+            name,
+            description,
+            photo_url,
+            creator_id,
+            is_public,
             created_at,
             updated_at
           )
@@ -39,28 +44,27 @@ export const useOptimizedConversations = () => {
 
       if (participantError) throw participantError;
 
-      // Get public chats (conversations with public messages) for all users
+      // Get all public chats for all users
       const { data: publicChats, error: publicError } = await supabase
-        .from('messages')
+        .from('conversations')
         .select(`
-          conversation_id,
-          content,
+          id,
+          name,
+          description,
+          photo_url,
+          creator_id,
+          is_public,
           created_at,
-          conversations:conversation_id (
-            id,
-            created_at,
-            updated_at
-          )
+          updated_at
         `)
-        .ilike('content', '%🌐 Chat Público%')
-        .order('created_at', { ascending: true });
+        .eq('is_public', true);
 
       if (publicError) throw publicError;
 
       // Combine participant conversations with public chats
       const allConversationIds = new Set([
         ...(participantData?.map(p => p.conversation_id) || []),
-        ...(publicChats?.map(p => p.conversation_id) || [])
+        ...(publicChats?.map(p => p.id) || [])
       ]);
 
       if (allConversationIds.size === 0) {
@@ -189,26 +193,33 @@ export const useOptimizedConversations = () => {
 
       // Add public chats that aren't already in user's conversations
       publicChats?.forEach((publicChat) => {
-        const conv = publicChat.conversations;
-        if (!conv || conversationsMap.has(conv.id)) return;
+        if (conversationsMap.has(publicChat.id)) return;
 
-        // Extract chat name from public message
-        const chatNameMatch = publicChat.content?.match(/: "([^"]+)"/);
-        const chatName = chatNameMatch ? chatNameMatch[1] : 'Chat Público';
+        const lastMessage = lastMessageMap[publicChat.id];
         
-        conversationsMap.set(conv.id, {
-          id: conv.id,
-          created_at: conv.created_at,
-          updated_at: conv.updated_at,
+        conversationsMap.set(publicChat.id, {
+          id: publicChat.id,
+          created_at: publicChat.created_at,
+          updated_at: publicChat.updated_at,
           other_user: {
             id: 'public',
-            display_name: `🌐 ${chatName}`,
+            display_name: `🌐 ${publicChat.name || 'Chat Público'}`,
             username: 'public_chat',
-            avatar_url: null,
+            avatar_url: publicChat.photo_url,
           },
-          last_message: {
+          last_message: lastMessage ? {
             id: 'temp',
-            conversation_id: conv.id,
+            conversation_id: publicChat.id,
+            content: lastMessage.content,
+            created_at: lastMessage.created_at,
+            sender_id: 'system',
+            media_url: null,
+            media_type: null,
+            story_id: null,
+            read_at: null
+          } : {
+            id: 'temp',
+            conversation_id: publicChat.id,
             content: 'Chat público disponível para todos',
             created_at: publicChat.created_at,
             sender_id: 'system',
