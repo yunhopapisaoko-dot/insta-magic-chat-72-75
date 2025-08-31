@@ -107,23 +107,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   // Auto scroll when new messages arrive
   useEffect(() => {
-    if (messages.length > 0) {
-      // Use timeout to ensure DOM has updated
-      setTimeout(() => {
-        scrollToBottom(false); // Always use smooth scroll
-      }, 100);
-    }
-  }, [messages]);
-
-  // Scroll to bottom after sending message
-  useEffect(() => {
-    if (!sending && newMessage === '') {
-      // Message was just sent (newMessage cleared and not sending anymore)
-      setTimeout(() => {
-        scrollToBottom(false);
-      }, 100);
-    }
-  }, [sending, newMessage]);
+    // First load: scroll instantly to bottom, subsequent messages: smooth scroll
+    const isFirstLoad = messages.length > 0 && !loading;
+    scrollToBottom(isFirstLoad);
+  }, [messages, loading]);
 
   // Mark conversation as read when viewing
   useEffect(() => {
@@ -326,7 +313,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   return (
     <MobileLayout>
-      <div className="flex flex-col h-screen relative">
+      <div className="flex flex-col h-screen">
         {/* Fixed Header */}
         <Card className="card-shadow border-0 rounded-none sticky top-0 z-10 bg-background">
           <CardHeader className="py-4 px-6">
@@ -383,8 +370,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           </CardHeader>
         </Card>
 
-        {/* Messages - with padding for fixed header and input */}
-        <div className="flex-1 overflow-y-auto p-4 pb-24">
+        {/* Messages - with padding top to account for fixed header */}
+        <div className="flex-1 overflow-y-auto p-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
@@ -508,9 +495,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           )}
         </div>
 
-        {/* Input - Fixed at bottom */}
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t">
-          <div className="p-4 space-y-3">
+        {/* Input */}
+        <Card className="card-shadow border-0 rounded-none">
+          <CardContent className="p-4 space-y-3">
             {/* Media Upload */}
             {showMediaUpload && (
               <MediaUpload
@@ -549,8 +536,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Settings Modal */}
         <Dialog open={showSettings} onOpenChange={setShowSettings}>
