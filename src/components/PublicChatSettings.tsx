@@ -7,8 +7,9 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
-import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit } from 'lucide-react';
+import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PublicChatSettingsProps {
@@ -53,6 +54,9 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editPhoto, setEditPhoto] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [chatPhoto, setChatPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && conversationId) {
@@ -96,6 +100,11 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
         // Extract description if it exists
         const descriptionMatch = message.content?.match(/📝 (.+)/);
         const description = descriptionMatch ? descriptionMatch[1].trim() : '';
+        
+        // Extract chat photo if it exists
+        const photoMatch = message.content?.match(/📷 (.+)/);
+        const photoUrl = photoMatch ? photoMatch[1].trim() : null;
+        setChatPhoto(photoUrl);
         
         // Get creator profile separately
         const { data: creatorProfile } = await supabase
@@ -213,6 +222,36 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
     }
   };
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Simple base64 conversion for now - in a real app you'd upload to storage
+    setPhotoUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setEditPhoto(result);
+        setPhotoUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      setPhotoUploading(false);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar a foto.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setEditPhoto(null);
+    setChatPhoto(null);
+  };
+
   const handleSaveInfo = async () => {
     if (!chatInfo || !editName.trim()) return;
 
@@ -230,6 +269,11 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
         let newContent = `🌐 Chat Público: "${editName}" criado!`;
         if (editDescription.trim()) {
           newContent += `\n📝 ${editDescription}`;
+        }
+        if (editPhoto) {
+          newContent += `\n📷 ${editPhoto}`;
+          setChatPhoto(editPhoto);
+          setEditPhoto(null);
         }
 
         const { error } = await supabase
@@ -299,8 +343,16 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
           <div className="space-y-6">
             {/* Chat Photo and Name */}
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Globe className="w-10 h-10 text-white" />
+              <div className="relative w-20 h-20 mx-auto">
+                <Avatar className="w-20 h-20">
+                  {chatPhoto || editPhoto ? (
+                    <AvatarImage src={editPhoto || chatPhoto || ''} className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                      <Globe className="w-10 h-10 text-white" />
+                    </div>
+                  )}
+                </Avatar>
               </div>
               
               <div>
@@ -316,18 +368,83 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Informações do Chat</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditingInfo(true)}
-                  className="h-8 w-8 p-0"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setIsEditingInfo(true)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Editar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               {isEditingInfo ? (
                 <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Foto do Chat</label>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-16 h-16">
+                        {editPhoto ? (
+                          <AvatarImage src={editPhoto} className="object-cover" />
+                        ) : chatPhoto ? (
+                          <AvatarImage src={chatPhoto} className="object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                            <Globe className="w-8 h-8 text-white" />
+                          </div>
+                        )}
+                      </Avatar>
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                          id="chat-photo-upload"
+                        />
+                        <label htmlFor="chat-photo-upload">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full cursor-pointer"
+                            disabled={photoUploading}
+                            asChild
+                          >
+                            <span>
+                              {photoUploading ? (
+                                <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin mr-2" />
+                              ) : (
+                                <Camera className="w-3 h-3 mr-2" />
+                              )}
+                              {photoUploading ? 'Enviando...' : 'Alterar Foto'}
+                            </span>
+                          </Button>
+                        </label>
+                        {(editPhoto || chatPhoto) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRemovePhoto}
+                            className="w-full text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-3 h-3 mr-2" />
+                            Remover Foto
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <label className="text-xs font-medium">Nome do Chat</label>
                     <Input
@@ -359,6 +476,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                         setIsEditingInfo(false);
                         setEditName(chatInfo?.name || '');
                         setEditDescription(chatInfo?.description || '');
+                        setEditPhoto(null);
                       }}
                       className="flex-1"
                     >
