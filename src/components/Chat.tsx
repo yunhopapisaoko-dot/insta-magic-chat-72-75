@@ -50,6 +50,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -106,6 +107,21 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   };
 
   // Removed auto scroll to keep chat position fixed
+
+  // Initial scroll to bottom when messages first load
+  useEffect(() => {
+    if (messages.length > 0 && !loading && !hasInitialScrolled) {
+      setTimeout(() => {
+        scrollToBottom(true); // Instant scroll on initial load
+        setHasInitialScrolled(true);
+      }, 100);
+    }
+  }, [messages.length, loading, hasInitialScrolled]);
+
+  // Reset scroll state when conversation changes
+  useEffect(() => {
+    setHasInitialScrolled(false);
+  }, [conversationId]);
 
   // Mark conversation as read when viewing
   useEffect(() => {

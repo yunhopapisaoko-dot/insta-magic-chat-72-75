@@ -32,6 +32,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
   } = useRealtimePublicChat();
   const [newMessage, setNewMessage] = useState('');
   const [isNearBottom, setIsNearBottom] = useState(true);
+  const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -51,12 +52,17 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     setIsNearBottom(checkIfNearBottom());
   }, [checkIfNearBottom]);
 
+  // Initial scroll to bottom when messages first load
+  useEffect(() => {
+    if (messages.length > 0 && !loading && !hasInitialScrolled) {
+      setTimeout(() => {
+        scrollToBottom();
+        setHasInitialScrolled(true);
+      }, 100);
+    }
+  }, [messages.length, loading, hasInitialScrolled]);
+
   // Removed auto-scroll to keep chat position fixed
-  // useEffect(() => {
-  //   if (isNearBottom) {
-  //     scrollToBottom();
-  //   }
-  // }, [messages, typingUsers, isNearBottom]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });

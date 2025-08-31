@@ -44,6 +44,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   const [participants, setParticipants] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,12 +69,22 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     }
   }, [isOpen, user?.id, otherUser.id, conversationId]);
 
+  // Initial scroll to bottom when messages first load
+  useEffect(() => {
+    if (messages.length > 0 && !loading && !hasInitialScrolled && conversationId) {
+      setTimeout(() => {
+        scrollToBottom();
+        setHasInitialScrolled(true);
+      }, 100);
+    }
+  }, [messages.length, loading, hasInitialScrolled, conversationId]);
+
+  // Reset scroll state when conversation changes or opens
+  useEffect(() => {
+    setHasInitialScrolled(false);
+  }, [conversationId, isOpen]);
+
   // Removed auto-scroll to keep chat position fixed
-  // useEffect(() => {
-  //   if (messages.length > 0) {
-  //     scrollToBottom();
-  //   }
-  // }, [messages.length]);
 
   const initializeConversation = async () => {
     if (!user) return;
