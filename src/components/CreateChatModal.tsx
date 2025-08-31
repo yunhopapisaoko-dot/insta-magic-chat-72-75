@@ -3,11 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Users, MessageCircle, Plus } from 'lucide-react';
+import { Search, Users, MessageCircle, Plus, Camera, Globe } from 'lucide-react';
+import MediaUpload from '@/components/MediaUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -30,6 +32,8 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
   const [step, setStep] = useState<'type' | 'details' | 'invite'>('type');
   const [chatType, setChatType] = useState<'public' | 'private'>('public');
   const [chatName, setChatName] = useState('');
+  const [chatDescription, setChatDescription] = useState('');
+  const [chatImageUrl, setChatImageUrl] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -87,7 +91,7 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
 
     setIsCreating(true);
     try {
-      // Create conversation
+      // Create conversation (simplified - metadata will be stored in first message)
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
         .insert({})
@@ -106,8 +110,8 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
 
       if (participantError) throw participantError;
 
-      // Add selected users to conversation
-      if (selectedUsers.size > 0) {
+      // Add selected users to conversation (for private chats)
+      if (chatType === 'private' && selectedUsers.size > 0) {
         const participants = Array.from(selectedUsers).map(userId => ({
           conversation_id: conversation.id,
           user_id: userId,
@@ -120,10 +124,11 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
         if (participantsError) throw participantsError;
       }
 
-      // Send initial message with chat name/purpose
-      const initialMessage = chatType === 'public' 
-        ? `Chat público "${chatName}" criado!`
-        : `Chat privado "${chatName}" criado!`;
+      // Send initial message with chat metadata
+      let initialMessage = `${chatType === 'public' ? '🌐' : '🔒'} ${chatType === 'public' ? 'Chat Público' : 'Chat Privado'}: "${chatName}" criado!`;
+      if (chatDescription) {
+        initialMessage += `\n📝 ${chatDescription}`;
+      }
 
       const { error: messageError } = await supabase
         .from('messages')
@@ -158,6 +163,8 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
     setStep('type');
     setChatType('public');
     setChatName('');
+    setChatDescription('');
+    setChatImageUrl('');
     setSearchTerm('');
     setSelectedUsers(new Set());
     onClose();
@@ -250,33 +257,107 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
 
           {step === 'details' && (
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="chat-name">Nome do Chat</Label>
-                <Input
-                  id="chat-name"
-                  placeholder={`Nome do chat ${chatType === 'public' ? 'público' : 'privado'}...`}
-                  value={chatName}
-                  onChange={(e) => setChatName(e.target.value)}
-                  maxLength={50}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {chatName.length}/50 caracteres
-                </p>
-              </div>
-              
               {chatType === 'public' && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    💡 Chats públicos aparecem na lista para todos os usuários participarem
-                  </p>
+                <div className="space-y-4">
+                  {/* Chat Image */}
+                  <div className="space-y-2">
+                    <Label>Foto do Chat</Label>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
+                        {chatImageUrl ? (
+                          <img src={chatImageUrl} alt="Chat" className="w-full h-full object-cover" />
+                        ) : (
+                          <Camera className="w-8 h-8 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              // Simulate upload for now - in production you'd upload to storage
+                              const url = URL.createObjectURL(file);
+                              setChatImageUrl(url);
+                            }
+                          }}
+                          className="hidden"
+                          id="chat-image-upload"
+                        />
+                        <label htmlFor="chat-image-upload">
+                          <Button variant="outline" size="sm" type="button" asChild>
+                            <span className="cursor-pointer">
+                              <Camera className="w-4 h-4 mr-2" />
+                              {chatImageUrl ? 'Trocar Foto' : 'Adicionar Foto'}
+                            </span>
+                          </Button>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chat Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="chat-name">Nome do Chat</Label>
+                    <Input
+                      id="chat-name"
+                      placeholder="Nome do chat público..."
+                      value={chatName}
+                      onChange={(e) => setChatName(e.target.value)}
+                      maxLength={50}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {chatName.length}/50 caracteres
+                    </p>
+                  </div>
+
+                  {/* Chat Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="chat-description">Descrição do Chat</Label>
+                    <Textarea
+                      id="chat-description"
+                      placeholder="Descreva sobre o que é este chat..."
+                      value={chatDescription}
+                      onChange={(e) => setChatDescription(e.target.value)}
+                      maxLength={200}
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {chatDescription.length}/200 caracteres
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                    <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center">
+                      <Globe className="w-4 h-4 mr-2" />
+                      Este chat será público e todos poderão participar
+                    </p>
+                  </div>
                 </div>
               )}
-              
+
               {chatType === 'private' && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    🔒 Chats privados são visíveis apenas para pessoas convidadas
-                  </p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="chat-name">Nome do Chat</Label>
+                    <Input
+                      id="chat-name"
+                      placeholder="Nome do chat privado..."
+                      value={chatName}
+                      onChange={(e) => setChatName(e.target.value)}
+                      maxLength={50}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {chatName.length}/50 caracteres
+                    </p>
+                  </div>
+                  
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      🔒 Chats privados são visíveis apenas para pessoas convidadas
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

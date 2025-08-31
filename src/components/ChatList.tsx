@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, Search, Users, LogOut, Plus } from 'lucide-react';
+import { MessageCircle, Search, Users, LogOut, Plus, Globe } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useOptimizedConversations } from '@/hooks/useOptimizedConversations';
@@ -187,52 +187,85 @@ const ChatList = () => {
               </CardContent>
             </Card>
           ) : (
-            filteredConversations.map((conversation) => (
-              <Card 
-                key={conversation.id} 
-                className="card-shadow border-0 cursor-pointer hover:bg-muted/20 transition-colors"
-                onClick={() => setSelectedConversation(conversation.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={conversation.other_user.avatar_url || ''} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                        {conversation.other_user.display_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-semibold text-sm truncate">
-                          {conversation.other_user.display_name}
-                        </h4>
-                        {conversation.last_message && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatTimeAgo(conversation.last_message.created_at)}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conversation.last_message?.sender_id === user?.id && 'Você: '}
-                          {formatLastMessage(conversation.last_message?.content)}
-                        </p>
-                        
-                        {conversation.unread_count > 0 && (
-                          <div className="relative">
-                            <div className="bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1.5 ml-2 shadow-sm">
-                              {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
+            filteredConversations.map((conversation) => {
+              // Check if it's a public chat based on the first message content
+              const isPublicChat = conversation.last_message?.content?.includes('🌐 Chat Público');
+              const chatName = isPublicChat 
+                ? conversation.last_message?.content?.match(/: "([^"]+)"/)?.[1] 
+                : null;
+              
+              return (
+                <Card 
+                  key={conversation.id} 
+                  className="card-shadow border-0 cursor-pointer hover:bg-muted/20 transition-colors"
+                  onClick={() => setSelectedConversation(conversation.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <Avatar className="w-12 h-12">
+                          {isPublicChat ? (
+                            <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                              <Users className="w-6 h-6 text-white" />
                             </div>
+                          ) : (
+                            <>
+                              <AvatarImage src={conversation.other_user.avatar_url || ''} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+                                {conversation.other_user.display_name[0]}
+                              </AvatarFallback>
+                            </>
+                          )}
+                        </Avatar>
+                        {isPublicChat && (
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <Globe className="w-3 h-3 text-white" />
                           </div>
                         )}
                       </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="font-semibold text-sm truncate flex items-center gap-1">
+                            {isPublicChat ? (
+                              <>
+                                <Globe className="w-3 h-3 text-green-500" />
+                                {chatName || 'Chat Público'}
+                              </>
+                            ) : (
+                              conversation.other_user.display_name
+                            )}
+                          </h4>
+                          {conversation.last_message && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatTimeAgo(conversation.last_message.created_at)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground truncate">
+                            {conversation.last_message?.sender_id === user?.id && 'Você: '}
+                            {isPublicChat 
+                              ? 'Chat público criado'
+                              : formatLastMessage(conversation.last_message?.content)
+                            }
+                          </p>
+                          
+                          {conversation.unread_count > 0 && (
+                            <div className="relative">
+                              <div className="bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1.5 ml-2 shadow-sm">
+                                {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
         
