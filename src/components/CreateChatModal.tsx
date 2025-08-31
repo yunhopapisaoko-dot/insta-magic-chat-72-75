@@ -124,21 +124,8 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
         if (participantsError) throw participantsError;
       }
 
-      // Send initial message with chat metadata
-      let initialMessage = `${chatType === 'public' ? '🌐' : '🔒'} ${chatType === 'public' ? 'Chat Público' : 'Chat Privado'}: "${chatName}" criado!`;
-      if (chatDescription) {
-        initialMessage += `\n📝 ${chatDescription}`;
-      }
-
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversation.id,
-          sender_id: user.id,
-          content: initialMessage,
-        });
-
-      if (messageError) throw messageError;
+      // Store chat metadata without sending an automatic message
+      // Chat info will be stored when first real message is sent
 
       toast({
         title: "Sucesso",

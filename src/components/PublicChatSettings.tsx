@@ -53,13 +53,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
         .select(`
           content,
           sender_id,
-          created_at,
-          profiles:sender_id (
-            id,
-            display_name,
-            username,
-            avatar_url
-          )
+          created_at
         `)
         .eq('conversation_id', conversationId)
         .ilike('content', '%🌐 Chat Público%')
@@ -79,15 +73,30 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
         const descriptionMatch = message.content?.match(/📝 (.+)/);
         const description = descriptionMatch ? descriptionMatch[1].trim() : '';
         
-        const profile = message.profiles as any;
+        // Get creator profile separately
+        const { data: creatorProfile } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_url')
+          .eq('id', message.sender_id)
+          .single();
         
         setChatInfo({
           name: chatName,
           description: description,
           creatorId: message.sender_id,
-          creatorName: profile?.display_name || 'Usuário',
-          creatorAvatar: profile?.avatar_url,
+          creatorName: creatorProfile?.display_name || 'Usuário',
+          creatorAvatar: creatorProfile?.avatar_url,
           createdAt: message.created_at
+        });
+      } else {
+        // If no initial message found, show basic info
+        setChatInfo({
+          name: 'Chat Público',
+          description: '',
+          creatorId: '',
+          creatorName: 'Usuário',
+          creatorAvatar: '',
+          createdAt: new Date().toISOString()
         });
       }
     } catch (error) {
