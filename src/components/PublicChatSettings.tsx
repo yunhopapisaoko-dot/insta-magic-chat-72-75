@@ -70,6 +70,8 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
   const [chatPhoto, setChatPhoto] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showWallpaperSettings, setShowWallpaperSettings] = useState(false);
+  const [showAllParticipants, setShowAllParticipants] = useState(false);
+  const [participantSearchQuery, setParticipantSearchQuery] = useState('');
   const [currentWallpaper, setCurrentWallpaper] = useState<{
     type: 'color' | 'image';
     value: string;
@@ -628,7 +630,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                 </Button>
               </div>
                
-              {/* Participant list */}
+              {/* Participant list - Show only first 5 */}
               <div className="space-y-2">
                 {participants.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
@@ -637,29 +639,45 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                     <p className="text-xs">Adicione pessoas para começar a conversar!</p>
                   </div>
                 ) : (
-                  participants.map((participant) => (
-                    <div key={participant.user_id} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={participant.profiles?.avatar_url || ''} />
-                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
-                          {participant.profiles?.display_name?.[0] || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {participant.profiles?.display_name || 'Usuário'}
-                          {participant.user_id === chatInfo.creatorId && (
-                            <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                              Criador
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          @{participant.profiles?.username || 'unknown'}
-                        </p>
+                  <>
+                    {/* Show first 5 participants */}
+                    {participants.slice(0, 5).map((participant) => (
+                      <div key={participant.user_id} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
+                            {participant.profiles?.display_name?.[0] || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {participant.profiles?.display_name || 'Usuário'}
+                            {participant.user_id === chatInfo.creatorId && (
+                              <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                                Criador
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            @{participant.profiles?.username || 'unknown'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    
+                    {/* Show more button if there are more than 5 participants */}
+                    {participants.length > 5 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllParticipants(true)}
+                        className="w-full mt-2"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Ver todos os {participants.length} participantes
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -797,6 +815,85 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                   )}
                 </div>
               </ScrollArea>
+            </div>
+          </div>
+        )}
+
+        {/* All Participants Modal */}
+        {showAllParticipants && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAllParticipants(false)}>
+            <div className="bg-background p-4 rounded-lg max-w-md w-full mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold">Todos os Participantes ({participants.length})</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowAllParticipants(false);
+                    setParticipantSearchQuery('');
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {/* Search Input */}
+              <div className="mb-4">
+                <Input
+                  placeholder="Buscar participantes..."
+                  value={participantSearchQuery}
+                  onChange={(e) => setParticipantSearchQuery(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <div className="space-y-2">
+                  {participants
+                    .filter(participant => 
+                      !participantSearchQuery || 
+                      participant.profiles?.display_name?.toLowerCase().includes(participantSearchQuery.toLowerCase()) ||
+                      participant.profiles?.username?.toLowerCase().includes(participantSearchQuery.toLowerCase())
+                    )
+                    .map((participant) => (
+                      <div key={participant.user_id} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
+                        <Avatar className="w-12 h-12">
+                          <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-medium">
+                            {participant.profiles?.display_name?.[0] || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {participant.profiles?.display_name || 'Usuário'}
+                            {participant.user_id === chatInfo.creatorId && (
+                              <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                                Criador
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            @{participant.profiles?.username || 'unknown'}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  
+                  {/* No results message */}
+                  {participantSearchQuery && participants.filter(participant => 
+                    participant.profiles?.display_name?.toLowerCase().includes(participantSearchQuery.toLowerCase()) ||
+                    participant.profiles?.username?.toLowerCase().includes(participantSearchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Nenhum participante encontrado</p>
+                      <p className="text-xs">Tente uma busca diferente</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
