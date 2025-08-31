@@ -369,16 +369,16 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Globe className="w-5 h-5" />
             Informações do Chat Público
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6 pb-4">
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-6 pb-4 pr-2">
             {/* Chat Photo and Name - Centered */}
             <div className="text-center space-y-4">
               <div className="flex flex-col items-center space-y-3">
@@ -709,7 +709,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
               </Button>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Add Users Modal */}
         {showAddUsers && (
