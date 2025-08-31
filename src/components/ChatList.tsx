@@ -202,12 +202,31 @@ const ChatList = () => {
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-3">
-                      <div className="relative">
+                       <div className="relative">
                         <Avatar className="w-12 h-12">
                           {isPublicChat ? (
-                            <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                              <Users className="w-6 h-6 text-white" />
-                            </div>
+                            (() => {
+                              // Try to extract chat photo from first message metadata
+                              let chatPhoto = null;
+                              try {
+                                const metadata = JSON.parse(conversation.last_message?.content || '{}');
+                                chatPhoto = metadata.chatPhoto;
+                              } catch (e) {
+                                // If it's not JSON metadata, it might be in the format we expect
+                                const photoMatch = conversation.last_message?.content?.match(/"chatPhoto":"([^"]+)"/);
+                                if (photoMatch) {
+                                  chatPhoto = photoMatch[1];
+                                }
+                              }
+
+                              return chatPhoto ? (
+                                <AvatarImage src={chatPhoto} className="object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                                  <Users className="w-6 h-6 text-white" />
+                                </div>
+                              );
+                            })()
                           ) : (
                             <>
                               <AvatarImage src={conversation.other_user.avatar_url || ''} />
