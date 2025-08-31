@@ -108,7 +108,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         return;
       }
 
-      setIsPublicChat(conversation?.is_public || false);
+      // Use the database flag directly
+      const isPublic = conversation?.is_public || false;
+      setIsPublicChat(isPublic);
       setChatPhoto(conversation?.photo_url || null);
 
       // Check if user is a participant
@@ -119,12 +121,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
       if (participantsError) throw participantsError;
 
-      const isPublic = participants && participants.length > 2;
-      setIsPublicChat(!!isPublic);
-
       if (isPublic) {
         // Check if user is already a participant
-        const isUserParticipant = participants.some(p => p.user_id === user.id);
+        const isUserParticipant = participants?.some(p => p.user_id === user.id) || false;
         setIsParticipant(isUserParticipant);
 
         // Auto-join if user is participant
@@ -176,21 +175,22 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     if (!conversationId || !user) return;
 
     try {
-      // Check if this is a public chat by checking participants count
-      const { data: participantsCount, error: countError } = await supabase
-        .from('conversation_participants')
-        .select('user_id', { count: 'exact' })
-        .eq('conversation_id', conversationId);
+      // First check if this conversation is public from the database
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('is_public, name, photo_url')
+        .eq('id', conversationId)
+        .single();
 
-      if (countError) throw countError;
+      if (convError) throw convError;
 
-      // If it has many participants, treat as public chat
-      if (participantsCount && participantsCount.length > 2) {
+      // If it's a public chat, set the display name accordingly
+      if (conversation?.is_public) {
         setOtherUser({
           id: 'public',
-          display_name: '🌐 Chat Público',
+          display_name: conversation.name || 'Chat Público',
           username: 'public_chat',
-          avatar_url: null
+          avatar_url: conversation.photo_url
         });
         return;
       }
@@ -231,11 +231,12 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           });
         }
       } else {
+        // New chat without other participants yet
         setOtherUser({
-          id: 'unknown',
-          display_name: 'Usuário',
-          username: 'unknown',
-          avatar_url: null
+          id: 'new_chat',
+          display_name: conversation?.name || 'Novo Chat',
+          username: 'new_chat',
+          avatar_url: conversation?.photo_url || null
         });
       }
     } catch (error) {
