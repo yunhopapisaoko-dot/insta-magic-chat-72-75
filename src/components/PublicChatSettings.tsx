@@ -578,20 +578,53 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                   <Users className="w-4 h-4" />
                   Participantes ({participants.length})
                 </h3>
+              </div>
+              
+              {/* Visible participants in a row */}
+              <div className="flex items-center gap-2">
+                {participants.slice(0, 8).map((participant) => (
+                  <Avatar key={participant.user_id} className="w-10 h-10 border-2 border-background">
+                    <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                      {participant.profiles?.display_name?.[0] || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                
+                {participants.length > 8 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-10 h-10 rounded-full p-0 border-dashed"
+                    onClick={() => {
+                      setShowAddUsers(false);
+                      // Toggle expanded participants view
+                      const element = document.getElementById('all-participants');
+                      if (element) {
+                        element.style.display = element.style.display === 'none' ? 'block' : 'none';
+                      }
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                )}
+                
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     setShowAddUsers(true);
                     fetchAvailableUsers();
                   }}
-                  className="h-8 w-8 p-0"
+                  className="w-10 h-10 rounded-full p-0"
+                  title="Adicionar participantes"
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
               
-              <div className="space-y-2 max-h-40 overflow-y-auto">
+              {/* All participants (expandable) */}
+              <div id="all-participants" style={{ display: participants.length <= 8 ? 'block' : 'none' }} className="space-y-2 max-h-40 overflow-y-auto">
                 {participants.map((participant) => (
                   <div key={participant.user_id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50">
                     <Avatar className="w-8 h-8">
