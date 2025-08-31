@@ -371,7 +371,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         </Card>
 
         {/* Messages - with padding top to account for fixed header */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pt-6">
+        <div className="flex-1 overflow-y-auto p-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
@@ -386,8 +386,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               </div>
             </div>
           ) : (
-            <>
-              {messages.map((message, index) => {
+            <div className="flex flex-col justify-end min-h-full">
+              <div className="space-y-4">
+                {messages.map((message, index) => {
                 const previousMessage = messages[index - 1];
                 const isOwnMessage = message.sender_id === user?.id;
                 const showDateSeparator = shouldShowDateSeparator(message, previousMessage);
@@ -483,13 +484,14 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                      </div>
                   </div>
                 );
-              })}
-              
-              {/* Typing Indicator */}
-              <TypingIndicator typingUsers={typingUsers} className="px-2" />
-              
-              <div ref={messagesEndRef} />
-            </>
+                })}
+                
+                {/* Typing Indicator */}
+                <TypingIndicator typingUsers={typingUsers} className="px-2" />
+                
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
           )}
         </div>
 
