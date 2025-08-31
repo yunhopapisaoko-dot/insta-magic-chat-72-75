@@ -69,13 +69,12 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     }
   }, [isOpen, user?.id, otherUser.id, conversationId]);
 
-  // Initial scroll to bottom when messages first load
+  // Load messages at bottom position without scrolling
   useEffect(() => {
-    if (messages.length > 0 && !loading && !hasInitialScrolled && conversationId) {
-      setTimeout(() => {
-        scrollToBottom();
-        setHasInitialScrolled(true);
-      }, 100);
+    if (messages.length > 0 && !loading && !hasInitialScrolled && conversationId && messagesEndRef.current) {
+      // Position at bottom instantly without animation
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+      setHasInitialScrolled(true);
     }
   }, [messages.length, loading, hasInitialScrolled, conversationId]);
 

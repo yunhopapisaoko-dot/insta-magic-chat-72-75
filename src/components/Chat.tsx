@@ -108,13 +108,12 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   // Removed auto scroll to keep chat position fixed
 
-  // Initial scroll to bottom when messages first load
+  // Load messages at bottom position without scrolling
   useEffect(() => {
-    if (messages.length > 0 && !loading && !hasInitialScrolled) {
-      setTimeout(() => {
-        scrollToBottom(true); // Instant scroll on initial load
-        setHasInitialScrolled(true);
-      }, 100);
+    if (messages.length > 0 && !loading && !hasInitialScrolled && messagesEndRef.current) {
+      // Position at bottom instantly without animation
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+      setHasInitialScrolled(true);
     }
   }, [messages.length, loading, hasInitialScrolled]);
 
@@ -396,7 +395,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               </div>
             </div>
           ) : (
-            <div className="space-y-4" style={{ paddingTop: 'auto' }}>
+            <div className="flex flex-col justify-end min-h-full">
+              <div className="space-y-4">
                 {messages.map((message, index) => {
                 const previousMessage = messages[index - 1];
                 const isOwnMessage = message.sender_id === user?.id;
@@ -499,6 +499,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 <TypingIndicator typingUsers={typingUsers} className="px-2" />
                 
                 <div ref={messagesEndRef} />
+              </div>
             </div>
           )}
         </div>
