@@ -17,6 +17,9 @@ import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import { PublicChatSettings } from '@/components/PublicChatSettings';
+import { MessageContextMenu } from '@/components/MessageContextMenu';
+import { MessageBubble } from '@/components/MessageBubble';
+import { useLongPress } from '@/hooks/useLongPress';
 
 interface ChatProps {
   conversationId: string;
@@ -57,6 +60,28 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [isParticipant, setIsParticipant] = useState(true);
   const [joining, setJoining] = useState(false);
   const [chatPhoto, setChatPhoto] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    messageId: string;
+    isOwnMessage: boolean;
+    messageContent: string;
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    messageId: '',
+    isOwnMessage: false,
+    messageContent: ''
+  });
+  const [editingMessage, setEditingMessage] = useState<{
+    id: string;
+    content: string;
+  } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    content: string;
+    senderName: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -396,6 +421,108 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                  u.username.toLowerCase().includes(searchQuery.toLowerCase()))
     .filter(u => !participants.some(p => p.profiles?.id === u.id) && u.id !== user?.id);
 
+  // Message context menu handlers
+  const handleMessageLongPress = (event: React.TouchEvent | React.MouseEvent, message: any) => {
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    setContextMenu({
+      isOpen: true,
+      position: { x: rect.left, y: rect.top },
+      messageId: message.id,
+      isOwnMessage: message.sender_id === user?.id,
+      messageContent: message.content || ''
+    });
+  };
+
+  const handleCopyMessage = () => {
+    navigator.clipboard.writeText(contextMenu.messageContent);
+    toast({
+      title: "Copiado",
+      description: "Mensagem copiada para a área de transferência",
+    });
+  };
+
+  const handleDeleteMessage = async () => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', contextMenu.messageId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Mensagem apagada",
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível apagar a mensagem",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditMessage = () => {
+    const message = messages.find(m => m.id === contextMenu.messageId);
+    if (message) {
+      setEditingMessage({
+        id: message.id,
+        content: message.content || ''
+      });
+      setNewMessage(message.content || '');
+    }
+  };
+
+  const handleReplyMessage = () => {
+    const message = messages.find(m => m.id === contextMenu.messageId);
+    if (message) {
+      const senderName = message.sender_id === user?.id ? 'Você' : otherUser?.display_name || 'Usuário';
+      setReplyingTo({
+        id: message.id,
+        content: message.content || '',
+        senderName
+      });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessage || !newMessage.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ content: newMessage.trim() })
+        .eq('id', editingMessage.id);
+
+      if (error) throw error;
+
+      setEditingMessage(null);
+      setNewMessage('');
+      toast({
+        title: "Sucesso",
+        description: "Mensagem editada",
+      });
+    } catch (error) {
+      console.error('Error editing message:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível editar a mensagem",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null);
+    setNewMessage('');
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
   if (!otherUser) {
     return (
       <MobileLayout>
@@ -542,65 +669,31 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                          </Avatar>
                        )}
                        
-                       <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
-                         {!isOwnMessage && (
-                           <p className="text-xs text-muted-foreground mb-1 px-1">
-                             {otherUser?.display_name || 'Usuário'}
-                           </p>
-                         )}
-                         <div className={`p-3 rounded-2xl ${
-                           isOwnMessage 
-                             ? 'bg-primary text-primary-foreground' 
-                             : 'bg-muted'
-                         }`}>
-                           {message.content && (
-                            <p className="text-sm leading-relaxed">{message.content}</p>
-                            )}
-                            
-                            {/* Media Content */}
-                            {message.media_url && (
-                              <div className="mt-2">
-                                {message.media_type === 'video' ? (
-                                  <video
-                                    src={message.media_url}
-                                    controls
-                                    className="max-w-full rounded-lg"
-                                    style={{ maxHeight: '200px' }}
-                                    playsInline
-                                  />
-                                ) : (
-                                  <img
-                                    src={message.media_url}
-                                    alt="Imagem compartilhada"
-                                    className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                    style={{ maxHeight: '200px' }}
-                                    onClick={() => window.open(message.media_url!, '_blank')}
-                                  />
-                                )}
-                              </div>
-                            )}
-                             <div className={`flex items-center justify-between mt-1 ${
-                               isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                             }`}>
-                               <span className="text-xs">
-                                 {formatMessageTime(message.created_at)}
-                               </span>
-                               {isOwnMessage && (
-                                 <div className="flex items-center gap-1">
-                                   {message.message_status === 'read' && (
-                                     <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                                   )}
-                                   {message.message_status === 'delivered' && (
-                                     <div className="w-2 h-2 bg-green-500 rounded-full" />
-                                   )}
-                                   {(message.message_status === 'sent' || !message.message_status) && (
-                                     <div className="w-2 h-2 bg-gray-400 rounded-full" />
-                                   )}
-                                 </div>
-                               )}
-                             </div>
-                         </div>
-                       </div>
+                        <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
+                          {!isOwnMessage && (
+                            <p className="text-xs text-muted-foreground mb-1 px-1">
+                              {otherUser?.display_name || 'Usuário'}
+                            </p>
+                          )}
+                          
+                          {/* Reply preview */}
+                          {replyingTo && replyingTo.id === message.id && (
+                            <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
+                              <p className="text-xs text-muted-foreground">
+                                Respondendo a {replyingTo.senderName}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {replyingTo.content}
+                              </p>
+                            </div>
+                          )}
+                          
+                          <MessageBubble 
+                            message={message}
+                            isOwnMessage={isOwnMessage}
+                            onLongPress={(e) => handleMessageLongPress(e, message)}
+                          />
+                        </div>
                        
                        {isOwnMessage && user && (
                          <Avatar className="w-8 h-8 mt-1">
@@ -637,6 +730,31 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 />
               )}
               
+              {/* Reply/Edit bar */}
+              {(replyingTo || editingMessage) && (
+                <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <div className="flex-1">
+                    {replyingTo && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Respondendo a {replyingTo.senderName}</p>
+                        <p className="text-sm truncate">{replyingTo.content}</p>
+                      </div>
+                    )}
+                    {editingMessage && (
+                      <p className="text-xs text-muted-foreground">Editando mensagem</p>
+                    )}
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={editingMessage ? handleCancelEdit : handleCancelReply}
+                    className="w-8 h-8 p-0"
+                  >
+                    ×
+                  </Button>
+                </div>
+              )}
+              
               {/* Message Input */}
               <div className="flex items-center space-x-2">
                 <MediaUpload
@@ -648,7 +766,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                   value={newMessage}
                   onChange={(e) => handleMessageChange(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Digite uma mensagem..."
+                  placeholder={editingMessage ? "Editar mensagem..." : "Digite uma mensagem..."}
                   className="flex-1 rounded-full border-0 bg-muted/50"
                   disabled={sending}
                 />
@@ -661,7 +779,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleSendMessage();
+                    editingMessage ? handleSaveEdit() : handleSendMessage();
                   }}
                   disabled={!newMessage.trim() || sending}
                   size="sm"
@@ -824,6 +942,19 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Message Context Menu */}
+        <MessageContextMenu
+          isOpen={contextMenu.isOpen}
+          onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
+          position={contextMenu.position}
+          isOwnMessage={contextMenu.isOwnMessage}
+          messageContent={contextMenu.messageContent}
+          onCopy={handleCopyMessage}
+          onDelete={handleDeleteMessage}
+          onEdit={handleEditMessage}
+          onReply={handleReplyMessage}
+        />
       </div>
     );
 };
