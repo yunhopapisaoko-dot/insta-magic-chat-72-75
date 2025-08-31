@@ -160,18 +160,7 @@ export const useOptimizedConversations = () => {
           // Solo conversation (newly created chat without other participants yet)
           let displayName = 'Novo Chat';
           
-          // Try to extract chat name from the initial message
-          if (lastMessage?.content) {
-            const publicMatch = lastMessage.content.match(/Chat público "([^"]+)" criado!/);
-            const privateMatch = lastMessage.content.match(/Chat privado "([^"]+)" criado!/);
-            
-            if (publicMatch) {
-              displayName = `🌐 ${publicMatch[1]}`;
-            } else if (privateMatch) {
-              displayName = `🔒 ${privateMatch[1]}`;
-            }
-          }
-          
+          // For chats without participants, just use default name
           conversationsMap.set(conv.id, {
             id: conv.id,
             created_at: conv.created_at,

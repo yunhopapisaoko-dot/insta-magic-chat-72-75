@@ -264,11 +264,11 @@ const ChatList = () => {
                         
                         <div className="flex items-center justify-between">
                           <p className="text-sm text-muted-foreground truncate">
-                            {conversation.last_message?.sender_id === user?.id && 'Você: '}
-                            {isPublicChat 
-                              ? 'Chat público criado'
-                              : formatLastMessage(conversation.last_message?.content)
-                            }
+                             {conversation.last_message?.sender_id === user?.id && 'Você: '}
+                             {isPublicChat && !conversation.last_message?.content?.startsWith('🌐')
+                               ? 'Chat público'
+                               : formatLastMessage(conversation.last_message?.content)
+                             }
                           </p>
                           
                           {conversation.unread_count > 0 && (

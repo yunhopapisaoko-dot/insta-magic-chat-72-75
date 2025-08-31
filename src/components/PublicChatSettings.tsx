@@ -77,63 +77,15 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
   const fetchChatInfo = async () => {
     setLoading(true);
     try {
-      // Get the initial message that contains chat info
-      const { data: messages, error } = await supabase
-        .from('messages')
-        .select(`
-          content,
-          sender_id,
-          created_at
-        `)
-        .eq('conversation_id', conversationId)
-        .ilike('content', '%🌐 Chat Público%')
-        .order('created_at', { ascending: true })
-        .limit(1);
-
-      if (error) throw error;
-
-      if (messages && messages.length > 0) {
-        const message = messages[0];
-        
-        // Extract chat name and description from the message
-        const nameMatch = message.content?.match(/: "([^"]+)"/);
-        const chatName = nameMatch ? nameMatch[1] : 'Chat Público';
-        
-        // Extract description if it exists
-        const descriptionMatch = message.content?.match(/📝 (.+)/);
-        const description = descriptionMatch ? descriptionMatch[1].trim() : '';
-        
-        // Extract chat photo if it exists
-        const photoMatch = message.content?.match(/📷 (.+)/);
-        const photoUrl = photoMatch ? photoMatch[1].trim() : null;
-        setChatPhoto(photoUrl);
-        
-        // Get creator profile separately
-        const { data: creatorProfile } = await supabase
-          .from('profiles')
-          .select('display_name, avatar_url')
-          .eq('id', message.sender_id)
-          .single();
-        
-        setChatInfo({
-          name: chatName,
-          description: description,
-          creatorId: message.sender_id,
-          creatorName: creatorProfile?.display_name || 'Usuário',
-          creatorAvatar: creatorProfile?.avatar_url,
-          createdAt: message.created_at
-        });
-      } else {
-        // If no initial message found, show basic info
-        setChatInfo({
-          name: 'Chat Público',
-          description: '',
-          creatorId: '',
-          creatorName: 'Usuário',
-          creatorAvatar: '',
-          createdAt: new Date().toISOString()
-        });
-      }
+      // Set default chat info without relying on system messages
+      setChatInfo({
+        name: 'Chat Público',
+        description: '',
+        creatorId: '',
+        creatorName: 'Usuário',
+        creatorAvatar: '',
+        createdAt: new Date().toISOString()
+      });
     } catch (error) {
       console.error('Error fetching chat info:', error);
     } finally {
@@ -258,44 +210,22 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
     if (!chatInfo || !editName.trim()) return;
 
     try {
-      // Since we don't have a dedicated chat info table, we'll update the first message
-      const { data: messages } = await supabase
-        .from('messages')
-        .select('id')
-        .eq('conversation_id', conversationId)
-        .ilike('content', '%🌐 Chat Público%')
-        .order('created_at', { ascending: true })
-        .limit(1);
+      // Update chat info without creating system messages
+      setChatInfo({
+        ...chatInfo,
+        name: editName,
+        description: editDescription
+      });
 
-      if (messages && messages.length > 0) {
-        let newContent = `🌐 Chat Público: "${editName}" criado!`;
-        if (editDescription.trim()) {
-          newContent += `\n📝 ${editDescription}`;
-        }
-        if (editPhoto) {
-          newContent += `\n📷 ${editPhoto}`;
-          setChatPhoto(editPhoto);
-          setEditPhoto(null);
-        }
-
-        const { error } = await supabase
-          .from('messages')
-          .update({ content: newContent })
-          .eq('id', messages[0].id);
-
-        if (error) throw error;
-
-        setChatInfo({
-          ...chatInfo,
-          name: editName,
-          description: editDescription
-        });
-
-        toast({
-          title: "Sucesso",
-          description: "Informações do chat atualizadas.",
-        });
+      if (editPhoto) {
+        setChatPhoto(editPhoto);
+        setEditPhoto(null);
       }
+
+      toast({
+        title: "Sucesso",
+        description: "Informações do chat atualizadas.",
+      });
 
       setIsEditingInfo(false);
     } catch (error) {

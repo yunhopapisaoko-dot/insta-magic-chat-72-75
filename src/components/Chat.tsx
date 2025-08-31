@@ -67,35 +67,24 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   }, [conversationId, user]);
 
-  // Check if this is a public chat and if user is a participant
   const checkPublicChatStatus = async () => {
     if (!user || !conversationId) return;
 
     try {
-      // Check if this conversation has public messages
-      const { data: publicMessage, error: publicError } = await supabase
-        .from('messages')
-        .select('content')
-        .eq('conversation_id', conversationId)
-        .ilike('content', '%🌐 Chat Público%')
-        .limit(1)
-        .single();
+      // Check if this conversation has many participants (indicates public chat)
+      const { data: participants, error: participantsError } = await supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId);
 
-      const isPublic = !publicError && publicMessage;
+      if (participantsError) throw participantsError;
+
+      const isPublic = participants && participants.length > 2;
       setIsPublicChat(!!isPublic);
 
       if (isPublic) {
         // Check if user is already a participant
-        const { data: participant, error: participantError } = await supabase
-          .from('conversation_participants')
-          .select('id')
-          .eq('conversation_id', conversationId)
-          .eq('user_id', user.id)
-          .limit(1);
-
-        if (participantError) throw participantError;
-
-        const isUserParticipant = participant?.length > 0;
+        const isUserParticipant = participants.some(p => p.user_id === user.id);
         setIsParticipant(isUserParticipant);
 
         // Auto-join if user is participant
@@ -147,30 +136,21 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     if (!conversationId || !user) return;
 
     try {
-      // First check if this is a public chat
-      const { data: publicMessage, error: publicError } = await supabase
-        .from('messages')
-        .select('content')
-        .eq('conversation_id', conversationId)
-        .ilike('content', '%🌐 Chat Público%')
-        .limit(1)
-        .single();
+      // Check if this is a public chat by checking participants count
+      const { data: participantsCount, error: countError } = await supabase
+        .from('conversation_participants')
+        .select('user_id', { count: 'exact' })
+        .eq('conversation_id', conversationId);
 
-      if (!publicError && publicMessage) {
-        // This is a public chat, extract name and photo from message
-        const chatNameMatch = publicMessage.content?.match(/: "([^"]+)"/);
-        const chatName = chatNameMatch ? chatNameMatch[1] : 'Chat Público';
-        
-        // Extract chat photo if it exists
-        const photoMatch = publicMessage.content?.match(/📷 (.+)/);
-        const photoUrl = photoMatch ? photoMatch[1].trim() : null;
-        setChatPhoto(photoUrl);
-        
+      if (countError) throw countError;
+
+      // If it has many participants, treat as public chat
+      if (participantsCount && participantsCount.length > 2) {
         setOtherUser({
           id: 'public',
-          display_name: `🌐 ${chatName}`,
+          display_name: '🌐 Chat Público',
           username: 'public_chat',
-          avatar_url: photoUrl
+          avatar_url: null
         });
         return;
       }
