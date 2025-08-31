@@ -312,8 +312,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   }
 
   return (
-    <MobileLayout>
-      <div className="flex flex-col h-screen relative">
+    <div className="flex flex-col h-screen relative bg-background">
         {/* Fixed Header */}
         <Card className="card-shadow border-0 rounded-none sticky top-0 z-10 bg-background">
           <CardHeader className="py-4 px-6">
@@ -644,8 +643,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </MobileLayout>
-  );
+    );
 };
 
 export default Chat;
