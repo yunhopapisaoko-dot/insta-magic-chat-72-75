@@ -393,7 +393,29 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                 </div>
                 
                 <div className="text-center">
-                  <h2 className="text-xl font-semibold">{chatInfo.name}</h2>
+                  <div className="flex items-center justify-center gap-2">
+                    <h2 className="text-xl font-semibold">{chatInfo.name}</h2>
+                    {/* Settings Menu - Only for creator */}
+                    {chatInfo && user?.id === chatInfo.creatorId && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-full"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => setIsEditingInfo(true)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Editar Informações
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
                     <Globe className="w-3 h-3" />
                     Chat Público
@@ -406,25 +428,6 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Informações do Chat</h3>
-                {chatInfo && user?.id === chatInfo.creatorId && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setIsEditingInfo(true)}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
               </div>
               
               {isEditingInfo ? (
@@ -544,21 +547,32 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
 
             <Separator />
 
-            {/* Wallpaper Settings */}
+            {/* Quick Actions - Modern Card Layout */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Palette className="w-4 h-4" />
-                Personalização
-              </h3>
+              <h3 className="text-sm font-medium">Ações</h3>
               
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => setShowWallpaperSettings(true)}
-              >
-                <Palette className="w-4 h-4" />
-                Papel de Parede
-              </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col gap-1 text-xs"
+                  onClick={() => setShowWallpaperSettings(true)}
+                >
+                  <Palette className="w-5 h-5 text-blue-500" />
+                  <span>Papel de Parede</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col gap-1 text-xs"
+                  onClick={() => {
+                    setShowAddUsers(true);
+                    fetchAvailableUsers();
+                  }}
+                >
+                  <UserPlus className="w-5 h-5 text-green-500" />
+                  <span>Adicionar Pessoas</span>
+                </Button>
+              </div>
             </div>
 
             <Separator />
@@ -759,43 +773,43 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
           </div>
         )}
 
-        <div className="pt-4 space-y-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button 
-                variant="destructive" 
-                className="w-full"
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                ) : (
+        {/* Footer Actions */}
+        <div className="flex gap-2 pt-4 border-t">
+          {chatInfo && user?.id === chatInfo.creatorId && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="flex-1">
                   <Trash2 className="w-4 h-4 mr-2" />
-                )}
-                {isDeleting ? 'Deletando...' : 'Deletar Chat'}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Deletar Chat Público</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja deletar este chat público? Esta ação não pode ser desfeita.
-                  Todas as mensagens e participantes serão removidos permanentemente.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteChat}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
                   Deletar Chat
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Deletar Chat Público</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. Todas as mensagens e dados do chat serão permanentemente deletados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteChat}
+                    disabled={isDeleting}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {isDeleting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    {isDeleting ? 'Deletando...' : 'Deletar Chat'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           
-          <Button onClick={onClose} variant="outline" className="w-full">
+          <Button onClick={onClose} variant="outline" className="flex-1">
             Fechar
           </Button>
         </div>
