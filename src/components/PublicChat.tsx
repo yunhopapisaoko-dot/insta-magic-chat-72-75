@@ -51,15 +51,15 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     setIsNearBottom(checkIfNearBottom());
   }, [checkIfNearBottom]);
 
-  // Only auto-scroll if user is near bottom
-  useEffect(() => {
-    if (isNearBottom) {
-      scrollToBottom();
-    }
-  }, [messages, typingUsers, isNearBottom]);
+  // Removed auto-scroll to keep chat position fixed
+  // useEffect(() => {
+  //   if (isNearBottom) {
+  //     scrollToBottom();
+  //   }
+  // }, [messages, typingUsers, isNearBottom]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   };
 
   const handleSendMessage = async () => {
@@ -295,10 +295,15 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
               />
               
               <Button
-                onClick={handleSendMessage}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSendMessage();
+                }}
                 disabled={!newMessage.trim() || sending}
                 size="sm"
                 className="rounded-full w-9 h-9 p-0"
+                type="button"
               >
                 <Send className="w-4 h-4" />
               </Button>

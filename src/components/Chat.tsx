@@ -365,7 +365,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         </Card>
 
         {/* Messages - with bottom padding to account for fixed input */}
-        <div className="flex-1 overflow-y-auto p-4 pb-32">
+        <div className="flex-1 overflow-y-auto p-4 pb-32" style={{ scrollBehavior: 'auto' }}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <Avatar className="w-16 h-16">
@@ -380,8 +380,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col justify-end min-h-full">
-              <div className="space-y-4">
+            <div className="space-y-4" style={{ paddingTop: 'auto' }}>
                 {messages.map((message, index) => {
                 const previousMessage = messages[index - 1];
                 const isOwnMessage = message.sender_id === user?.id;
@@ -484,7 +483,6 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 <TypingIndicator typingUsers={typingUsers} className="px-2" />
                 
                 <div ref={messagesEndRef} />
-              </div>
             </div>
           )}
         </div>

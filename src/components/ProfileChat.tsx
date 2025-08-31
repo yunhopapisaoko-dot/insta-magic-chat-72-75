@@ -68,11 +68,12 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     }
   }, [isOpen, user?.id, otherUser.id, conversationId]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages.length]);
+  // Removed auto-scroll to keep chat position fixed
+  // useEffect(() => {
+  //   if (messages.length > 0) {
+  //     scrollToBottom();
+  //   }
+  // }, [messages.length]);
 
   const initializeConversation = async () => {
     if (!user) return;
@@ -92,7 +93,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   };
 
   const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {
@@ -521,10 +522,15 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
             </Button>
             
             <Button
-              onClick={() => handleSendMessage()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSendMessage();
+              }}
               disabled={!newMessage.trim() || sending || !conversationId}
               size="sm"
               className="rounded-full w-9 h-9 p-0"
+              type="button"
             >
               <Send className="w-4 h-4" />
             </Button>

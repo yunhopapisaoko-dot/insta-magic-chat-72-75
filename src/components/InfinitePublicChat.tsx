@@ -214,7 +214,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
             ref={scrollElementRef}
             onScroll={handleScroll}
             className="absolute inset-0 overflow-y-auto p-4"
-            style={{ scrollBehavior: 'smooth', display: 'flex', flexDirection: 'column-reverse' }}
+            style={{ scrollBehavior: 'auto', display: 'flex', flexDirection: 'column-reverse' }}
           >
             {/* Load more indicator */}
             {loadingMore && (
@@ -289,10 +289,15 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
               />
               
               <Button
-                onClick={handleSendMessage}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSendMessage();
+                }}
                 disabled={!newMessage.trim() || sending}
                 size="sm"
                 className="rounded-full w-9 h-9 p-0 hover-scale transition-all duration-200 disabled:opacity-50"
+                type="button"
               >
                 {sending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
