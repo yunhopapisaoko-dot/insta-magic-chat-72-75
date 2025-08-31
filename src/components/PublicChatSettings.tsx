@@ -4,7 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Globe, User, Calendar, Users } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from '@/hooks/use-toast';
+import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PublicChatSettingsProps {
@@ -32,10 +36,23 @@ interface Participant {
   };
 }
 
+interface Profile {
+  id: string;
+  display_name: string;
+  username: string;
+  avatar_url?: string;
+}
+
 export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicChatSettingsProps) => {
   const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAddUsers, setShowAddUsers] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<Profile[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   useEffect(() => {
     if (isOpen && conversationId) {
@@ -43,6 +60,13 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
       fetchParticipants();
     }
   }, [isOpen, conversationId]);
+
+  useEffect(() => {
+    if (chatInfo) {
+      setEditName(chatInfo.name);
+      setEditDescription(chatInfo.description);
+    }
+  }, [chatInfo]);
 
   const fetchChatInfo = async () => {
     setLoading(true);
@@ -139,6 +163,105 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
     }
   };
 
+  const fetchAvailableUsers = async () => {
+    try {
+      const participantIds = participants.map(p => p.user_id);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .not('id', 'in', `(${participantIds.join(',')})`)
+        .limit(50);
+
+      if (error) throw error;
+      setAvailableUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching available users:', error);
+    }
+  };
+
+  const handleAddUsers = async () => {
+    if (selectedUsers.size === 0) return;
+
+    try {
+      const newParticipants = Array.from(selectedUsers).map(userId => ({
+        conversation_id: conversationId,
+        user_id: userId,
+      }));
+
+      const { error } = await supabase
+        .from('conversation_participants')
+        .insert(newParticipants);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: `${selectedUsers.size} pessoa(s) adicionada(s) ao chat.`,
+      });
+
+      setSelectedUsers(new Set());
+      setShowAddUsers(false);
+      fetchParticipants();
+    } catch (error) {
+      console.error('Error adding users:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar os usuários.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveInfo = async () => {
+    if (!chatInfo || !editName.trim()) return;
+
+    try {
+      // Since we don't have a dedicated chat info table, we'll update the first message
+      const { data: messages } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('conversation_id', conversationId)
+        .ilike('content', '%🌐 Chat Público%')
+        .order('created_at', { ascending: true })
+        .limit(1);
+
+      if (messages && messages.length > 0) {
+        let newContent = `🌐 Chat Público: "${editName}" criado!`;
+        if (editDescription.trim()) {
+          newContent += `\n📝 ${editDescription}`;
+        }
+
+        const { error } = await supabase
+          .from('messages')
+          .update({ content: newContent })
+          .eq('id', messages[0].id);
+
+        if (error) throw error;
+
+        setChatInfo({
+          ...chatInfo,
+          name: editName,
+          description: editDescription
+        });
+
+        toast({
+          title: "Sucesso",
+          description: "Informações do chat atualizadas.",
+        });
+      }
+
+      setIsEditingInfo(false);
+    } catch (error) {
+      console.error('Error updating chat info:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar as informações.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', {
@@ -190,16 +313,76 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             </div>
 
             {/* Description */}
-            {chatInfo.description && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium">Descrição</h3>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {chatInfo.description}
-                  </p>
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Informações do Chat</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditingInfo(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
               </div>
-            )}
+              
+              {isEditingInfo ? (
+                <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Nome do Chat</label>
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Nome do chat..."
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Descrição</label>
+                    <Textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Descrição do chat..."
+                      rows={3}
+                      className="resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSaveInfo} className="flex-1">
+                      <Check className="w-3 h-3 mr-1" />
+                      Salvar
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsEditingInfo(false);
+                        setEditName(chatInfo?.name || '');
+                        setEditDescription(chatInfo?.description || '');
+                      }}
+                      className="flex-1"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium mb-1">{chatInfo.name}</p>
+                  {chatInfo.description && (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {chatInfo.description}
+                    </p>
+                  )}
+                  {!chatInfo.description && (
+                    <p className="text-xs text-muted-foreground italic">
+                      Nenhuma descrição
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
 
             <Separator />
 
@@ -231,10 +414,23 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
 
             {/* Participants */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Participantes ({participants.length})
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Participantes ({participants.length})
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddUsers(true);
+                    fetchAvailableUsers();
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
               
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {participants.map((participant) => (
@@ -264,6 +460,87 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             </div>
           </div>
         </ScrollArea>
+
+        {/* Add Users Modal */}
+        {showAddUsers && (
+          <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Adicionar Participantes</h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowAddUsers(false);
+                  setSelectedUsers(new Set());
+                }}
+                className="h-6 w-6 p-0"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (selectedUsers.size === availableUsers.length) {
+                    setSelectedUsers(new Set());
+                  } else {
+                    setSelectedUsers(new Set(availableUsers.map(u => u.id)));
+                  }
+                }}
+                className="text-xs"
+              >
+                {selectedUsers.size === availableUsers.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+              </Button>
+              
+              {selectedUsers.size > 0 && (
+                <Button
+                  size="sm"
+                  onClick={handleAddUsers}
+                  className="text-xs"
+                >
+                  Adicionar ({selectedUsers.size})
+                </Button>
+              )}
+            </div>
+
+            <ScrollArea className="max-h-32">
+              <div className="space-y-2">
+                {availableUsers.map((user) => (
+                  <div 
+                    key={user.id}
+                    className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                    onClick={() => {
+                      const newSelected = new Set(selectedUsers);
+                      if (newSelected.has(user.id)) {
+                        newSelected.delete(user.id);
+                      } else {
+                        newSelected.add(user.id);
+                      }
+                      setSelectedUsers(newSelected);
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedUsers.has(user.id)}
+                    />
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={user.avatar_url || ''} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                        {user.display_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{user.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
 
         <div className="pt-4">
           <Button onClick={onClose} className="w-full">
