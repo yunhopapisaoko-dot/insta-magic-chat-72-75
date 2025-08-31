@@ -611,165 +611,138 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                   Participantes ({participants.length})
                 </h3>
                 
-                {/* View All Participants Button */}
+                {/* Add participants button */}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => {
-                    // Toggle expanded participants view
-                    const element = document.getElementById('all-participants');
-                    if (element) {
-                      element.style.display = element.style.display === 'none' ? 'block' : 'none';
-                    }
+                    setShowAddUsers(true);
+                    fetchAvailableUsers();
                   }}
-                  className="h-8 w-8 p-0"
+                  className="h-8 px-3"
                 >
-                  <Plus className="w-4 h-4" />
+                  <UserPlus className="w-4 h-4 mr-1" />
+                  Adicionar
                 </Button>
               </div>
               
-               {/* Participant avatars in a row */}
-               <div className="flex items-center gap-2 flex-wrap">
-                 {participants.slice(0, 8).map((participant) => (
-                   <Avatar key={participant.user_id} className="w-10 h-10 border-2 border-background">
-                     <AvatarImage src={participant.profiles?.avatar_url || ''} />
-                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                       {participant.profiles?.display_name?.[0] || '?'}
-                     </AvatarFallback>
-                   </Avatar>
-                 ))}
-                 
-                 {participants.length > 8 && (
-                   <div className="w-10 h-10 rounded-full bg-muted border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
-                     <span className="text-xs text-muted-foreground font-medium">
-                       +{participants.length - 8}
-                     </span>
+               {/* Participant list */}
+               <div className="space-y-2 max-h-60 overflow-y-auto">
+                 {participants.map((participant) => (
+                   <div key={participant.user_id} className="flex items-center space-x-3 p-2 rounded-lg bg-muted/30">
+                     <Avatar className="w-8 h-8">
+                       <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                       <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                         {participant.profiles?.display_name?.[0] || '?'}
+                       </AvatarFallback>
+                     </Avatar>
+                     <div className="flex-1 min-w-0">
+                       <p className="text-sm font-medium truncate">
+                         {participant.profiles?.display_name || 'Usuário'}
+                         {participant.user_id === chatInfo.creatorId && (
+                           <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                             Criador
+                           </span>
+                         )}
+                       </p>
+                       <p className="text-xs text-muted-foreground truncate">
+                         @{participant.profiles?.username || 'unknown'}
+                       </p>
+                     </div>
                    </div>
-                 )}
-                 
-                 {/* Add participants button */}
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => {
-                     setShowAddUsers(true);
-                     fetchAvailableUsers();
-                   }}
-                   className="w-10 h-10 rounded-full p-0 border-dashed"
-                   title="Adicionar participantes"
-                 >
-                   <UserPlus className="w-4 h-4" />
-                 </Button>
+                 ))}
                </div>
-              
-              {/* All participants (expandable) */}
-              <div id="all-participants" style={{ display: 'none' }} className="space-y-2 max-h-40 overflow-y-auto">
-                {participants.map((participant) => (
-                  <div key={participant.user_id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={participant.profiles?.avatar_url || ''} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                        {participant.profiles?.display_name?.[0] || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {participant.profiles?.display_name || 'Usuário'}
-                        {participant.user_id === chatInfo.creatorId && (
-                          <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                            Criador
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        @{participant.profiles?.username || 'unknown'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </ScrollArea>
 
         {/* Add Users Modal */}
         {showAddUsers && (
-          <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Adicionar Participantes</h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowAddUsers(false);
-                  setSelectedUsers(new Set());
-                }}
-                className="h-6 w-6 p-0"
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (selectedUsers.size === availableUsers.length) {
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddUsers(false)}>
+            <div className="bg-background p-4 rounded-lg max-w-md w-full mx-4 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold">Adicionar Participantes</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddUsers(false);
                     setSelectedUsers(new Set());
-                  } else {
-                    setSelectedUsers(new Set(availableUsers.map(u => u.id)));
-                  }
-                }}
-                className="text-xs"
-              >
-                {selectedUsers.size === availableUsers.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-              </Button>
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
               
-              {selectedUsers.size > 0 && (
+              <div className="flex gap-2 mb-4">
                 <Button
                   size="sm"
-                  onClick={handleAddUsers}
+                  variant="outline"
+                  onClick={() => {
+                    if (selectedUsers.size === availableUsers.length) {
+                      setSelectedUsers(new Set());
+                    } else {
+                      setSelectedUsers(new Set(availableUsers.map(u => u.id)));
+                    }
+                  }}
                   className="text-xs"
                 >
-                  Adicionar ({selectedUsers.size})
+                  {selectedUsers.size === availableUsers.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
                 </Button>
-              )}
-            </div>
-
-            <ScrollArea className="max-h-32">
-              <div className="space-y-2">
-                {availableUsers.map((user) => (
-                  <div 
-                    key={user.id}
-                    className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50 cursor-pointer"
-                    onClick={() => {
-                      const newSelected = new Set(selectedUsers);
-                      if (newSelected.has(user.id)) {
-                        newSelected.delete(user.id);
-                      } else {
-                        newSelected.add(user.id);
-                      }
-                      setSelectedUsers(newSelected);
-                    }}
+                
+                {selectedUsers.size > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={handleAddUsers}
+                    className="text-xs"
                   >
-                    <Checkbox
-                      checked={selectedUsers.has(user.id)}
-                    />
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={user.avatar_url || ''} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                        {user.display_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{user.display_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
-                    </div>
-                  </div>
-                ))}
+                    Adicionar ({selectedUsers.size})
+                  </Button>
+                )}
               </div>
-            </ScrollArea>
+
+              <ScrollArea className="flex-1">
+                <div className="space-y-2">
+                  {availableUsers.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>Nenhum usuário disponível para adicionar</p>
+                    </div>
+                  ) : (
+                    availableUsers.map((user) => (
+                      <div 
+                        key={user.id}
+                        className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer border"
+                        onClick={() => {
+                          const newSelected = new Set(selectedUsers);
+                          if (newSelected.has(user.id)) {
+                            newSelected.delete(user.id);
+                          } else {
+                            newSelected.add(user.id);
+                          }
+                          setSelectedUsers(newSelected);
+                        }}
+                      >
+                        <Checkbox
+                          checked={selectedUsers.has(user.id)}
+                        />
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src={user.avatar_url || ''} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                            {user.display_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{user.display_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
           </div>
         )}
 
