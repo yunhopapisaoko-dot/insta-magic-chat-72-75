@@ -326,7 +326,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
   return (
     <MobileLayout>
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen relative">
         {/* Fixed Header */}
         <Card className="card-shadow border-0 rounded-none sticky top-0 z-10 bg-background">
           <CardHeader className="py-4 px-6">
@@ -509,8 +509,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         </div>
 
         {/* Input - Fixed at bottom */}
-        <Card className="card-shadow border-0 rounded-none fixed bottom-0 left-0 right-0 z-20 bg-background">
-          <CardContent className="p-4 space-y-3">
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t">
+          <div className="p-4 space-y-3">
             {/* Media Upload */}
             {showMediaUpload && (
               <MediaUpload
@@ -549,8 +549,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Settings Modal */}
         <Dialog open={showSettings} onOpenChange={setShowSettings}>
