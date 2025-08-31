@@ -522,10 +522,15 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               </Button>
               
               <Button
-                onClick={() => handleSendMessage()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSendMessage();
+                }}
                 disabled={!newMessage.trim() || sending}
                 size="sm"
                 className="rounded-full w-9 h-9 p-0"
+                type="button"
               >
                 <Send className="w-4 h-4" />
               </Button>
