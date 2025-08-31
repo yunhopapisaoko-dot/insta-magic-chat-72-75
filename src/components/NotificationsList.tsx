@@ -36,16 +36,22 @@ const NotificationsList = () => {
       await markAsRead(notification.id);
     }
 
-    // Navigate based on notification type
+    // Navigate based on notification type and entity
     if (notification.entity_type === 'post' && notification.entity_id) {
       navigate(`/post/${notification.entity_id}`);
     } else if (notification.entity_type === 'comment' && notification.entity_id) {
-      // For comment likes, we need to navigate to the post that contains the comment
-      // We'll need to fetch the post_id from the comment
-      navigate('/feed'); // Fallback for now
+      // For comment notifications and likes, navigate to the post
+      // We'll need to get the post_id from the comment
+      // For now, navigate to feed and let user find the post
+      navigate('/feed');
     } else if (notification.entity_type === 'user' && notification.actor_id) {
-      // Get username from profiles to navigate to user profile
-      // For now, navigate to feed if we can't get username
+      // For follow notifications, navigate to the follower's profile
+      navigate(`/user/${notification.actor_id}`);
+    } else if (notification.type === 'follow' && notification.actor_id) {
+      // Navigate to follower's profile
+      navigate(`/user/${notification.actor_id}`);
+    } else {
+      // Fallback to feed
       navigate('/feed');
     }
   };
@@ -111,7 +117,7 @@ const NotificationsList = () => {
         {notifications.map((notification) => (
           <Card
             key={notification.id}
-            className={`cursor-pointer transition-all hover:shadow-md border-0 ${
+            className={`cursor-pointer transition-all hover:shadow-md border-0 group ${
               !notification.is_read 
                 ? 'bg-primary/5 border-l-4 border-l-primary' 
                 : 'card-shadow'
