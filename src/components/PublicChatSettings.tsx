@@ -10,8 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2, UserPlus } from 'lucide-react';
+import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2, UserPlus, Palette } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { WallpaperSettings } from '@/components/WallpaperSettings';
 
 interface PublicChatSettingsProps {
   isOpen: boolean;
@@ -66,13 +67,36 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
   const [photoUploading, setPhotoUploading] = useState(false);
   const [chatPhoto, setChatPhoto] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showWallpaperSettings, setShowWallpaperSettings] = useState(false);
+  const [currentWallpaper, setCurrentWallpaper] = useState<{
+    type: 'color' | 'image';
+    value: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen && conversationId) {
       fetchChatInfo();
       fetchParticipants();
+      loadWallpaper();
     }
   }, [isOpen, conversationId]);
+
+  const loadWallpaper = () => {
+    const userId = user?.id;
+    if (!userId || !conversationId) return;
+    
+    const wallpaperKey = `wallpaper_${userId}_${conversationId}`;
+    const stored = localStorage.getItem(wallpaperKey);
+    
+    if (stored) {
+      try {
+        const wallpaper = JSON.parse(stored);
+        setCurrentWallpaper(wallpaper);
+      } catch (error) {
+        console.error('Error loading wallpaper:', error);
+      }
+    }
+  };
 
   useEffect(() => {
     if (chatInfo) {
@@ -520,6 +544,25 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
 
             <Separator />
 
+            {/* Wallpaper Settings */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                Personalização
+              </h3>
+              
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => setShowWallpaperSettings(true)}
+              >
+                <Palette className="w-4 h-4" />
+                Papel de Parede
+              </Button>
+            </div>
+
+            <Separator />
+
             {/* Creator Info */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium flex items-center gap-2">
@@ -756,6 +799,17 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
             Fechar
           </Button>
         </div>
+
+        {/* Wallpaper Settings Modal */}
+        <WallpaperSettings
+          isOpen={showWallpaperSettings}
+          onClose={() => setShowWallpaperSettings(false)}
+          conversationId={conversationId}
+          currentWallpaper={currentWallpaper}
+          onWallpaperChange={(wallpaper) => {
+            setCurrentWallpaper(wallpaper);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
