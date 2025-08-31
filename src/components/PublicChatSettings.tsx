@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2 } from 'lucide-react';
+import { Globe, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PublicChatSettingsProps {
@@ -382,26 +382,28 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
-            {/* Chat Photo and Name */}
+            {/* Chat Photo and Name - Centered */}
             <div className="text-center space-y-4">
-              <div className="relative w-20 h-20 mx-auto">
-                <Avatar className="w-20 h-20">
-                  {chatPhoto || editPhoto ? (
-                    <AvatarImage src={editPhoto || chatPhoto || ''} className="object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                      <Globe className="w-10 h-10 text-white" />
-                    </div>
-                  )}
-                </Avatar>
-              </div>
-              
-              <div>
-                <h2 className="text-xl font-semibold">{chatInfo.name}</h2>
-                <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
-                  <Globe className="w-3 h-3" />
-                  Chat Público
-                </p>
+              <div className="flex flex-col items-center space-y-3">
+                <div className="relative w-20 h-20">
+                  <Avatar className="w-20 h-20">
+                    {chatPhoto || editPhoto ? (
+                      <AvatarImage src={editPhoto || chatPhoto || ''} className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                        <Globe className="w-10 h-10 text-white" />
+                      </div>
+                    )}
+                  </Avatar>
+                </div>
+                
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold">{chatInfo.name}</h2>
+                  <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
+                    <Globe className="w-3 h-3" />
+                    Chat Público
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -578,53 +580,60 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                   <Users className="w-4 h-4" />
                   Participantes ({participants.length})
                 </h3>
-              </div>
-              
-              {/* Visible participants in a row */}
-              <div className="flex items-center gap-2">
-                {participants.slice(0, 8).map((participant) => (
-                  <Avatar key={participant.user_id} className="w-10 h-10 border-2 border-background">
-                    <AvatarImage src={participant.profiles?.avatar_url || ''} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                      {participant.profiles?.display_name?.[0] || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
                 
-                {participants.length > 8 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-10 h-10 rounded-full p-0 border-dashed"
-                    onClick={() => {
-                      setShowAddUsers(false);
-                      // Toggle expanded participants view
-                      const element = document.getElementById('all-participants');
-                      if (element) {
-                        element.style.display = element.style.display === 'none' ? 'block' : 'none';
-                      }
-                    }}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                )}
-                
+                {/* View All Participants Button */}
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setShowAddUsers(true);
-                    fetchAvailableUsers();
+                    // Toggle expanded participants view
+                    const element = document.getElementById('all-participants');
+                    if (element) {
+                      element.style.display = element.style.display === 'none' ? 'block' : 'none';
+                    }
                   }}
-                  className="w-10 h-10 rounded-full p-0"
-                  title="Adicionar participantes"
+                  className="h-8 w-8 p-0"
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
               
+               {/* Participant avatars in a row */}
+               <div className="flex items-center gap-2 flex-wrap">
+                 {participants.slice(0, 8).map((participant) => (
+                   <Avatar key={participant.user_id} className="w-10 h-10 border-2 border-background">
+                     <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                       {participant.profiles?.display_name?.[0] || '?'}
+                     </AvatarFallback>
+                   </Avatar>
+                 ))}
+                 
+                 {participants.length > 8 && (
+                   <div className="w-10 h-10 rounded-full bg-muted border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
+                     <span className="text-xs text-muted-foreground font-medium">
+                       +{participants.length - 8}
+                     </span>
+                   </div>
+                 )}
+                 
+                 {/* Add participants button */}
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={() => {
+                     setShowAddUsers(true);
+                     fetchAvailableUsers();
+                   }}
+                   className="w-10 h-10 rounded-full p-0 border-dashed"
+                   title="Adicionar participantes"
+                 >
+                   <UserPlus className="w-4 h-4" />
+                 </Button>
+               </div>
+              
               {/* All participants (expandable) */}
-              <div id="all-participants" style={{ display: participants.length <= 8 ? 'block' : 'none' }} className="space-y-2 max-h-40 overflow-y-auto">
+              <div id="all-participants" style={{ display: 'none' }} className="space-y-2 max-h-40 overflow-y-auto">
                 {participants.map((participant) => (
                   <div key={participant.user_id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50">
                     <Avatar className="w-8 h-8">

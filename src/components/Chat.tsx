@@ -56,6 +56,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [isPublicChat, setIsPublicChat] = useState(false);
   const [isParticipant, setIsParticipant] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [chatPhoto, setChatPhoto] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -156,15 +157,20 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         .single();
 
       if (!publicError && publicMessage) {
-        // This is a public chat, extract name from message
+        // This is a public chat, extract name and photo from message
         const chatNameMatch = publicMessage.content?.match(/: "([^"]+)"/);
         const chatName = chatNameMatch ? chatNameMatch[1] : 'Chat Público';
+        
+        // Extract chat photo if it exists
+        const photoMatch = publicMessage.content?.match(/📷 (.+)/);
+        const photoUrl = photoMatch ? photoMatch[1].trim() : null;
+        setChatPhoto(photoUrl);
         
         setOtherUser({
           id: 'public',
           display_name: `🌐 ${chatName}`,
           username: 'public_chat',
-          avatar_url: null
+          avatar_url: photoUrl
         });
         return;
       }
@@ -437,10 +443,16 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 </Button>
                 
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={otherUser.avatar_url || ''} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                    {otherUser.display_name[0]}
-                  </AvatarFallback>
+                  {isPublicChat && chatPhoto ? (
+                    <AvatarImage src={chatPhoto} className="object-cover" />
+                  ) : (
+                    <>
+                      <AvatarImage src={otherUser.avatar_url || ''} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+                        {otherUser.display_name[0]}
+                      </AvatarFallback>
+                    </>
+                  )}
                 </Avatar>
                 
                 <div>
