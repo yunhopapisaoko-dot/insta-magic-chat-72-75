@@ -65,7 +65,7 @@ export const useConversations = () => {
 
       const conversationIds = participantData.map(p => p.conversation_id);
 
-      // Get other participants for each conversation
+      // Get other participants for each conversation (including those who left)
       const { data: otherParticipants, error: otherError } = await supabase
         .from('conversation_participants')
         .select('conversation_id, user_id')
@@ -74,12 +74,35 @@ export const useConversations = () => {
 
       if (otherError) throw otherError;
 
-      // Get profile data for other participants
-      const otherUserIds = otherParticipants?.map(p => p.user_id) || [];
+      // For conversations without other participants (when they left), get from messages
+      const conversationsWithoutParticipants = conversationIds.filter(convId => 
+        !otherParticipants?.some(p => p.conversation_id === convId)
+      );
+
+      let additionalUserIds: string[] = [];
+      if (conversationsWithoutParticipants.length > 0) {
+        const { data: messages } = await supabase
+          .from('messages')
+          .select('sender_id')
+          .in('conversation_id', conversationsWithoutParticipants)
+          .neq('sender_id', user.id)
+          .not('message_type', 'eq', 'system');
+
+        if (messages) {
+          additionalUserIds = [...new Set(messages.map(m => m.sender_id))];
+        }
+      }
+
+      // Get profile data for all participants (active and those who left)
+      const allUserIds = [...new Set([
+        ...(otherParticipants?.map(p => p.user_id) || []),
+        ...additionalUserIds
+      ])];
+      
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, display_name, username, avatar_url')
-        .in('id', otherUserIds);
+        .in('id', allUserIds);
 
       if (profilesError) throw profilesError;
 
@@ -124,14 +147,36 @@ export const useConversations = () => {
         return acc;
       }, {} as Record<string, any>) || {};
       
-      participantData.forEach((participant) => {
+      for (const participant of participantData) {
         const conv = participant.conversations;
+        if (!conv) continue;
+
+        // Try to find active participant first
+        let otherUserId: string | null = null;
         const otherParticipant = otherParticipants?.find(
           p => p.conversation_id === participant.conversation_id
         );
         
-        if (conv && otherParticipant) {
-          const profile = profilesMap[otherParticipant.user_id];
+        if (otherParticipant) {
+          otherUserId = otherParticipant.user_id;
+        } else {
+          // If no active participant, get from messages
+          const { data: message } = await supabase
+            .from('messages')
+            .select('sender_id')
+            .eq('conversation_id', participant.conversation_id)
+            .neq('sender_id', user.id)
+            .not('message_type', 'eq', 'system')
+            .limit(1)
+            .maybeSingle();
+          
+          if (message) {
+            otherUserId = message.sender_id;
+          }
+        }
+
+        if (otherUserId) {
+          const profile = profilesMap[otherUserId];
           const details = conversationDetails.find(d => d.conversationId === conv.id);
           
           if (profile) {
@@ -140,7 +185,7 @@ export const useConversations = () => {
               created_at: conv.created_at,
               updated_at: conv.updated_at,
               other_user: {
-                id: otherParticipant.user_id,
+                id: otherUserId,
                 display_name: profile.display_name,
                 username: profile.username,
                 avatar_url: profile.avatar_url,
@@ -150,7 +195,7 @@ export const useConversations = () => {
             });
           }
         }
-      });
+      }
 
       // Sort by last activity
       const sortedConversations = Array.from(conversationsMap.values())
