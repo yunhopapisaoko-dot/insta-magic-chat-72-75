@@ -184,7 +184,15 @@ const ChatList = () => {
 
         {/* Conversations List */}
         <div className="space-y-2">
-          {error ? (
+          {loading ? (
+            <Card className="card-shadow border-0">
+              <CardContent className="p-8 text-center">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Carregando conversas...</h3>
+                <p className="text-muted-foreground text-sm">Aguarde um momento</p>
+              </CardContent>
+            </Card>
+          ) : error ? (
             <Card className="card-shadow border-0">
               <CardContent className="p-8 text-center">
                 <MessageCircle className="w-12 h-12 text-destructive mx-auto mb-4" />

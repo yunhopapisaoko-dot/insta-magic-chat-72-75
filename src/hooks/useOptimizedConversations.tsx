@@ -10,16 +10,57 @@ interface OptimizedConversationsOptions {
   maxPreloadCount?: number;
 }
 
+// Cache para conversas com persistência no localStorage
+const CACHE_KEY = 'magic-talk-conversations-cache';
+let conversationsCache: Conversation[] = [];
+let lastFetchTime = 0;
+const CACHE_DURATION = 5000; // 5 segundos
+
+// Load cache from localStorage on module load
+try {
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    const { conversations, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp < 60000) { // 1 minute validity for localStorage cache
+      conversationsCache = conversations;
+      lastFetchTime = timestamp;
+    }
+  }
+} catch (error) {
+  console.error('Error loading conversations cache:', error);
+}
+
+// Save cache to localStorage
+const saveCache = (conversations: Conversation[]) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      conversations,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('Error saving conversations cache:', error);
+  }
+};
+
 export const useOptimizedConversations = () => {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Simple fetch conversations without complex optimizations
-  const fetchConversations = useCallback(async () => {
+  // Otimized fetch with cache and parallel queries
+  const fetchConversations = useCallback(async (useCache: boolean = true) => {
     if (!user) {
       setConversations([]);
+      setLoading(false);
+      return;
+    }
+
+    const now = Date.now();
+    
+    // Use cache if available and recent
+    if (useCache && conversationsCache.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
+      setConversations(conversationsCache);
       setLoading(false);
       return;
     }
@@ -28,12 +69,36 @@ export const useOptimizedConversations = () => {
     setError(null);
 
     try {
-      // Get user's private conversation participants
-      const { data: participantData, error: participantError } = await supabase
-        .from('conversation_participants')
-        .select(`
-          conversation_id,
-          conversations:conversation_id (
+      // Execute all queries in parallel
+      const [
+        participantData,
+        publicChats,
+        allMessages,
+        allUnreadMessages
+      ] = await Promise.all([
+        // Get user's conversation participants
+        supabase
+          .from('conversation_participants')
+          .select(`
+            conversation_id,
+            conversations:conversation_id (
+              id,
+              name,
+              description,
+              photo_url,
+              creator_id,
+              is_public,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('user_id', user.id)
+          .then(result => ({ data: result.data, error: result.error })),
+        
+        // Get public chats
+        supabase
+          .from('conversations')
+          .select(`
             id,
             name,
             description,
@@ -42,126 +107,116 @@ export const useOptimizedConversations = () => {
             is_public,
             created_at,
             updated_at
-          )
-        `)
-        .eq('user_id', user.id);
+          `)
+          .eq('is_public', true)
+          .then(result => ({ data: result.data, error: result.error })),
 
-      if (participantError) throw participantError;
+        // Get all messages with sender info in one query
+        supabase
+          .from('messages')
+          .select(`
+            id,
+            conversation_id,
+            content,
+            created_at,
+            sender_id,
+            read_at,
+            media_url,
+            media_type,
+            story_id
+          `)
+          .order('created_at', { ascending: false })
+          .then(result => ({ data: result.data, error: result.error })),
 
-      // Get all public chats for all users
-      const { data: publicChats, error: publicError } = await supabase
-        .from('conversations')
-        .select(`
-          id,
-          name,
-          description,
-          photo_url,
-          creator_id,
-          is_public,
-          created_at,
-          updated_at
-        `)
-        .eq('is_public', true);
+        // Get all unread messages
+        supabase
+          .from('messages')
+          .select('id, conversation_id, sender_id')
+          .neq('sender_id', user.id)
+          .is('read_at', null)
+          .then(result => ({ data: result.data, error: result.error }))
+      ]);
 
-      if (publicError) throw publicError;
+      if (participantData.error) throw participantData.error;
+      if (publicChats.error) throw publicChats.error;
+      if (allMessages.error) throw allMessages.error;
+      if (allUnreadMessages.error) throw allUnreadMessages.error;
 
-      // Combine participant conversations with public chats
+      // Combine all conversation IDs
       const allConversationIds = new Set([
-        ...(participantData?.map(p => p.conversation_id) || []),
-        ...(publicChats?.map(p => p.id) || [])
+        ...(participantData.data?.map(p => p.conversation_id) || []),
+        ...(publicChats.data?.map(p => p.id) || [])
       ]);
 
       if (allConversationIds.size === 0) {
         setConversations([]);
+        conversationsCache = [];
+        lastFetchTime = now;
         return;
       }
 
       const conversationIds = Array.from(allConversationIds);
 
-      // Get other participants for each conversation
-      const { data: otherParticipants, error: otherError } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id, user_id')
-        .in('conversation_id', conversationIds)
-        .neq('user_id', user.id);
-
-      if (otherError) throw otherError;
-
-      // Get profile data for other participants (if any)
-      const otherUserIds = otherParticipants?.map(p => p.user_id) || [];
-      let profiles: any[] = [];
-      
-      if (otherUserIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name, username, avatar_url')
-          .in('id', otherUserIds);
-
-        if (profilesError) throw profilesError;
-        profiles = profilesData || [];
-      }
-
-      // Get last messages for each conversation to identify chat names
-      const lastMessagePromises = conversationIds.map(async (convId) => {
-        const { data: lastMessageData, error } = await supabase
-          .from('messages')
-          .select('conversation_id, content, created_at, sender_id')
-          .eq('conversation_id', convId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-          
-        if (error) {
-          console.error('Error fetching last message for conversation:', convId, error);
-          return { conversationId: convId, lastMessage: null };
-        }
+      // Get all participants and profiles in parallel
+      const [otherParticipants, profilesData] = await Promise.all([
+        supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .in('conversation_id', conversationIds)
+          .neq('user_id', user.id),
         
-        return { 
-          conversationId: convId, 
-          lastMessage: lastMessageData 
-        };
-      });
+        // Get all unique user IDs from messages and participants
+        (() => {
+          const userIds = new Set<string>();
+          allMessages.data?.forEach(msg => userIds.add(msg.sender_id));
+          return supabase
+            .from('profiles')
+            .select('id, display_name, username, avatar_url')
+            .in('id', Array.from(userIds));
+        })()
+      ]);
 
-      const lastMessagesResults = await Promise.all(lastMessagePromises);
-      const lastMessageMap = lastMessagesResults.reduce((acc, result) => {
-        if (result.lastMessage) {
-          acc[result.conversationId] = result.lastMessage;
-        }
-        return acc;
-      }, {} as Record<string, any>);
+      if (otherParticipants.error) throw otherParticipants.error;
+      if (profilesData.error) throw profilesData.error;
 
-      // Get unread count for each conversation
+      // Create lookup maps for performance
+      const messagesMap: Record<string, any[]> = {};
+      const lastMessageMap: Record<string, any> = {};
       const unreadCountMap: Record<string, number> = {};
-      for (const convId of conversationIds) {
-        const { data: unreadMessages, error: unreadError } = await supabase
-          .from('messages')
-          .select('id')
-          .eq('conversation_id', convId)
-          .neq('sender_id', user.id)
-          .is('read_at', null);
-
-        if (unreadError) {
-          console.error('Error fetching unread count:', unreadError);
-          unreadCountMap[convId] = 0;
-        } else {
-          unreadCountMap[convId] = unreadMessages?.length || 0;
-        }
-      }
-
-      // Build conversations list
-      const conversationsMap = new Map<string, Conversation>();
-      const profilesMap = profiles.reduce((acc, profile) => {
+      const profilesMap = (profilesData.data || []).reduce((acc, profile) => {
         acc[profile.id] = profile;
         return acc;
       }, {} as Record<string, any>);
+
+      // Process messages
+      (allMessages.data || []).forEach(msg => {
+        if (!messagesMap[msg.conversation_id]) {
+          messagesMap[msg.conversation_id] = [];
+        }
+        messagesMap[msg.conversation_id].push(msg);
+        
+        // Get the latest message for each conversation
+        if (!lastMessageMap[msg.conversation_id] || 
+            new Date(msg.created_at) > new Date(lastMessageMap[msg.conversation_id].created_at)) {
+          lastMessageMap[msg.conversation_id] = msg;
+        }
+      });
+
+      // Process unread counts
+      (allUnreadMessages.data || []).forEach(msg => {
+        unreadCountMap[msg.conversation_id] = (unreadCountMap[msg.conversation_id] || 0) + 1;
+      });
+
+      // Build conversations list
+      const conversationsMap = new Map<string, Conversation>();
       
       // Build conversations from user's private conversations
-      participantData?.forEach((participant) => {
+      (participantData.data || []).forEach((participant) => {
         const conv = participant.conversations;
         if (!conv) return;
 
         const lastMessage = lastMessageMap[conv.id];
-        const otherParticipant = otherParticipants?.find(
+        const otherParticipant = (otherParticipants.data || []).find(
           p => p.conversation_id === participant.conversation_id
         );
         
@@ -249,7 +304,7 @@ export const useOptimizedConversations = () => {
       });
 
       // Add public chats that aren't already in user's conversations
-      publicChats?.forEach((publicChat) => {
+      (publicChats.data || []).forEach((publicChat) => {
         if (conversationsMap.has(publicChat.id)) return;
 
         const lastMessage = lastMessageMap[publicChat.id];
@@ -289,28 +344,38 @@ export const useOptimizedConversations = () => {
         });
       });
 
-      // Sort by last activity
+      // Sort by last activity and cache
       const sortedConversations = Array.from(conversationsMap.values())
         .sort((a, b) => {
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+          const aTime = a.last_message?.created_at || a.updated_at;
+          const bTime = b.last_message?.created_at || b.updated_at;
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
         });
 
+      // Update cache
+      conversationsCache = sortedConversations;
+      lastFetchTime = now;
+      saveCache(sortedConversations);
+      
       setConversations(sortedConversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
       setError('Erro ao carregar conversas');
       
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as conversas. Tente novamente.",
-        variant: "destructive"
-      });
+      // Don't show toast if we have cached data
+      if (conversationsCache.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as conversas. Tente novamente.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  // Initial load and realtime setup
+  // Initial load and realtime setup with instant cache loading
   useEffect(() => {
     if (!user?.id) {
       console.log('No user ID available, skipping conversations setup');
@@ -319,50 +384,18 @@ export const useOptimizedConversations = () => {
     
     console.log('Setting up conversations for user:', user.id);
     
-    // Add small delay to ensure user is fully loaded
-    const timer = setTimeout(() => {
-      fetchConversations();
-    }, 100);
+    // Load from cache immediately if available
+    if (conversationsCache.length > 0) {
+      setConversations(conversationsCache);
+      setLoading(false);
+    }
+    
+    // Then fetch fresh data
+    fetchConversations(false); // Don't use cache for initial load
 
-    // Set up realtime subscriptions with more specific channel name
+    // Set up optimized realtime with incremental updates
     const conversationsChannel = supabase
       .channel(`conversations-user-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations'
-        },
-        (payload) => {
-          console.log('Conversation change:', payload);
-          fetchConversations();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversation_participants'
-        },
-        (payload) => {
-          console.log('Participants change:', payload);
-          fetchConversations();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles'
-        },
-        (payload) => {
-          console.log('Profile update:', payload);
-          fetchConversations();
-        }
-      )
       .on(
         'postgres_changes',
         {
@@ -372,8 +405,40 @@ export const useOptimizedConversations = () => {
         },
         (payload) => {
           console.log('New message:', payload);
-          // Refresh conversations when new messages arrive to update unread counts
-          fetchConversations();
+          // Update conversations incrementally instead of full refetch
+          const message = payload.new as any;
+          setConversations(prev => {
+            const updated = prev.map(conv => {
+              if (conv.id === message.conversation_id) {
+                return {
+                  ...conv,
+                  last_message: {
+                    id: message.id,
+                    conversation_id: message.conversation_id,
+                    content: message.content,
+                    created_at: message.created_at,
+                    sender_id: message.sender_id,
+                    media_url: message.media_url,
+                    media_type: message.media_type,
+                    story_id: message.story_id,
+                    read_at: message.read_at
+                  },
+                  unread_count: message.sender_id === user.id ? conv.unread_count : conv.unread_count + 1,
+                  updated_at: message.created_at
+                };
+              }
+              return conv;
+            });
+            
+            // Update cache
+            conversationsCache = updated;
+            saveCache(updated);
+            return updated.sort((a, b) => {
+              const aTime = a.last_message?.created_at || a.updated_at;
+              const bTime = b.last_message?.created_at || b.updated_at;
+              return new Date(bTime).getTime() - new Date(aTime).getTime();
+            });
+          });
         }
       )
       .on(
@@ -385,8 +450,48 @@ export const useOptimizedConversations = () => {
         },
         (payload) => {
           console.log('Message update:', payload);
-          // Refresh conversations when messages are marked as read
-          fetchConversations();
+          const message = payload.new as any;
+          // Update read status
+          if (message.read_at) {
+            setConversations(prev => {
+              const updated = prev.map(conv => {
+                if (conv.id === message.conversation_id) {
+                  return {
+                    ...conv,
+                    unread_count: Math.max(0, conv.unread_count - 1)
+                  };
+                }
+                return conv;
+              });
+              conversationsCache = updated;
+              saveCache(updated);
+              return updated;
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations'
+        },
+        () => {
+          // Only refetch for conversation changes (new chats, etc)
+          setTimeout(() => fetchConversations(false), 500);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversation_participants'
+        },
+        () => {
+          // Only refetch for participant changes
+          setTimeout(() => fetchConversations(false), 500);
         }
       )
       .subscribe((status) => {
@@ -395,10 +500,9 @@ export const useOptimizedConversations = () => {
 
     return () => {
       console.log('Cleaning up realtime subscription');
-      clearTimeout(timer);
       supabase.removeChannel(conversationsChannel);
     };
-  }, [fetchConversations, user?.id]);
+  }, [user?.id]); // Removed fetchConversations dependency to avoid loops
 
 
   // Create or get conversation simplified
@@ -464,7 +568,7 @@ export const useOptimizedConversations = () => {
       }
 
       // Refresh conversations to include new one
-      await fetchConversations();
+      await fetchConversations(false); // Don't use cache for new conversations
       return newConv.id;
     } catch (error) {
       console.error('Error creating conversation:', error);
