@@ -23,6 +23,7 @@ interface UserTagSelectorProps {
   selectedUsers: User[];
   onUsersChange: (users: User[]) => void;
   maxTags?: number;
+  onUserSelected?: (user: User) => void;
 }
 
 export const UserTagSelector = ({ 
@@ -30,7 +31,8 @@ export const UserTagSelector = ({
   onOpenChange, 
   selectedUsers, 
   onUsersChange,
-  maxTags = 10 
+  maxTags = 10,
+  onUserSelected 
 }: UserTagSelectorProps) => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,16 +59,29 @@ export const UserTagSelector = ({
     setHasSearched(true);
 
     try {
+      // Buscar apenas usuários que seguimos
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, display_name, username, avatar_url')
-        .neq('id', user?.id) // Exclude current user
-        .or(`display_name.ilike.%${query}%,username.ilike.%${query}%`)
+        .from('follows')
+        .select(`
+          following_id,
+          profiles!follows_following_id_fkey (
+            id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('follower_id', user?.id)
+        .or(`profiles.display_name.ilike.%${query}%,profiles.username.ilike.%${query}%`, { 
+          referencedTable: 'profiles' 
+        })
         .limit(20);
 
       if (error) throw error;
 
-      setUsers(data || []);
+      // Extrair os perfis dos seguidos
+      const followedUsers = data?.map(f => f.profiles).filter(Boolean) as User[];
+      setUsers(followedUsers || []);
     } catch (error) {
       console.error('Error searching users:', error);
       toast({
@@ -106,6 +121,9 @@ export const UserTagSelector = ({
         return;
       }
       onUsersChange([...selectedUsers, selectedUser]);
+      
+      // Adicionar @ automaticamente no conteúdo
+      onUserSelected?.(selectedUser);
     }
   };
 
@@ -178,19 +196,19 @@ export const UserTagSelector = ({
             ) : hasSearched && users.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-center">
                 <Users className="w-8 h-8 text-muted-foreground/50 mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {searchQuery.length < 2 
-                    ? "Digite pelo menos 2 caracteres" 
-                    : "Nenhum usuário encontrado"
-                  }
-                </p>
+                 <p className="text-sm text-muted-foreground">
+                   {searchQuery.length < 2 
+                     ? "Digite pelo menos 2 caracteres" 
+                     : "Nenhum usuário que você segue foi encontrado"
+                   }
+                 </p>
               </div>
             ) : !hasSearched ? (
               <div className="flex flex-col items-center justify-center h-32 text-center">
                 <Search className="w-8 h-8 text-muted-foreground/50 mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Digite um nome ou username para buscar
-                </p>
+                 <p className="text-sm text-muted-foreground">
+                   Digite um nome para buscar pessoas que você segue
+                 </p>
               </div>
             ) : (
               <div className="space-y-2">

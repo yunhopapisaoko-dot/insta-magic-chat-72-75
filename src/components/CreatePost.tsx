@@ -599,6 +599,16 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
           selectedUsers={taggedUsers}
           onUsersChange={setTaggedUsers}
           maxTags={5}
+          onUserSelected={(user) => {
+            // Adicionar @ automaticamente no conteúdo
+            setContent(prev => {
+              const mention = `@${user.username} `;
+              if (!prev.includes(mention)) {
+                return prev + mention;
+              }
+              return prev;
+            });
+          }}
         />
       </DialogContent>
     </Dialog>

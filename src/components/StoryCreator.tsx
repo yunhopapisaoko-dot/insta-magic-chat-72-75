@@ -575,6 +575,16 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
           selectedUsers={taggedUsers}
           onUsersChange={setTaggedUsers}
           maxTags={3}
+          onUserSelected={(user) => {
+            // Adicionar @ automaticamente no texto
+            setText(prev => {
+              const mention = `@${user.username} `;
+              if (!prev.includes(mention)) {
+                return prev + mention;
+              }
+              return prev;
+            });
+          }}
         />
       </DialogContent>
     </Dialog>
