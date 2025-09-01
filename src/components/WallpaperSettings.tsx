@@ -116,6 +116,13 @@ export const WallpaperSettings = ({
 
       onWallpaperChange(selectedWallpaper);
 
+      // Trigger storage event for realtime updates
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: wallpaperKey,
+        newValue: wallpaperData ? JSON.stringify(wallpaperData) : null,
+        oldValue: localStorage.getItem(wallpaperKey)
+      }));
+
       toast({
         title: "Sucesso",
         description: "Papel de parede atualizado!",
