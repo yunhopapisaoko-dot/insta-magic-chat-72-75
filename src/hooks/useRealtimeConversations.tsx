@@ -139,7 +139,7 @@ export const useRealtimeConversations = () => {
     if (!user) return null;
 
     try {
-      // Check if conversation already exists between these users
+      // Check if private conversation already exists between exactly these two users
       const { data: existingParticipants, error: checkError } = await supabase
         .from('conversation_participants')
         .select('conversation_id')
@@ -150,6 +150,7 @@ export const useRealtimeConversations = () => {
       if (existingParticipants?.length) {
         const conversationIds = existingParticipants.map(p => p.conversation_id);
         
+        // Check which of these conversations also include the other user
         const { data: otherUserParticipants, error: otherCheckError } = await supabase
           .from('conversation_participants')
           .select('conversation_id')
@@ -159,7 +160,28 @@ export const useRealtimeConversations = () => {
         if (otherCheckError) throw otherCheckError;
 
         if (otherUserParticipants?.length) {
-          return otherUserParticipants[0].conversation_id;
+          // Filter for private conversations with exactly 2 participants
+          for (const participant of otherUserParticipants) {
+            const { data: participantCount, error: countError } = await supabase
+              .from('conversation_participants')
+              .select('user_id')
+              .eq('conversation_id', participant.conversation_id);
+
+            if (countError) continue;
+
+            // Check if it's a private conversation (not public) with exactly 2 participants
+            const { data: conversationData, error: convError } = await supabase
+              .from('conversations')
+              .select('is_public')
+              .eq('id', participant.conversation_id)
+              .single();
+
+            if (convError) continue;
+
+            if (!conversationData.is_public && participantCount?.length === 2) {
+              return participant.conversation_id;
+            }
+          }
         }
       }
 
