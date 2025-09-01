@@ -440,7 +440,7 @@ const Feed = () => {
                           {post.profiles.display_name}
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                          @{post.profiles.username} • {formatTimeAgo(post.created_at)}
+                          @{post.profiles.username.replace(/\d{4}$/, '')} • {formatTimeAgo(post.created_at)}
                         </p>
                       </div>
                       {post.user_id === user?.id && (

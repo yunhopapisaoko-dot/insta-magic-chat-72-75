@@ -146,6 +146,8 @@ const Login = () => {
                     placeholder="Ex: ana1234"
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                    showClearButton={true}
+                    onClear={() => setUsername('')}
                     className="mobile-input"
                     maxLength={20}
                     required
