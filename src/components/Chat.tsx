@@ -157,8 +157,16 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
             setChatPhoto(updatedConversation.photo_url);
           }
           
-          // Update conversation name if changed
-          if (updatedConversation.name) {
+          // Update conversation name and photo for public chats
+          if (isPublicChat) {
+            setOtherUser(prev => ({
+              id: conversationId,
+              display_name: updatedConversation.name || 'Chat Público',
+              username: updatedConversation.description || 'Chat público',
+              avatar_url: updatedConversation.photo_url || ''
+            }));
+          } else if (updatedConversation.name) {
+            // For private chats, only update name if it exists
             setOtherUser(prev => prev ? {
               ...prev,
               display_name: updatedConversation.name
@@ -206,18 +214,14 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       setIsPublicChat(isPublic);
       setChatPhoto(conversation?.photo_url || null);
       
-      // Update other user info with conversation name if it's a named chat
-      if (conversation?.name && otherUser) {
-        setOtherUser(prev => prev ? {
-          ...prev,
-          display_name: conversation.name,
-          username: conversation.description || prev.username
-        } : prev);
-      }
-      
-      // Force re-fetch conversation data to get updated photo
-      if (conversation?.photo_url !== chatPhoto) {
-        setChatPhoto(conversation?.photo_url || null);
+      // Update other user info with conversation data for public chats
+      if (isPublic && conversation) {
+        setOtherUser(prev => ({
+          id: conversationId,
+          display_name: conversation.name || 'Chat Público',
+          username: conversation.description || 'Chat público',
+          avatar_url: conversation.photo_url || ''
+        }));
       }
     } catch (error) {
       console.error('Error checking public chat status:', error);
@@ -293,66 +297,47 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       // First check if this conversation is public from the database
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
-        .select('is_public, name, photo_url')
+        .select('is_public, name, description, photo_url')
         .eq('id', conversationId)
         .single();
 
       if (convError) throw convError;
 
-      // If it's a public chat, set the display name accordingly
       if (conversation?.is_public) {
+        // For public chats, use the conversation name and photo
         setOtherUser({
-          id: 'public',
+          id: conversationId,
           display_name: conversation.name || 'Chat Público',
-          username: 'public_chat',
-          avatar_url: conversation.photo_url
+          username: conversation.description || 'Chat público',
+          avatar_url: conversation.photo_url || ''
         });
         return;
       }
 
-      // Regular private chat - get participants first
+      // For private chats, get the other participant
       const { data: participants, error: participantsError } = await supabase
         .from('conversation_participants')
-        .select('user_id')
+        .select(`
+          user_id,
+          profiles:user_id (
+            id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
         .eq('conversation_id', conversationId)
         .neq('user_id', user.id);
 
       if (participantsError) throw participantsError;
 
-      if (participants?.length > 0) {
-        // Get the profiles for these participants
-        const participantIds = participants.map(p => p.user_id);
-        
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name, username, avatar_url')
-          .in('id', participantIds);
-
-        if (profilesError) throw profilesError;
-
-        if (profiles && profiles.length > 0) {
-          const firstProfile = profiles[0];
-          setOtherUser({
-            id: firstProfile.id,
-            display_name: firstProfile.display_name,
-            username: firstProfile.username,
-            avatar_url: firstProfile.avatar_url
-          });
-        } else {
-          setOtherUser({
-            id: 'unknown',
-            display_name: 'Usuário',
-            username: 'unknown',
-            avatar_url: null
-          });
-        }
-      } else {
-        // New chat without other participants yet
+      if (participants && participants.length > 0) {
+        const profile = participants[0].profiles as any;
         setOtherUser({
-          id: 'new_chat',
-          display_name: conversation?.name || 'Novo Chat',
-          username: 'new_chat',
-          avatar_url: conversation?.photo_url || null
+          id: profile.id,
+          display_name: profile.display_name,
+          username: profile.username,
+          avatar_url: profile.avatar_url
         });
       }
     } catch (error) {
@@ -705,16 +690,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 
                 <div>
                   <h2 className="font-semibold text-lg">
-                    {isPublicChat && otherUser?.display_name !== otherUser?.username 
-                      ? otherUser?.display_name 
-                      : otherUser?.display_name || 'Chat'
-                    }
+                    {otherUser?.display_name || 'Chat'}
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    {isPublicChat && otherUser?.username !== otherUser?.display_name 
-                      ? otherUser?.username 
-                      : `@${otherUser?.username || ''}`
-                    }
+                    {isPublicChat ? otherUser?.username : `@${otherUser?.username || ''}`}
                   </p>
                 </div>
               </div>
