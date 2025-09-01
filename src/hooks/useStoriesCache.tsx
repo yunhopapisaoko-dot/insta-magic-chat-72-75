@@ -9,6 +9,8 @@ interface Story {
   media_type: string | null;
   background_color: string;
   text_color: string;
+  text_position: string;
+  text_size: number;
   created_at: string;
   expires_at: string;
   profiles: {
@@ -131,7 +133,7 @@ export const useStoriesCache = (userId?: string) => {
       // Fetch user's own stories
       const { data: userStoriesData, error: userError } = await supabase
         .from('stories')
-        .select('*')
+        .select('*, profiles(display_name, username, avatar_url)')
         .eq('user_id', userId)
         .gt('expires_at', new Date().toISOString()) // Only non-expired stories
         .order('created_at', { ascending: false });
@@ -170,7 +172,7 @@ export const useStoriesCache = (userId?: string) => {
         // Get stories from followed users
         const { data: followedStories, error: followedError } = await supabase
           .from('stories')
-          .select('*')
+          .select('*, profiles(display_name, username, avatar_url)')
           .in('user_id', followedUserIds)
           .gt('expires_at', new Date().toISOString()) // Only non-expired stories
           .order('created_at', { ascending: false });

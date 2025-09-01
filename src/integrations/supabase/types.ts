@@ -463,6 +463,8 @@ export type Database = {
           media_type: string | null
           media_url: string | null
           text_color: string | null
+          text_position: string
+          text_size: number
           user_id: string
         }
         Insert: {
@@ -474,6 +476,8 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           text_color?: string | null
+          text_position?: string
+          text_size?: number
           user_id: string
         }
         Update: {
@@ -485,6 +489,8 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           text_color?: string | null
+          text_position?: string
+          text_size?: number
           user_id?: string
         }
         Relationships: [

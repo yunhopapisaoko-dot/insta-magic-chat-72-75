@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import StoryEditor from '@/components/StoryEditor';
 
 interface Story {
@@ -17,6 +18,8 @@ interface Story {
   media_type: string | null;
   background_color: string;
   text_color: string;
+  text_position: string;
+  text_size: number;
   created_at: string;
   expires_at: string;
   profiles: {
@@ -498,7 +501,17 @@ const StoryViewerEnhanced = ({
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-sm z-50">
+                     <DropdownMenuContent 
+                      align="end" 
+                      className="bg-background/95 backdrop-blur-sm border border-border z-[9999]"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseUp={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                    >
                       {/* Only show edit option for text and photo stories (not videos) */}
                       {currentStory.media_type !== 'video' && (
                         <DropdownMenuItem 
@@ -506,7 +519,7 @@ const StoryViewerEnhanced = ({
                             e.stopPropagation();
                             setIsEditingStory(true);
                           }}
-                          className="cursor-pointer"
+                          className="cursor-pointer hover:bg-accent focus:bg-accent"
                         >
                           <Edit className="w-4 h-4 mr-2" />
                           Editar story
@@ -517,7 +530,7 @@ const StoryViewerEnhanced = ({
                           e.stopPropagation();
                           handleDeleteStory();
                         }}
-                        className="text-destructive focus:text-destructive cursor-pointer"
+                        className="text-destructive focus:text-destructive cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Deletar story
@@ -575,10 +588,22 @@ const StoryViewerEnhanced = ({
             {/* Conteúdo de texto */}
             {currentStory.content && (
               <div
-                className="absolute inset-0 flex items-center justify-center p-8 z-10 animate-fade-in"
+                className={cn(
+                  "absolute p-8 z-10 flex animate-fade-in",
+                  {
+                    'inset-0 items-center justify-center': (currentStory.text_position || 'center') === 'center',
+                    'top-0 left-0 right-0 items-start justify-center': (currentStory.text_position || 'center') === 'top',
+                    'bottom-0 left-0 right-0 items-end justify-center': (currentStory.text_position || 'center') === 'bottom',
+                    'inset-0 items-center justify-start': (currentStory.text_position || 'center') === 'left',
+                    'inset-0 items-center justify-end': (currentStory.text_position || 'center') === 'right',
+                  }
+                )}
                 style={{ color: currentStory.text_color }}
               >
-                <p className="text-2xl font-bold text-center drop-shadow-lg leading-tight animate-scale-in">
+                <p 
+                  className="font-bold text-center drop-shadow-lg leading-tight animate-scale-in break-words max-w-[80%]"
+                  style={{ fontSize: `${currentStory.text_size || 24}px` }}
+                >
                   {currentStory.content}
                 </p>
               </div>

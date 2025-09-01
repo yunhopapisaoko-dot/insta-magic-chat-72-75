@@ -17,6 +17,8 @@ interface Story {
   media_type: string | null;
   background_color: string;
   text_color: string;
+  text_position: string;
+  text_size: number;
   created_at: string;
   expires_at: string;
   profiles: {

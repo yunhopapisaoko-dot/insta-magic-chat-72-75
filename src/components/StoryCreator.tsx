@@ -24,6 +24,8 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
   const [text, setText] = useState('');
   const [backgroundColor, setBackgroundColor] = useState('#667eea');
   const [textColor, setTextColor] = useState('#ffffff');
+  const [textPosition, setTextPosition] = useState('center');
+  const [textSize, setTextSize] = useState(24);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -55,6 +57,8 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
       setUploadProgress(0);
       setBackgroundColor('#667eea');
       setTextColor('#ffffff');
+      setTextPosition('center');
+      setTextSize(24);
       setIsDragging(false);
       setValidationResult(null);
       setTaggedUsers([]);
@@ -218,6 +222,8 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
           media_type: mediaType,
           background_color: backgroundColor,
           text_color: textColor,
+          text_position: textPosition,
+          text_size: textSize,
         })
         .select()
         .single();
@@ -255,6 +261,8 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
       setMediaFile(null);
       setMediaPreview(null);
       setBackgroundColor('#667eea');
+      setTextPosition('center');
+      setTextSize(24);
     } catch (error) {
       console.error('Error creating story:', error);
       toast({
@@ -386,10 +394,22 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
             {/* Text Content */}
             {text && (
               <div
-                className="absolute inset-0 flex items-center justify-center p-8"
+                className={cn(
+                  "absolute p-8 flex",
+                  {
+                    'inset-0 items-center justify-center': textPosition === 'center',
+                    'top-0 left-0 right-0 items-start justify-center': textPosition === 'top',
+                    'bottom-0 left-0 right-0 items-end justify-center': textPosition === 'bottom',
+                    'inset-0 items-center justify-start': textPosition === 'left',
+                    'inset-0 items-center justify-end': textPosition === 'right',
+                  }
+                )}
                 style={{ color: textColor }}
               >
-                <p className="text-2xl font-bold text-center drop-shadow-lg leading-tight">
+                <p 
+                  className="font-bold text-center drop-shadow-lg leading-tight break-words max-w-[80%]"
+                  style={{ fontSize: `${textSize}px` }}
+                >
                   {text}
                 </p>
               </div>

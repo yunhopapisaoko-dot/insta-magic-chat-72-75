@@ -17,6 +17,8 @@ interface Story {
   media_type: string | null;
   background_color: string;
   text_color: string;
+  text_position: string;
+  text_size: number;
   created_at: string;
   expires_at: string;
   profiles: {
@@ -38,6 +40,8 @@ const StoryEditor = ({ open, onOpenChange, story, onStoryUpdated }: StoryEditorP
   const [text, setText] = useState('');
   const [backgroundColor, setBackgroundColor] = useState('#667eea');
   const [textColor, setTextColor] = useState('#ffffff');
+  const [textPosition, setTextPosition] = useState('center');
+  const [textSize, setTextSize] = useState(24);
   const [loading, setLoading] = useState(false);
 
   const backgroundColors = [
@@ -59,6 +63,8 @@ const StoryEditor = ({ open, onOpenChange, story, onStoryUpdated }: StoryEditorP
       setText(story.content || '');
       setBackgroundColor(story.background_color);
       setTextColor(story.text_color);
+      setTextPosition(story.text_position || 'center');
+      setTextSize(story.text_size || 24);
     }
   }, [story, open]);
 
@@ -68,6 +74,8 @@ const StoryEditor = ({ open, onOpenChange, story, onStoryUpdated }: StoryEditorP
       setText('');
       setBackgroundColor('#667eea');
       setTextColor('#ffffff');
+      setTextPosition('center');
+      setTextSize(24);
     }
   }, [open]);
 
@@ -92,6 +100,8 @@ const StoryEditor = ({ open, onOpenChange, story, onStoryUpdated }: StoryEditorP
           content: text.trim(),
           background_color: backgroundColor,
           text_color: textColor,
+          text_position: textPosition,
+          text_size: textSize,
         })
         .eq('id', story.id)
         .eq('user_id', user.id);
@@ -186,10 +196,22 @@ const StoryEditor = ({ open, onOpenChange, story, onStoryUpdated }: StoryEditorP
             {/* Text Content */}
             {text && (
               <div
-                className="absolute inset-0 flex items-center justify-center p-8 z-10"
+                className={cn(
+                  "absolute p-8 z-10 flex",
+                  {
+                    'inset-0 items-center justify-center': textPosition === 'center',
+                    'top-0 left-0 right-0 items-start justify-center': textPosition === 'top',
+                    'bottom-0 left-0 right-0 items-end justify-center': textPosition === 'bottom',
+                    'inset-0 items-center justify-start': textPosition === 'left',
+                    'inset-0 items-center justify-end': textPosition === 'right',
+                  }
+                )}
                 style={{ color: textColor }}
               >
-                <p className="text-2xl font-bold text-center drop-shadow-lg leading-tight">
+                <p 
+                  className="font-bold text-center drop-shadow-lg leading-tight break-words max-w-[80%]"
+                  style={{ fontSize: `${textSize}px` }}
+                >
                   {text}
                 </p>
               </div>
@@ -210,6 +232,57 @@ const StoryEditor = ({ open, onOpenChange, story, onStoryUpdated }: StoryEditorP
                 )}
                 maxLength={150}
               />
+            </div>
+
+            {/* Position and Size Controls */}
+            <div className="space-y-3">
+              {/* Text Position */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-white/70 text-xs font-medium">Posição do texto</span>
+                </div>
+                <div className="flex space-x-2">
+                  {[
+                    { value: 'top', label: 'Topo' },
+                    { value: 'center', label: 'Centro' },
+                    { value: 'bottom', label: 'Base' },
+                    { value: 'left', label: 'Esq.' },
+                    { value: 'right', label: 'Dir.' }
+                  ].map((position) => (
+                    <button
+                      key={position.value}
+                      onClick={() => setTextPosition(position.value)}
+                      className={cn(
+                        "flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200",
+                        textPosition === position.value 
+                          ? "bg-white text-black" 
+                          : "bg-white/20 text-white hover:bg-white/30"
+                      )}
+                    >
+                      {position.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Text Size */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70 text-xs font-medium">Tamanho do texto</span>
+                  <span className="text-white text-xs">{textSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min="16"
+                  max="48"
+                  value={textSize}
+                  onChange={(e) => setTextSize(Number(e.target.value))}
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                  style={{
+                    background: `linear-gradient(to right, white 0%, white ${((textSize - 16) / (48 - 16)) * 100}%, rgba(255,255,255,0.2) ${((textSize - 16) / (48 - 16)) * 100}%, rgba(255,255,255,0.2) 100%)`
+                  }}
+                />
+              </div>
             </div>
 
             {/* Color Controls */}
