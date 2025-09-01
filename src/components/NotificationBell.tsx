@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -7,8 +7,20 @@ import { useNotifications } from '@/hooks/useNotifications';
 import NotificationsList from '@/components/NotificationsList';
 
 const NotificationBell = () => {
-  const { unreadCount } = useNotifications();
+  const { unreadCount, markAllAsRead } = useNotifications();
   const [open, setOpen] = useState(false);
+
+  // Marcar todas as notificações como lidas quando o modal abrir
+  useEffect(() => {
+    if (open && unreadCount > 0) {
+      // Pequeno delay para garantir que o modal foi aberto
+      const timer = setTimeout(() => {
+        markAllAsRead();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [open, unreadCount, markAllAsRead]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
