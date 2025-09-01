@@ -866,7 +866,14 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                     )}
                     
                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
-                       {/* Remove avatars here since MessageBubble handles them for group chats */}
+                       {!isOwnMessage && (isPublicChat || !isOneOnOneChat) && (
+                         <Avatar className="w-8 h-8 mt-1">
+                           <AvatarImage src={getSenderInfo(message.sender_id)?.avatar_url || ''} />
+                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                             {getSenderInfo(message.sender_id)?.display_name?.[0] || '?'}
+                           </AvatarFallback>
+                         </Avatar>
+                       )}
                        
                         <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
                           

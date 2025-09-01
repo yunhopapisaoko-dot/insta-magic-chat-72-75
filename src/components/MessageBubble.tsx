@@ -29,19 +29,11 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
 
   return (
     <div className="flex flex-col space-y-1">
-      {/* Show sender info for group chats and non-own messages */}
+      {/* Show sender name for group chats and non-own messages */}
       {!isOwnMessage && isGroupChat && senderInfo && (
-        <div className="flex items-center space-x-2 px-1">
-          <Avatar className="w-5 h-5">
-            <AvatarImage src={senderInfo.avatar_url || ''} className="object-cover w-full h-full" />
-            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-              {senderInfo.display_name[0]}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-xs text-muted-foreground font-medium">
-            {senderInfo.display_name}
-          </span>
-        </div>
+        <span className="text-xs text-muted-foreground font-medium px-1">
+          {senderInfo.display_name}
+        </span>
       )}
       
       <div 
@@ -99,7 +91,7 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
           </div>
         )}
       </div>
-    </div>
+      </div>
     </div>
   );
 };
