@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { X, ChevronLeft, ChevronRight, MessageCircle, Volume2, VolumeX, MoreVertical, Trash2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, MessageCircle, Volume2, VolumeX, MoreVertical, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import StoryEditor from '@/components/StoryEditor';
 
 interface Story {
   id: string;
@@ -64,6 +65,7 @@ const StoryViewerEnhanced = ({
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; time: number } | null>(null);
+  const [isEditingStory, setIsEditingStory] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -470,6 +472,19 @@ const StoryViewerEnhanced = ({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-sm">
+                      {/* Only show edit option for text and photo stories (not videos) */}
+                      {currentStory.media_type !== 'video' && (
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsEditingStory(true);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar story
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -484,18 +499,18 @@ const StoryViewerEnhanced = ({
                   </DropdownMenu>
                 )}
 
-                {/* Controle de volume para vídeos */}
+                {/* Controle de volume para vídeos - botão maior */}
                 {currentStory.media_type === 'video' && (
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleMute();
                     }}
-                    className="text-white hover:bg-white/20 w-8 h-8 p-0 rounded-full"
+                    className="text-white hover:bg-white/20 w-12 h-12 p-0 rounded-full bg-black/30 backdrop-blur-sm"
                   >
-                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
                   </Button>
                 )}
                 
@@ -566,6 +581,16 @@ const StoryViewerEnhanced = ({
             </div>
           </div>
         </div>
+
+        {/* Story Editor Modal */}
+        <StoryEditor
+          open={isEditingStory}
+          onOpenChange={setIsEditingStory}
+          story={currentStory}
+          onStoryUpdated={() => {
+            onStoryDeleted?.(); // Refresh stories list
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
