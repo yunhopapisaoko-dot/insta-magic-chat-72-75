@@ -323,6 +323,7 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
   }, [user]);
 
   // Auto-scroll effect for new messages - DISABLED for static behavior
+  // Auto-scroll to bottom only on initial load - start from bottom
   useEffect(() => {
     if (messages.length > lastMessageCountRef.current) {
       lastMessageCountRef.current = messages.length;
@@ -332,7 +333,7 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
         setTimeout(() => scrollToBottom(false), 100);
         isInitialLoadRef.current = false;
       }
-      // Removed auto-scroll for new messages to keep screen static
+      // No auto-scroll for new messages to keep screen position fixed
     }
   }, [messages.length, scrollToBottom]);
 

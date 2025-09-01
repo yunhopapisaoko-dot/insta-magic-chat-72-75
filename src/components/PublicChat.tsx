@@ -52,7 +52,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     setIsNearBottom(checkIfNearBottom());
   }, [checkIfNearBottom]);
 
-  // Load messages at bottom position without scrolling
+  // Load messages at bottom position without scrolling - start from bottom
   useEffect(() => {
     if (messages.length > 0 && !loading && !hasInitialScrolled && messagesEndRef.current) {
       // Position at bottom instantly without animation

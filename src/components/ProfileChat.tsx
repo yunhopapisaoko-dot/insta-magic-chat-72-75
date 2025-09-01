@@ -70,7 +70,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     }
   }, [isOpen, user?.id, otherUser.id, conversationId]);
 
-  // Load messages at bottom position without scrolling
+  // Load messages at bottom position without scrolling - start from bottom
   useEffect(() => {
     if (messages.length > 0 && !loading && !hasInitialScrolled && conversationId && messagesEndRef.current) {
       // Position at bottom instantly without animation
