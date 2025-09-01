@@ -268,7 +268,7 @@ export const useStoriesCache = (userId?: string) => {
     }
   }, [userId, preloadMedia, getViewedStories]);
 
-  // Set up real-time updates
+  // Set up real-time updates for stories and story views
   useEffect(() => {
     if (!userId) return;
 
@@ -297,6 +297,37 @@ export const useStoriesCache = (userId?: string) => {
         },
         () => {
           fetchStories(true); // Force refresh
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'story_views'
+        },
+        async (payload) => {
+          console.log('Story view added:', payload);
+          // Update the hasViewed status in real-time
+          if (cacheRef.current) {
+            const viewedStoryId = payload.new.story_id;
+            
+            // Re-calculate hasViewed for affected groups
+            const viewedStoriesSet = await getViewedStories();
+            const updatedGroups = cacheRef.current.data.map(group => {
+              const hasStoryInGroup = group.stories.some(story => story.id === viewedStoryId);
+              if (hasStoryInGroup) {
+                return {
+                  ...group,
+                  hasViewed: group.stories.every(story => viewedStoriesSet.has(story.id))
+                };
+              }
+              return group;
+            });
+
+            cacheRef.current.data = updatedGroups;
+            setStories(updatedGroups);
+          }
         }
       )
       .subscribe();

@@ -947,14 +947,14 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                            />
                         </div>
                        
-                       {isOwnMessage && user && (
-                         <Avatar className="w-8 h-8 mt-1">
-                           <AvatarImage src={user.avatar_url || ''} />
+                        {!isOwnMessage && (isPublicChat || !isOneOnOneChat) && getSenderInfo(message.sender_id) && (
+                          <Avatar className="w-8 h-8 mt-1">
+                            <AvatarImage src={getSenderInfo(message.sender_id)?.avatar_url || ''} />
                             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                              {user.display_name ? stripUserDigits(user.display_name)[0] : '?'}
+                              {getSenderInfo(message.sender_id)?.display_name ? stripUserDigits(getSenderInfo(message.sender_id)!.display_name)[0] : '?'}
                             </AvatarFallback>
-                         </Avatar>
-                       )}
+                          </Avatar>
+                        )}
                      </div>
                   </div>
                 );
