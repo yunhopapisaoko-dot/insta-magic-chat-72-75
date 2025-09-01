@@ -571,7 +571,7 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
                              {stripUserDigits(profile.display_name)}
                            </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            @{profile.username}
+                            @{stripUserDigits(profile.username)}
                           </p>
                         </div>
                       </div>

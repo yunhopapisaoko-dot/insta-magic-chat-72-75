@@ -9,6 +9,7 @@ import { useFollowersCache } from '@/hooks/useFollowersCache';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { stripUserDigits } from '@/lib/utils';
 
 interface FollowersListProps {
   userId: string;
@@ -192,16 +193,16 @@ const FollowersList = ({ userId, type, onBack }: FollowersListProps) => {
                   <Avatar className="w-12 h-12 hover:scale-105 transition-transform">
                     <AvatarImage src={followUser.avatar_url || ''} />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                      {followUser.display_name[0] || 'U'}
+                      {stripUserDigits(followUser.display_name)[0] || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold truncate hover:text-primary transition-colors">
-                      {followUser.display_name}
+                      {stripUserDigits(followUser.display_name)}
                     </h3>
                     <p className="text-sm text-muted-foreground hover:text-primary/80 transition-colors">
-                      @{followUser.username}
+                      @{stripUserDigits(followUser.username)}
                     </p>
                     {followUser.bio && (
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-1">

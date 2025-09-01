@@ -19,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { stripUserDigits } from '@/lib/utils';
 
 interface ProfileChatProps {
   otherUser: {
@@ -336,15 +337,15 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
               )}
               
               <Avatar className="w-10 h-10">
-                <AvatarImage src={otherUser.avatar_url || ''} />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                  {otherUser.display_name[0]}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div>
-                <SheetTitle className="text-left">{otherUser.display_name}</SheetTitle>
-                <p className="text-sm text-muted-foreground">@{otherUser.username}</p>
+              <AvatarImage src={otherUser.avatar_url || ''} />
+              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+                {stripUserDigits(otherUser.display_name)[0]}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div>
+              <SheetTitle className="text-left">{stripUserDigits(otherUser.display_name)}</SheetTitle>
+              <p className="text-sm text-muted-foreground">@{stripUserDigits(otherUser.username)}</p>
               </div>
             </div>
             
@@ -403,11 +404,11 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
                   <Avatar className="w-16 h-16">
                     <AvatarImage src={otherUser.avatar_url || ''} />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xl font-semibold">
-                      {otherUser.display_name[0]}
+                      {stripUserDigits(otherUser.display_name)[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold text-lg">{otherUser.display_name}</h3>
+                    <h3 className="font-semibold text-lg">{stripUserDigits(otherUser.display_name)}</h3>
                     <p className="text-muted-foreground">Comece uma conversa!</p>
                   </div>
                 </div>
@@ -433,7 +434,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
                         <Avatar className="w-8 h-8 mt-1">
                           <AvatarImage src={otherUser.avatar_url || ''} />
                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                            {otherUser.display_name[0]}
+                            {stripUserDigits(otherUser.display_name)[0]}
                           </AvatarFallback>
                         </Avatar>
                       )}

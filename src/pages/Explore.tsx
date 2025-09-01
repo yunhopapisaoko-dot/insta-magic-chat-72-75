@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useConversations } from '@/hooks/useConversations';
+import { stripUserDigits } from '@/lib/utils';
 
 interface Profile {
   id: string;
@@ -263,13 +264,13 @@ const Explore = () => {
                          <Avatar className="w-16 h-16 cursor-pointer hover:scale-105 transition-transform">
                            <AvatarImage src={profile.avatar_url || ''} />
                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
-                             {profile.display_name[0] || 'U'}
+                             {stripUserDigits(profile.display_name)[0] || 'U'}
                            </AvatarFallback>
                          </Avatar>
                          
                          <div className="flex-1 min-w-0 cursor-pointer">
-                           <h3 className="font-semibold truncate hover:text-primary transition-colors">{profile.display_name}</h3>
-                           <p className="text-sm text-muted-foreground hover:text-primary/80 transition-colors">@{profile.username}</p>
+                           <h3 className="font-semibold truncate hover:text-primary transition-colors">{stripUserDigits(profile.display_name)}</h3>
+                           <p className="text-sm text-muted-foreground hover:text-primary/80 transition-colors">@{stripUserDigits(profile.username)}</p>
                            {profile.bio && (
                              <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
                                {profile.bio}
@@ -288,7 +289,7 @@ const Explore = () => {
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleStartChat(profile.id, profile.display_name);
+                                  handleStartChat(profile.id, stripUserDigits(profile.display_name));
                                 }}
                                 disabled={startingChat === profile.id}
                                 className="border-primary text-primary hover:bg-primary/10 w-10 h-8 p-0"

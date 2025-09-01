@@ -1,4 +1,5 @@
 import React from 'react';
+import { stripUserDigits } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface TypingUser {
@@ -20,11 +21,11 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
 
   const getTypingText = () => {
     if (typingUsers.length === 1) {
-      return `${typingUsers[0].display_name} está digitando...`;
+      return `${stripUserDigits(typingUsers[0].display_name)} está digitando...`;
     } else if (typingUsers.length === 2) {
-      return `${typingUsers[0].display_name} e ${typingUsers[1].display_name} estão digitando...`;
+      return `${stripUserDigits(typingUsers[0].display_name)} e ${stripUserDigits(typingUsers[1].display_name)} estão digitando...`;
     } else {
-      return `${typingUsers[0].display_name} e mais ${typingUsers.length - 1} pessoas estão digitando...`;
+      return `${stripUserDigits(typingUsers[0].display_name)} e mais ${typingUsers.length - 1} pessoas estão digitando...`;
     }
   };
 
@@ -35,7 +36,7 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
           <Avatar key={user.user_id} className="w-6 h-6 border-2 border-background">
             <AvatarImage src="" />
             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-              {user.display_name[0]}
+              {stripUserDigits(user.display_name)[0]}
             </AvatarFallback>
           </Avatar>
         ))}

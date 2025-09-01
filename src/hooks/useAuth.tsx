@@ -273,12 +273,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setIsAdmin(false);
     
-    // Limpa todos os dados salvos, incluindo preferências de login
+    // Limpa dados de sessão, mantém preferências "lembrar de mim"
     localStorage.removeItem('magic-talk-user');
     localStorage.removeItem('magic-talk-admin');
-    localStorage.removeItem('magic-talk-saved-username');
-    localStorage.removeItem('magic-talk-remember-me');
     localStorage.removeItem('magic-talk-remember-login');
+    // Mantemos 'magic-talk-saved-username' e 'magic-talk-remember-me' para facilitar o próximo login
     
     toast({
       title: "Logout realizado",

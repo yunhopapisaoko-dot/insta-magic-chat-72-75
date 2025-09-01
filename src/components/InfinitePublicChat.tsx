@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useInfinitePublicChat } from '@/hooks/useInfinitePublicChat';
 import MobileLayout from '@/components/MobileLayout';
 import TypingIndicator from '@/components/ui/TypingIndicator';
-import { cn } from '@/lib/utils';
+import { cn, stripUserDigits } from '@/lib/utils';
 
 interface InfinitePublicChatProps {
   onBack: () => void;
@@ -124,7 +124,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
             <Avatar className="w-8 h-8 mt-1 flex-shrink-0">
               <AvatarImage src={message.sender?.avatar_url || ''} />
               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xs font-semibold">
-                {message.sender?.display_name?.[0] || '?'}
+                {message.sender?.display_name ? stripUserDigits(message.sender.display_name)[0] : '?'}
               </AvatarFallback>
             </Avatar>
           )}
@@ -132,7 +132,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
           <div className={cn("max-w-[70%]", isOwnMessage ? 'ml-auto' : '')}>
             {!isOwnMessage && (
               <p className="text-xs text-muted-foreground mb-1 px-1">
-                {message.sender?.display_name || 'Usuário'}
+                {message.sender?.display_name ? stripUserDigits(message.sender.display_name) : 'Usuário'}
               </p>
             )}
             <div className={cn(
@@ -155,7 +155,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
             <Avatar className="w-8 h-8 mt-1 flex-shrink-0">
               <AvatarImage src={userProfile?.avatar_url || ''} />
               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xs font-semibold">
-                {userProfile?.display_name?.[0] || '?'}
+                {userProfile?.display_name ? stripUserDigits(userProfile.display_name)[0] : '?'}
               </AvatarFallback>
             </Avatar>
           )}

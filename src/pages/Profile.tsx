@@ -10,6 +10,7 @@ import ProfileEditor from '@/components/ProfileEditor';
 import MobileLayout from '@/components/MobileLayout';
 import PostsGrid from '@/components/PostsGrid';
 import { toast } from '@/hooks/use-toast';
+import { stripUserDigits } from '@/lib/utils';
 
 interface ProfileData {
   display_name: string;
@@ -104,7 +105,7 @@ const Profile = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <h1 className="text-xl font-bold">@{user?.username}</h1>
+            <h1 className="text-xl font-bold">@{user?.username ? stripUserDigits(user.username) : ''}</h1>
           </div>
           <Button 
             variant="ghost" 
@@ -126,12 +127,12 @@ const Profile = () => {
           <Avatar className="w-24 h-24 mx-auto">
             <AvatarImage src={profileData.avatar_url || ''} />
             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl font-semibold">
-              {profileData.display_name[0] || 'U'}
+              {stripUserDigits(profileData.display_name)[0] || 'U'}
             </AvatarFallback>
           </Avatar>
 
           <div>
-            <h2 className="text-xl font-bold">{profileData.display_name}</h2>
+            <h2 className="text-xl font-bold">{stripUserDigits(profileData.display_name)}</h2>
             {profileData.bio && (
               <p className="text-muted-foreground mt-2 max-w-xs mx-auto">
                 {profileData.bio}

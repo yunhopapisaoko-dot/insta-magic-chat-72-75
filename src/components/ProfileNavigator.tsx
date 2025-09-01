@@ -19,6 +19,7 @@ import { useProfileNavigation } from '@/hooks/useProfileNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import ProfileChat from '@/components/ProfileChat';
+import { stripUserDigits } from '@/lib/utils';
 
 interface ProfileNavigatorProps {
   isOpen: boolean;
@@ -231,13 +232,13 @@ const ProfileNavigator = ({ isOpen, onClose, initialUserId, initialUsername }: P
                       <Avatar className="w-20 h-20 mx-auto">
                         <AvatarImage src={currentProfile.avatar_url || ''} />
                         <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xl font-semibold">
-                          {currentProfile.display_name[0]}
+                          {stripUserDigits(currentProfile.display_name)[0]}
                         </AvatarFallback>
                       </Avatar>
 
                       <div>
-                        <h2 className="text-lg font-bold">{currentProfile.display_name}</h2>
-                        <p className="text-muted-foreground">@{currentProfile.username}</p>
+                        <h2 className="text-lg font-bold">{stripUserDigits(currentProfile.display_name)}</h2>
+                        <p className="text-muted-foreground">@{stripUserDigits(currentProfile.username)}</p>
                         {currentProfile.bio && (
                           <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
                             {currentProfile.bio}
@@ -318,12 +319,12 @@ const ProfileNavigator = ({ isOpen, onClose, initialUserId, initialUsername }: P
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={profile.avatar_url || ''} />
                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                            {profile.display_name[0]}
+                            {stripUserDigits(profile.display_name)[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 text-left">
-                          <p className="font-medium">{profile.display_name}</p>
-                          <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                          <p className="font-medium">{stripUserDigits(profile.display_name)}</p>
+                          <p className="text-sm text-muted-foreground">@{stripUserDigits(profile.username)}</p>
                         </div>
                         <ArrowRight className="w-4 h-4 text-muted-foreground" />
                       </button>
@@ -356,13 +357,13 @@ const ProfileNavigator = ({ isOpen, onClose, initialUserId, initialUsername }: P
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={conversation.otherUser.avatar_url || ''} />
                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                            {conversation.otherUser.display_name[0]}
+                            {stripUserDigits(conversation.otherUser.display_name)[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 text-left">
-                          <p className="font-medium">{conversation.otherUser.display_name}</p>
+                          <p className="font-medium">{stripUserDigits(conversation.otherUser.display_name)}</p>
                           <p className="text-sm text-muted-foreground">
-                            @{conversation.otherUser.username}
+                            @{stripUserDigits(conversation.otherUser.username)}
                           </p>
                         </div>
                         <div className="text-right">

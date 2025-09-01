@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { isVideoUrl } from '@/lib/utils';
+import { isVideoUrl, stripUserDigits } from '@/lib/utils';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { useRef } from 'react';
 
@@ -125,13 +125,13 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={post.profiles.avatar_url || ''} />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-semibold">
-                    {post.profiles.display_name[0]}
+                    {stripUserDigits(post.profiles.display_name)[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm">{post.profiles.display_name}</h3>
+                  <h3 className="font-semibold text-sm">{stripUserDigits(post.profiles.display_name)}</h3>
                   <p className="text-xs text-muted-foreground">
-                    @{post.profiles.username} • {formatTimeAgo(post.created_at)}
+                    @{stripUserDigits(post.profiles.username)} • {formatTimeAgo(post.created_at)}
                   </p>
                 </div>
                 {post.user_id === user?.id && (
@@ -228,13 +228,13 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                           <Avatar className="w-8 h-8 flex-shrink-0">
                             <AvatarImage src={comment.profiles.avatar_url || ''} />
                             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                              {comment.profiles.display_name[0]}
+                              {stripUserDigits(comment.profiles.display_name)[0]}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
-                                <span className="font-semibold text-sm">{comment.profiles.display_name}</span>
+                                <span className="font-semibold text-sm">{stripUserDigits(comment.profiles.display_name)}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {formatTimeAgo(comment.created_at)}
                                 </span>
@@ -264,7 +264,7 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                     <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarImage src={user?.avatar_url || ''} />
                       <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                        {user?.display_name?.[0] || 'U'}
+                        {user?.display_name ? stripUserDigits(user.display_name)[0] : 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 flex space-x-2">
