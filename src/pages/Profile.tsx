@@ -57,6 +57,19 @@ const Profile = () => {
     fetchProfile();
   }, [user]);
 
+  // Update local state when user context changes (from realtime updates)
+  useEffect(() => {
+    if (user && profileData) {
+      setProfileData({
+        display_name: user.display_name,
+        bio: user.bio,
+        avatar_url: user.avatar_url,
+        followers_count: user.followers_count || 0,
+        following_count: user.following_count || 0,
+      });
+    }
+  }, [user?.display_name, user?.bio, user?.avatar_url, user?.followers_count, user?.following_count]);
+
   const handleLogout = async () => {
     if (confirm('Tem certeza que deseja sair?')) {
       setLoggingOut(true);

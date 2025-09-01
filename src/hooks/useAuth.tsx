@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useRealtimeProfile } from './useRealtimeProfile';
 
 interface Profile {
   id: string;
@@ -63,6 +64,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const handleRealtimeProfileUpdate = (profileUpdate: any) => {
+    setUser(prev => prev ? { ...prev, ...profileUpdate } : null);
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -121,6 +126,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Set up realtime profile updates
+  useRealtimeProfile({
+    userId: user?.id || null,
+    onProfileUpdate: handleRealtimeProfileUpdate,
+  });
 
   const login = async (username: string, rememberMe: boolean = false): Promise<boolean> => {
     if (!validateUsername(username)) {
