@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 import { PublicChatSettings } from '@/components/PublicChatSettings';
+import { PrivateChatSettings } from '@/components/PrivateChatSettings';
 import { MessageContextMenu } from '@/components/MessageContextMenu';
 import { MessageBubble } from '@/components/MessageBubble';
 import { useLongPress } from '@/hooks/useLongPress';
@@ -851,140 +852,12 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           conversationId={conversationId}
         />
 
-        {/* Settings Modal */}
-        <Dialog open={showSettings} onOpenChange={setShowSettings}>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader>
-              <DialogTitle>Configurações da Conversa</DialogTitle>
-            </DialogHeader>
-
-            <ScrollArea className="flex-1 pr-4">
-              <div className="space-y-4">
-                {/* Chat Info */}
-                <div className="space-y-3">
-                  <div className="text-center">
-                    <Avatar className="w-16 h-16 mx-auto mb-3">
-                      <AvatarImage src={otherUser?.avatar_url || ''} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
-                        {otherUser?.display_name?.[0] || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <h3 className="font-semibold text-lg">{otherUser?.display_name}</h3>
-                    <p className="text-sm text-muted-foreground">@{otherUser?.username}</p>
-                  </div>
-                  
-                  {/* Chat Description */}
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground text-center">
-                      {participants.length > 2 ? 'Chat em grupo' : 'Conversa privada'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Wallpaper Button */}
-                <Button 
-                  variant="outline" 
-                  className="w-full gap-2" 
-                  onClick={() => setShowWallpaperSettings(true)}
-                >
-                  <Palette className="w-4 h-4" />
-                  Papel de Parede
-                </Button>
-
-                {/* Add More People Button */}
-                <Button 
-                  variant="outline" 
-                  className="w-full gap-2" 
-                  onClick={() => {
-                    fetchAllUsers();
-                    // Scroll to add people section (will be added below)
-                  }}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Adicionar Mais Pessoas
-                </Button>
-
-                <Separator />
-
-                {/* Current Participants */}
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Participantes ({participants.length})</h3>
-                  <ScrollArea className="max-h-32">
-                    <div className="space-y-2">
-                      {participants.map((participant) => (
-                        <div key={participant.user_id} className="flex items-center space-x-3 p-2 rounded-lg bg-muted/50">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={participant.profiles?.avatar_url || ''} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                              {participant.profiles?.display_name?.[0] || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{participant.profiles?.display_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">@{participant.profiles?.username}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-
-                <Separator />
-
-                {/* Add People */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium">Adicionar Pessoas</h3>
-                    <UserPlus className="w-4 h-4 text-muted-foreground" />
-                  </div>
-
-                  <Input
-                    placeholder="Buscar pessoas..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="mb-3"
-                  />
-
-                  <ScrollArea className="max-h-32">
-                    <div className="space-y-2">
-                      {filteredUsers.map((u) => (
-                        <div key={u.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={u.avatar_url || ''} />
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                                {u.display_name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{u.display_name}</p>
-                              <p className="text-xs text-muted-foreground truncate">@{u.username}</p>
-                            </div>
-                          </div>
-                          <Button size="sm" variant="outline" onClick={() => addParticipant(u.id)} className="h-7 px-2">
-                            <UserPlus className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                      {filteredUsers.length === 0 && searchQuery && (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          Nenhuma pessoa encontrada
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-
-                <Separator />
-
-                {/* Leave Conversation */}
-                <Button variant="destructive" onClick={() => setShowLeaveConfirm(true)} className="w-full">
-                  Sair da Conversa
-                </Button>
-              </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+        {/* Private Chat Settings Modal */}
+        <PrivateChatSettings
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          conversationId={conversationId}
+        />
 
         {/* Leave Confirmation Modal */}
         <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>

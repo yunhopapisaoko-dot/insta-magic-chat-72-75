@@ -365,25 +365,115 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
               )}
 
               {chatType === 'private' && (
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">Configuração do Chat Privado</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Configure as informações do seu chat privado
+                    </p>
+                  </div>
+
+                  {/* Foto de Capa para Chat Privado */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Foto de Capa</Label>
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-secondary to-accent flex items-center justify-center overflow-hidden border-2 border-dashed border-muted-foreground/30">
+                        {chatImageUrl ? (
+                          <img src={chatImageUrl} alt="Foto de Capa" className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <Camera className="w-8 h-8 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const url = URL.createObjectURL(file);
+                              setChatImageUrl(url);
+                            }
+                          }}
+                          className="hidden"
+                          id="private-chat-cover-upload"
+                        />
+                        <label htmlFor="private-chat-cover-upload">
+                          <Button variant="outline" size="sm" type="button" asChild>
+                            <span className="cursor-pointer">
+                              <Camera className="w-4 h-4 mr-2" />
+                              {chatImageUrl ? 'Alterar Foto' : 'Escolher Foto'}
+                            </span>
+                          </Button>
+                        </label>
+                      </div>
+                      {chatImageUrl && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Prévia da foto de capa do chat
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Nome do Chat */}
                   <div className="space-y-2">
-                    <Label htmlFor="chat-name">Nome do Chat</Label>
+                    <Label htmlFor="private-chat-name" className="text-sm font-medium">
+                      Nome do Chat <span className="text-destructive">*</span>
+                    </Label>
                     <Input
-                      id="chat-name"
-                      placeholder="Nome do chat privado..."
+                      id="private-chat-name"
+                      placeholder="Digite o nome do chat..."
                       value={chatName}
                       onChange={(e) => setChatName(e.target.value)}
                       maxLength={50}
+                      className="h-11"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {chatName.length}/50 caracteres
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">
+                        Campo obrigatório
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {chatName.length}/50
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Descrição */}
+                  <div className="space-y-2">
+                    <Label htmlFor="private-chat-description" className="text-sm font-medium">
+                      Descrição
+                    </Label>
+                    <Textarea
+                      id="private-chat-description"
+                      placeholder="Descreva sobre o que é este chat... (opcional)"
+                      value={chatDescription}
+                      onChange={(e) => setChatDescription(e.target.value)}
+                      maxLength={200}
+                      rows={4}
+                      className="resize-none"
+                    />
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">
+                        Campo opcional
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {chatDescription.length}/200
+                      </p>
+                    </div>
                   </div>
                   
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      🔒 Chats privados são visíveis apenas para pessoas convidadas
-                    </p>
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-start space-x-3">
+                      <MessageCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300 mb-1">
+                          Chat Privado
+                        </p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          Apenas pessoas convidadas poderão participar deste chat. As mensagens serão visíveis apenas para os membros.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
