@@ -65,7 +65,7 @@ export const useConversations = () => {
 
       const conversationIds = participantData.map(p => p.conversation_id);
 
-      // Get other participants for each conversation (including those who left)
+      // Get other participants for each conversation (only active participants)
       const { data: otherParticipants, error: otherError } = await supabase
         .from('conversation_participants')
         .select('conversation_id, user_id')
@@ -222,6 +222,88 @@ export const useConversations = () => {
     }
 
     try {
+      // First check if conversation exists (even if user left)
+      const { data: allConversations } = await supabase
+        .from('messages')
+        .select('conversation_id')
+        .or(`sender_id.eq.${user.id},sender_id.eq.${otherUserId}`)
+        .not('message_type', 'eq', 'system');
+
+      let existingConversationId: string | null = null;
+
+      if (allConversations?.length) {
+        // Check which conversations have messages between these two users
+        for (const conv of allConversations) {
+          const { data: msgs } = await supabase
+            .from('messages')
+            .select('sender_id')
+            .eq('conversation_id', conv.conversation_id)
+            .in('sender_id', [user.id, otherUserId])
+            .not('message_type', 'eq', 'system')
+            .limit(2);
+
+          if (msgs?.some(m => m.sender_id === user.id) && msgs?.some(m => m.sender_id === otherUserId)) {
+            // Check if it's a private conversation
+            const { data: convData } = await supabase
+              .from('conversations')
+              .select('is_public')
+              .eq('id', conv.conversation_id)
+              .single();
+
+            if (convData && !convData.is_public) {
+              existingConversationId = conv.conversation_id;
+              break;
+            }
+          }
+        }
+      }
+
+      // Check if user is currently in the conversation
+      if (existingConversationId) {
+        const { data: isParticipant } = await supabase
+          .from('conversation_participants')
+          .select('user_id')
+          .eq('conversation_id', existingConversationId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!isParticipant) {
+          // User left previously, rejoin them
+          console.log('User rejoining conversation:', existingConversationId);
+          
+          // Add user back as participant
+          await supabase
+            .from('conversation_participants')
+            .insert({
+              conversation_id: existingConversationId,
+              user_id: user.id
+            });
+
+          // Get user profile for the system message
+          const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', user.id)
+            .single();
+
+          // Send system message that user joined back
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: existingConversationId,
+              sender_id: user.id,
+              content: `👋 ${userProfile?.display_name || 'Usuário'} entrou na conversa`,
+              message_type: 'system'
+            });
+
+          fetchConversations();
+          return existingConversationId;
+        }
+
+        // User is already in the conversation
+        return existingConversationId;
+      }
+
       // Check if private conversation already exists between exactly these two users
       console.log('Checking for existing private conversations...');
       const { data: existingParticipants, error: checkError } = await supabase
