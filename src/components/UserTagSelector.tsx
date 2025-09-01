@@ -9,6 +9,7 @@ import { Search, X, Users, Tag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { stripUserDigits } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -219,10 +220,10 @@ export const UserTagSelector = ({
                     <Avatar className="w-4 h-4">
                       <AvatarImage src={user.avatar_url || ''} />
                       <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                        {user.display_name[0]}
+                        {stripUserDigits(user.display_name)[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-xs">{user.display_name}</span>
+                    <span className="text-xs">{stripUserDigits(user.display_name)}</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -278,15 +279,15 @@ export const UserTagSelector = ({
                       <Avatar className="w-10 h-10">
                         <AvatarImage src={searchUser.avatar_url || ''} />
                         <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-semibold">
-                          {searchUser.display_name[0]}
+                          {stripUserDigits(searchUser.display_name)[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">
-                          {searchUser.display_name}
+                          {stripUserDigits(searchUser.display_name)}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          @{searchUser.username}
+                          @{stripUserDigits(searchUser.username)}
                         </p>
                       </div>
                       {isSelected && (

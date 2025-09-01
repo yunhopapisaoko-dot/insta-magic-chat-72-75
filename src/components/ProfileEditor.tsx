@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { stripUserDigits } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import ImageCropper from './ImageCropper';
 
@@ -142,7 +143,7 @@ const ProfileEditor = ({ open, onOpenChange, onProfileUpdate }: ProfileEditorPro
               <Avatar className="w-24 h-24">
                 <AvatarImage src={avatarPreview || user?.avatar_url || ''} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xl font-semibold">
-                  {user?.display_name?.[0] || 'U'}
+                  {user?.display_name ? stripUserDigits(user.display_name)[0] : 'U'}
                 </AvatarFallback>
               </Avatar>
               <label htmlFor="avatar-upload" className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">

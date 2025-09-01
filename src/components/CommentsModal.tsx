@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Heart, MoreHorizontal, Smile, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
+import { stripUserDigits } from '@/lib/utils';
 
 interface CommentsModalProps {
   isOpen: boolean;
@@ -124,7 +125,7 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                     <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarImage src={comment.profiles.avatar_url || ''} />
                       <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                        {comment.profiles.display_name[0]}
+                        {stripUserDigits(comment.profiles.display_name)[0]}
                       </AvatarFallback>
                     </Avatar>
                     
@@ -132,11 +133,11 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                       <div className="flex items-start gap-2">
                         <div 
                           className="flex-1 cursor-pointer"
-                          onClick={() => handleReply(comment.profiles.username, comment.id)}
+                          onClick={() => handleReply(stripUserDigits(comment.profiles.username), comment.id)}
                         >
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-sm">
-                              {comment.profiles.username}
+                              {stripUserDigits(comment.profiles.display_name)}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               {formatTimeAgo(comment.created_at)}
@@ -153,7 +154,7 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleReply(comment.profiles.username, comment.id);
+                                handleReply(stripUserDigits(comment.profiles.username), comment.id);
                               }}
                               className="text-xs text-muted-foreground font-medium hover:text-foreground"
                             >

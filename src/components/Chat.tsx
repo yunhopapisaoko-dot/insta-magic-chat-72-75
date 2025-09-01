@@ -769,13 +769,13 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                     className="object-cover w-full h-full" 
                   />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                    {otherUser.display_name[0]}
+                    {otherUser.display_name ? stripUserDigits(otherUser.display_name)[0] : '?'}
                   </AvatarFallback>
                 </Avatar>
                 
                 <div>
                   <h2 className="font-semibold text-lg">
-                    {otherUser?.display_name || 'Chat'}
+                    {otherUser?.display_name ? stripUserDigits(otherUser.display_name) : 'Chat'}
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {isPublicChat ? otherUser?.username : `@${otherUser?.username || ''}`}
@@ -828,11 +828,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               <Avatar className="w-20 h-20">
                 <AvatarImage src={otherUser?.avatar_url || ''} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl font-semibold">
-                  {otherUser?.display_name?.[0] || '🌐'}
+                  {otherUser?.display_name ? stripUserDigits(otherUser.display_name)[0] : '🌐'}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-4">
-                <h3 className="font-semibold text-xl">{otherUser?.display_name}</h3>
+                <h3 className="font-semibold text-xl">{otherUser?.display_name ? stripUserDigits(otherUser.display_name) : ''}</h3>
                 <p className="text-muted-foreground text-sm max-w-sm">
                   Este é um chat público. Clique em "Entrar" para participar da conversa.
                 </p>
@@ -856,11 +856,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               <Avatar className="w-16 h-16">
                 <AvatarImage src={otherUser?.avatar_url || ''} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xl font-semibold">
-                  {otherUser?.display_name?.[0] || '?'}
+                  {otherUser?.display_name ? stripUserDigits(otherUser.display_name)[0] : '?'}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-2">
-                <h3 className="font-semibold text-lg">{otherUser?.display_name}</h3>
+                <h3 className="font-semibold text-lg">{otherUser?.display_name ? stripUserDigits(otherUser.display_name) : ''}</h3>
                 <p className="text-muted-foreground text-sm">Envie uma mensagem para começar a conversa!</p>
               </div>
             </div>
@@ -891,11 +891,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                                  ? getSenderInfo(message.sender_id)?.avatar_url || ''
                                  : otherUser?.avatar_url || ''
                              } />
-                             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                               {((isPublicChat || !isOneOnOneChat) 
-                                 ? getSenderInfo(message.sender_id)?.display_name?.[0] 
-                                 : otherUser?.display_name?.[0]) || '?'}
-                             </AvatarFallback>
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                                {((isPublicChat || !isOneOnOneChat) 
+                                  ? (getSenderInfo(message.sender_id)?.display_name ? stripUserDigits(getSenderInfo(message.sender_id)?.display_name!)[0] : '?')
+                                  : (otherUser?.display_name ? stripUserDigits(otherUser.display_name)[0] : '?')) || '?'}
+                              </AvatarFallback>
                            </Avatar>
                            {/* New message indicator next to avatar */}
                            {hasNewMessageFrom(message.sender_id) && (
@@ -908,9 +908,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                           {/* Show sender name with new message indicator for group chats */}
                           {!isOwnMessage && (isPublicChat || !isOneOnOneChat) && (
                             <div className="flex items-center space-x-2 mb-1">
-                              <span className="text-xs text-muted-foreground font-medium">
-                                {getSenderInfo(message.sender_id)?.display_name || 'Usuário'}
-                              </span>
+                               <span className="text-xs text-muted-foreground font-medium">
+                                 {getSenderInfo(message.sender_id)?.display_name ? stripUserDigits(getSenderInfo(message.sender_id)?.display_name!) : 'Usuário'}
+                               </span>
                               {hasNewMessageFrom(message.sender_id) && (
                                 <div className="flex items-center space-x-1 animate-pulse">
                                   <MessageCircle className="w-3 h-3 text-green-500" />
@@ -950,9 +950,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                        {isOwnMessage && user && (
                          <Avatar className="w-8 h-8 mt-1">
                            <AvatarImage src={user.avatar_url || ''} />
-                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                             {user.display_name?.[0] || '?'}
-                           </AvatarFallback>
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                              {user.display_name ? stripUserDigits(user.display_name)[0] : '?'}
+                            </AvatarFallback>
                          </Avatar>
                        )}
                      </div>

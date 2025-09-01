@@ -16,6 +16,7 @@ import { useDeviceOptimization } from '@/hooks/useDeviceOptimization';
 import { useMemoryManager } from '@/hooks/useMemoryManager';
 import VideoOptimizerService from '@/services/VideoOptimizerService';
 import { Loader2, Zap, HardDrive, Cpu } from 'lucide-react';
+import { stripUserDigits } from '@/lib/utils';
 
 interface CreatePostProps {
   open: boolean;
@@ -489,12 +490,12 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
                 <Avatar className="w-12 h-12">
                   <AvatarImage src={user?.avatar_url || ''} />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                    {user?.display_name?.[0] || 'U'}
+                    {user?.display_name ? stripUserDigits(user.display_name)[0] : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{user?.display_name}</p>
-                  <p className="text-sm text-muted-foreground">@{user?.username}</p>
+                  <p className="font-semibold">{user?.display_name ? stripUserDigits(user.display_name) : ''}</p>
+                  <p className="text-sm text-muted-foreground">@{user?.username ? stripUserDigits(user.username) : ''}</p>
                 </div>
               </div>
 
