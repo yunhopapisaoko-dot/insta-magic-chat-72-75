@@ -71,7 +71,7 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
 
   const handleReply = (username: string, commentId: string) => {
     setReplyingTo(commentId);
-    setNewComment(`@${username} `);
+    setNewComment(`@${stripUserDigits(username)} `);
     commentInputRef.current?.focus();
   };
 

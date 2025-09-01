@@ -1,129 +1,91 @@
-import { useState, useRef, useEffect } from 'react';
+import React from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Copy, Trash2, Edit3, Reply, MessageSquare } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Reply, Copy, Trash2 } from 'lucide-react';
 
 interface MessageContextMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  position: { x: number; y: number };
-  isOwnMessage: boolean;
-  messageContent: string;
-  onCopy: () => void;
-  onDelete: () => void;
-  onEdit: () => void;
   onReply: () => void;
+  onCopy: () => void;
+  onDelete?: () => void;
+  canDelete: boolean;
+  messageText: string;
 }
 
 export const MessageContextMenu = ({
   isOpen,
   onClose,
-  position,
-  isOwnMessage,
-  messageContent,
+  onReply,
   onCopy,
   onDelete,
-  onEdit,
-  onReply
+  canDelete,
+  messageText
 }: MessageContextMenuProps) => {
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
+  const handleCopy = () => {
+    navigator.clipboard.writeText(messageText);
+    onCopy();
+    onClose();
+  };
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
+  const handleReply = () => {
+    onReply();
+    onClose();
+  };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleEscape);
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete();
     }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const menuItems = [
-    {
-      icon: Copy,
-      label: 'Copiar',
-      action: () => {
-        onCopy();
-        onClose();
-      }
-    },
-    ...(isOwnMessage ? [
-      {
-        icon: Edit3,
-        label: 'Editar',
-        action: () => {
-          onEdit();
-          onClose();
-        }
-      },
-      {
-        icon: Trash2,
-        label: 'Apagar',
-        action: () => {
-          onDelete();
-          onClose();
-        },
-        destructive: true
-      }
-    ] : []),
-    {
-      icon: Reply,
-      label: 'Responder',
-      action: () => {
-        onReply();
-        onClose();
-      }
-    }
-  ];
+    onClose();
+  };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
-      
-      {/* Menu */}
-      <div
-        ref={menuRef}
-        className="fixed z-50 bg-background border border-border rounded-lg shadow-lg py-2 min-w-32"
-        style={{
-          left: Math.min(position.x, window.innerWidth - 150),
-          top: Math.min(position.y, window.innerHeight - 200),
-        }}
-      >
-        {menuItems.map((item, index) => {
-          const Icon = item.icon;
-          return (
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="bottom" className="h-auto rounded-t-3xl border-0 bg-background p-0">
+        <div className="p-6">
+          <SheetHeader className="mb-4">
+            <div className="flex items-center justify-center">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+            </div>
+            <SheetTitle className="text-center text-lg font-semibold mt-3">
+              Opções da mensagem
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="space-y-2">
             <Button
-              key={index}
               variant="ghost"
-              size="sm"
-              className={`w-full justify-start gap-2 px-3 py-2 h-auto font-normal ${
-                item.destructive ? 'text-destructive hover:text-destructive' : ''
-              }`}
-              onClick={item.action}
+              className="w-full justify-start h-12"
+              onClick={handleReply}
             >
-              <Icon className="w-4 h-4" />
-              {item.label}
+              <Reply className="w-5 h-5 mr-3" />
+              Responder
             </Button>
-          );
-        })}
-      </div>
-    </>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start h-12"
+              onClick={handleCopy}
+            >
+              <Copy className="w-5 h-5 mr-3" />
+              Copiar texto
+            </Button>
+
+            {canDelete && (
+              <Button
+                variant="ghost"
+                className="w-full justify-start h-12 text-destructive hover:text-destructive"
+                onClick={handleDelete}
+              >
+                <Trash2 className="w-5 h-5 mr-3" />
+                Deletar mensagem
+              </Button>
+            )}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

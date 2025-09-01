@@ -392,21 +392,8 @@ export const usePostInteractions = (postId: string | null) => {
       console.log('Tentando curtir comentário com usuário:', user.id);
       const isLiked = commentLikes.has(commentId);
       
+      // Optimistic update first for better UX
       if (isLiked) {
-        // Unlike
-        const { error } = await supabase
-          .from('comment_likes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('comment_id', commentId);
-
-        if (error) {
-          console.error('Erro ao remover like:', error);
-          throw error;
-        }
-        console.log('Like removido com sucesso');
-        
-        // Update local state immediately for better UX
         setCommentLikes(prev => {
           const newSet = new Set(prev);
           newSet.delete(commentId);
@@ -418,6 +405,35 @@ export const usePostInteractions = (postId: string | null) => {
             : comment
         ));
       } else {
+        setCommentLikes(prev => new Set([...prev, commentId]));
+        setComments(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? { ...comment, likes_count: comment.likes_count + 1 }
+            : comment
+        ));
+      }
+      
+      if (isLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from('comment_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('comment_id', commentId);
+
+        if (error) {
+          console.error('Erro ao remover like:', error);
+          // Revert optimistic update on error
+          setCommentLikes(prev => new Set([...prev, commentId]));
+          setComments(prev => prev.map(comment => 
+            comment.id === commentId 
+              ? { ...comment, likes_count: comment.likes_count + 1 }
+              : comment
+          ));
+          throw error;
+        }
+        console.log('Like removido com sucesso');
+      } else {
         // Like
         const { error } = await supabase
           .from('comment_likes')
@@ -428,17 +444,20 @@ export const usePostInteractions = (postId: string | null) => {
 
         if (error) {
           console.error('Erro ao adicionar like:', error);
+          // Revert optimistic update on error
+          setCommentLikes(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(commentId);
+            return newSet;
+          });
+          setComments(prev => prev.map(comment => 
+            comment.id === commentId 
+              ? { ...comment, likes_count: Math.max(0, comment.likes_count - 1) }
+              : comment
+          ));
           throw error;
         }
         console.log('Like adicionado com sucesso');
-        
-        // Update local state immediately for better UX
-        setCommentLikes(prev => new Set([...prev, commentId]));
-        setComments(prev => prev.map(comment => 
-          comment.id === commentId 
-            ? { ...comment, likes_count: comment.likes_count + 1 }
-            : comment
-        ));
       }
     } catch (error) {
       console.error('Erro ao curtir comentário:', error);

@@ -19,8 +19,8 @@ import TypingIndicator from '@/components/ui/TypingIndicator';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 import { PublicChatSettings } from '@/components/PublicChatSettings';
 import { PrivateChatSettings } from '@/components/PrivateChatSettings';
-import { MessageContextMenu } from '@/components/MessageContextMenu';
 import { MessageBubble } from '@/components/MessageBubble';
+import { MessageContextMenu } from '@/components/MessageContextMenu';
 import { useLongPress } from '@/hooks/useLongPress';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
 import { useMessageSenders } from '@/hooks/useMessageSenders';
@@ -74,6 +74,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [isPublicChat, setIsPublicChat] = useState(false);
   const [isParticipant, setIsParticipant] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -94,7 +96,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     id: string;
     content: string;
   } | null>(null);
-  const [replyingTo, setReplyingTo] = useState<{
+  const [messageReplyTo, setMessageReplyTo] = useState<{
     id: string;
     content: string;
     senderName: string;
@@ -677,7 +679,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     const message = messages.find(m => m.id === contextMenu.messageId);
     if (message) {
       const senderName = message.sender_id === user?.id ? 'Você' : stripUserDigits(otherUser?.display_name || 'Usuário');
-      setReplyingTo({
+      setMessageReplyTo({
         id: message.id,
         content: message.content || '',
         senderName
@@ -718,7 +720,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   };
 
   const handleCancelReply = () => {
-    setReplyingTo(null);
+    setMessageReplyTo(null);
   };
 
   if (!otherUser) {
@@ -898,30 +900,27 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                        )}
                         
                          <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
-                          {/* Reply preview */}
-                          {replyingTo && replyingTo.id === message.id && (
-                            <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
-                              <p className="text-xs text-muted-foreground">
-                                Respondendo a {replyingTo.senderName}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {replyingTo.content}
-                              </p>
-                            </div>
-                          )}
+                           {/* Reply preview */}
+                           {messageReplyTo && messageReplyTo.id === message.id && (
+                             <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
+                               <p className="text-xs text-muted-foreground">
+                                 Respondendo a {messageReplyTo.senderName}
+                               </p>
+                               <p className="text-xs text-muted-foreground truncate">
+                                 {messageReplyTo.content}
+                               </p>
+                             </div>
+                           )}
                           
                            <MessageBubble 
                              message={message}
                              isOwnMessage={isOwnMessage}
                              isGroupChat={isPublicChat || !isOneOnOneChat}
                              senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
-                             onLongPress={(e) => {
-                               handleMessageLongPress(e, message);
-                               // Clear indicator when user interacts with message
-                               if (!isOwnMessage) {
-                                 clearIndicatorsFromSender(message.sender_id);
-                               }
-                             }}
+                               onLongPress={() => {
+                                 setSelectedMessage(message);
+                                 setContextMenuOpen(true);
+                               }}
                            />
                         </div>
                      </div>
@@ -951,30 +950,30 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 />
               )}
               
-              {/* Reply/Edit bar */}
-              {(replyingTo || editingMessage) && (
-                <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                  <div className="flex-1">
-                    {replyingTo && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Respondendo a {replyingTo.senderName}</p>
-                        <p className="text-sm truncate">{replyingTo.content}</p>
-                      </div>
-                    )}
-                    {editingMessage && (
-                      <p className="text-xs text-muted-foreground">Editando mensagem</p>
-                    )}
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={editingMessage ? handleCancelEdit : handleCancelReply}
-                    className="w-8 h-8 p-0"
-                  >
-                    ×
-                  </Button>
-                </div>
-              )}
+               {/* Reply/Edit bar */}
+               {(messageReplyTo || editingMessage) && (
+                 <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                   <div className="flex-1">
+                     {messageReplyTo && (
+                       <div>
+                         <p className="text-xs text-muted-foreground">Respondendo a {messageReplyTo.senderName}</p>
+                         <p className="text-sm truncate">{messageReplyTo.content}</p>
+                       </div>
+                     )}
+                     {editingMessage && (
+                       <p className="text-xs text-muted-foreground">Editando mensagem</p>
+                     )}
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     onClick={editingMessage ? handleCancelEdit : handleCancelReply}
+                     className="w-8 h-8 p-0"
+                   >
+                     ×
+                   </Button>
+                 </div>
+               )}
               
               {/* Message Input */}
               <div className="flex items-center space-x-2">
@@ -1049,15 +1048,56 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
         {/* Message Context Menu */}
         <MessageContextMenu
-          isOpen={contextMenu.isOpen}
-          onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
-          position={contextMenu.position}
-          isOwnMessage={contextMenu.isOwnMessage}
-          messageContent={contextMenu.messageContent}
-          onCopy={handleCopyMessage}
-          onDelete={handleDeleteMessage}
-          onEdit={handleEditMessage}
-          onReply={handleReplyMessage}
+          isOpen={contextMenuOpen}
+          onClose={() => {
+            setContextMenuOpen(false);
+            setSelectedMessage(null);
+          }}
+          onReply={() => {
+            if (selectedMessage) {
+              setMessageReplyTo({
+                id: selectedMessage.id,
+                content: selectedMessage.content || '',
+                senderName: selectedMessage.sender_id === user?.id ? 'Você' : stripUserDigits(otherUser?.display_name || 'Usuário')
+              });
+            }
+          }}
+          onCopy={() => {
+            if (selectedMessage?.content) {
+              navigator.clipboard.writeText(selectedMessage.content);
+            }
+            toast({
+              title: "Copiado!",
+              description: "Texto da mensagem copiado para a área de transferência.",
+            });
+          }}
+          onDelete={async () => {
+            if (!selectedMessage || !user) return;
+            
+            try {
+              const { error } = await supabase
+                .from('messages')
+                .delete()
+                .eq('id', selectedMessage.id)
+                .eq('sender_id', user.id);
+
+              if (error) throw error;
+
+              toast({
+                title: "Mensagem deletada",
+                description: "A mensagem foi removida com sucesso.",
+              });
+            } catch (error) {
+              console.error('Error deleting message:', error);
+              toast({
+                title: "Erro",
+                description: "Não foi possível deletar a mensagem.",
+                variant: "destructive",
+              });
+            }
+          }}
+          canDelete={selectedMessage?.sender_id === user?.id}
+          messageText={selectedMessage?.content || ''}
         />
 
         {/* Wallpaper Settings Modal */}

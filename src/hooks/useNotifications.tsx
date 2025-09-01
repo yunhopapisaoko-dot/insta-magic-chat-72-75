@@ -142,8 +142,23 @@ export const useNotifications = () => {
           const newNotification = payload.new as Notification;
           setNotifications(prev => {
             // Check if notification already exists to prevent duplicates
-            if (prev.find(n => n.id === newNotification.id)) {
+            const exists = prev.find(n => n.id === newNotification.id);
+            if (exists) {
+              console.log('Duplicate notification prevented:', newNotification.id);
               return prev;
+            }
+            // Also check for duplicate like notifications by actor_id, entity_id and type
+            if (newNotification.type === 'like' || newNotification.type === 'comment_like') {
+              const duplicateLike = prev.find(n => 
+                n.type === newNotification.type &&
+                n.actor_id === newNotification.actor_id &&
+                n.entity_id === newNotification.entity_id &&
+                Math.abs(new Date(n.created_at).getTime() - new Date(newNotification.created_at).getTime()) < 5000 // Within 5 seconds
+              );
+              if (duplicateLike) {
+                console.log('Duplicate like notification prevented:', newNotification);
+                return prev;
+              }
             }
             return [newNotification, ...prev];
           });
