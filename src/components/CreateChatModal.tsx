@@ -539,7 +539,7 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
                 </div>
               )}
 
-              <ScrollArea className="flex-1 -mx-6 px-6">
+              <ScrollArea className="flex-1 max-h-[300px]">
                 <div className="space-y-2">
                   {loading ? (
                     <div className="flex items-center justify-center py-8">

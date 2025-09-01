@@ -16,7 +16,7 @@ interface MessageBubbleProps {
 
 export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, onLongPress }: MessageBubbleProps) => {
   const longPressProps = useLongPress({
-    onLongPress: onLongPress,
+    onLongPress: () => onLongPress({} as React.TouchEvent | React.MouseEvent),
     delay: 500
   });
 

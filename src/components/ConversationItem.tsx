@@ -1,21 +1,29 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Globe, Eye } from 'lucide-react';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Users, Globe, Eye, LogOut } from 'lucide-react';
 import { type Conversation } from '@/hooks/useConversations';
 import { useMessageSender } from '@/hooks/useMessageSender';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversationReadStatus } from '@/hooks/useConversationReadStatus';
+import { useLongPress } from '@/hooks/useLongPress';
 import { stripUserDigits } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 interface ConversationItemProps {
   conversation: Conversation;
   onSelect: (id: string) => void;
   formatTimeAgo: (dateString: string) => string;
   formatLastMessage: (message: string | null) => string;
+  onLeaveChat?: (conversationId: string) => void;
 }
 
-const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMessage }: ConversationItemProps) => {
+const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMessage, onLeaveChat }: ConversationItemProps) => {
   const { user } = useAuth();
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   
   // Check if it's a public chat based on display name
   const isPublicChat = conversation.other_user.display_name.startsWith('🌐');
@@ -51,12 +59,61 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
     return '';
   };
 
+  const handleLeaveChat = async () => {
+    if (!user || !onLeaveChat) return;
+    
+    try {
+      // Remove current user from conversation participants
+      const { error } = await supabase
+        .from('conversation_participants')
+        .delete()
+        .eq('conversation_id', conversation.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Send system message that user left
+      await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversation.id,
+          sender_id: user.id,
+          content: `${user.display_name || 'Usuário'} saiu do chat`,
+          message_type: 'system'
+        });
+
+      toast({
+        title: "Você saiu do chat",
+        description: "Você foi removido da conversa.",
+      });
+
+      onLeaveChat(conversation.id);
+      setShowLeaveDialog(false);
+    } catch (error) {
+      console.error('Error leaving chat:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível sair do chat.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const longPressProps = useLongPress({
+    onLongPress: () => setShowLeaveDialog(true),
+    delay: 600
+  });
+
   return (
-    <Card 
-      key={conversation.id} 
-      className="card-shadow border-0 cursor-pointer hover:bg-muted/20 transition-colors"
-      onClick={() => onSelect(conversation.id)}
-    >
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <Card 
+            key={conversation.id} 
+            className="card-shadow border-0 cursor-pointer hover:bg-muted/20 transition-colors select-none"
+            onClick={() => onSelect(conversation.id)}
+            {...longPressProps}
+          >
       <CardContent className="p-4">
         <div className="flex items-center space-x-3">
           <div className="relative">
@@ -144,6 +201,42 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
         </div>
       </CardContent>
     </Card>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => setShowLeaveDialog(true)} className="text-red-600">
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair do Chat
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair do Chat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você será removido desta conversa e não receberá mais notificações. 
+              {isPublicChat 
+                ? " Você pode entrar novamente a qualquer momento."
+                : isCustomGroup 
+                  ? " Você precisará ser adicionado novamente para participar."
+                  : " A conversa será mantida para a outra pessoa."
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveChat}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair do Chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

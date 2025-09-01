@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { MessageSquare, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2, UserPlus, UserMinus, Palette } from 'lucide-react';
+import { MessageSquare, User, Calendar, Users, Plus, MoreHorizontal, Check, X, Edit, Camera, Upload, Trash2, UserPlus, UserMinus, Palette, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -377,6 +377,20 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
 
       if (error) throw error;
 
+      // Get participant name for system message
+      const participant = participants.find(p => p.user_id === userId);
+      const participantName = participant?.profiles?.display_name || 'Usuário';
+
+      // Send system message that user was removed
+      await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: userId,
+          content: `${participantName} foi removido do chat`,
+          message_type: 'system'
+        });
+
       toast({
         title: "Sucesso",
         description: "Participante removido do chat.",
@@ -388,6 +402,45 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
       toast({
         title: "Erro",
         description: "Não foi possível remover o participante.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLeaveChat = async () => {
+    if (!user) return;
+    
+    try {
+      // Remove current user from conversation participants
+      const { error } = await supabase
+        .from('conversation_participants')
+        .delete()
+        .eq('conversation_id', conversationId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Send system message that user left
+      await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: `${user.display_name || 'Usuário'} saiu do chat`,
+          message_type: 'system'
+        });
+
+      toast({
+        title: "Você saiu do chat",
+        description: "Você foi removido do chat privado.",
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Error leaving chat:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível sair do chat.",
         variant: "destructive",
       });
     }
@@ -763,6 +816,40 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
 
             {/* Footer Actions */}
             <div className="space-y-3">
+              {/* Leave Chat Button - For all participants in group chats, and for 1-on-1 chats */}
+              {((!isOneOnOneChat && chatInfo && user?.id !== chatInfo.creatorId) || isOneOnOneChat) && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="w-full">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sair do Chat
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Sair do Chat</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Você será removido deste chat e não receberá mais notificações. 
+                        {isOneOnOneChat 
+                          ? " A conversa será mantida para a outra pessoa."
+                          : " Você precisará ser adicionado novamente para participar."
+                        }
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleLeaveChat}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sair do Chat
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
               {/* Delete Chat Button - Only for group creator */}
               {!isOneOnOneChat && chatInfo && user?.id === chatInfo.creatorId && (
                 <AlertDialog>

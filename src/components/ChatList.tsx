@@ -21,7 +21,8 @@ const ChatList = () => {
     conversations, 
     loading, 
     error,
-    markMessagesAsRead
+    markMessagesAsRead,
+    fetchConversations
   } = useOptimizedConversations();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(
@@ -103,6 +104,17 @@ const ChatList = () => {
     setSearchParams(searchParams);
     // Mark messages as read when opening the conversation
     markMessagesAsRead(conversationId);
+  };
+
+  const handleLeaveChat = async (conversationId: string) => {
+    // Se era o chat atualmente selecionado, voltar para a lista
+    if (selectedConversation === conversationId) {
+      handleBackToList();
+    }
+    // Atualizar a lista de conversas
+    setTimeout(() => {
+      fetchConversations();
+    }, 500);
   };
 
   if (selectedConversation) {
@@ -221,6 +233,7 @@ const ChatList = () => {
                 onSelect={handleConversationSelect}
                 formatTimeAgo={formatTimeAgo}
                 formatLastMessage={formatLastMessage}
+                onLeaveChat={handleLeaveChat}
               />
             ))
           )}
