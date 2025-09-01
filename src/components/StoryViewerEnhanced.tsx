@@ -154,6 +154,12 @@ const StoryViewerEnhanced = ({
     const deltaY = touch.clientY - touchStart.y;
     const deltaTime = Date.now() - touchStart.time;
 
+    // Para vídeos, desabilita navegação por toque para evitar conflitos com controles
+    if (currentStory?.media_type === 'video') {
+      setTouchStart(null);
+      return;
+    }
+
     // Se foi um toque rápido (não um arraste longo)
     if (deltaTime < 300) {
       // Se foi um swipe horizontal
@@ -185,7 +191,7 @@ const StoryViewerEnhanced = ({
     }
 
     setTouchStart(null);
-  }, [touchStart, handlePrevious, handleNext]);
+  }, [touchStart, handlePrevious, handleNext, currentStory?.media_type]);
 
   // Pausar/retomar com mouse/toque longo
   const handlePointerDown = useCallback(() => {
@@ -560,7 +566,7 @@ const StoryViewerEnhanced = ({
             {/* Indicadores de navegação */}
             <div className="absolute inset-0 flex pointer-events-none">
               <div className="w-1/3 h-full flex items-center justify-start pl-4">
-                {(currentStoryIndex > 0 || currentGroupIndex > 0) && (
+                {(currentStoryIndex > 0 || currentGroupIndex > 0) && !currentStory.media_type?.includes('video') && (
                   <ChevronLeft className="w-6 h-6 text-white/50 transition-all duration-300 hover:text-white hover:scale-110" />
                 )}
               </div>
@@ -572,13 +578,48 @@ const StoryViewerEnhanced = ({
                 )}
               </div>
               <div className="w-1/3 h-full flex items-center justify-end pr-4">
-                {(currentStoryIndex < allStories.length - 1 || currentGroupIndex < storyGroups.length - 1) ? (
+                {(currentStoryIndex < allStories.length - 1 || currentGroupIndex < storyGroups.length - 1) && !currentStory.media_type?.includes('video') ? (
                   <ChevronRight className="w-6 h-6 text-white/50 transition-all duration-300 hover:text-white hover:scale-110" />
-                ) : (
+                ) : !currentStory.media_type?.includes('video') && (
                   <X className="w-6 h-6 text-white/50 transition-all duration-300 hover:text-white hover:scale-110" />
                 )}
               </div>
             </div>
+
+            {/* Setas de navegação para vídeos - sempre visíveis */}
+            {currentStory.media_type === 'video' && (
+              <>
+                {/* Seta Anterior */}
+                {(currentStoryIndex > 0 || currentGroupIndex > 0) && (
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevious();
+                    }}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 text-white hover:bg-white/20 w-12 h-12 p-0 rounded-full bg-black/30 backdrop-blur-sm hover:scale-110 transition-all duration-200"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </Button>
+                )}
+
+                {/* Seta Próxima */}
+                {(currentStoryIndex < allStories.length - 1 || currentGroupIndex < storyGroups.length - 1) && (
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNext();
+                    }}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 text-white hover:bg-white/20 w-12 h-12 p-0 rounded-full bg-black/30 backdrop-blur-sm hover:scale-110 transition-all duration-200"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
