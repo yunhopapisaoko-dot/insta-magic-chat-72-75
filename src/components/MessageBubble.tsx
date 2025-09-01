@@ -12,6 +12,7 @@ interface MessageBubbleProps {
   isGroupChat: boolean;
   senderInfo?: {
     display_name: string;
+    username: string;
     avatar_url: string | null;
   };
   onLongPress: () => void;
@@ -77,7 +78,7 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
       {!isOwnMessage && isGroupChat && senderInfo && (
         <span 
           className="text-xs text-muted-foreground font-medium px-1 cursor-pointer hover:underline"
-          onClick={() => navigate(`/user/${stripUserDigits(senderInfo.display_name)}`)}
+          onClick={() => navigate(`/user/${stripUserDigits(senderInfo.username)}`)}
         >
           {stripUserDigits(senderInfo.display_name)}
         </span>

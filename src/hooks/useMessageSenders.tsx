@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface SenderInfo {
   display_name: string;
+  username: string;
   avatar_url: string | null;
 }
 
@@ -23,7 +24,7 @@ export const useMessageSenders = (messages: any[]) => {
 
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url')
+          .select('id, display_name, username, avatar_url')
           .in('id', senderIds);
 
         if (error) throw error;
@@ -32,6 +33,7 @@ export const useMessageSenders = (messages: any[]) => {
         const sendersMap = data.reduce((acc, sender) => {
           acc[sender.id] = {
             display_name: sender.display_name,
+            username: sender.username,
             avatar_url: sender.avatar_url
           };
           return acc;

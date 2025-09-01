@@ -892,10 +892,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                           <div className="relative">
                             <Avatar 
                               className="w-8 h-8 mt-1 cursor-pointer hover:opacity-80 transition-opacity"
-                               onClick={() => {
+                              onClick={() => {
                                  const senderInfo = getSenderInfo(message.sender_id);
                                  if (senderInfo) {
-                                   navigate(`/user/${stripUserDigits(senderInfo.display_name)}`);
+                                   navigate(`/user/${stripUserDigits(senderInfo.username)}`);
                                  }
                                }}
                             >
