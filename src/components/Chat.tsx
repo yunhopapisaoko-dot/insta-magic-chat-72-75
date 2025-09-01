@@ -343,7 +343,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       }
 
       // For private chats that are 1-on-1, get the other participant
-      if (isOneOnOne) {
+      if (isOneOnOne || participantCount === 1) {
+        // First try to get from active participants
         const { data: participantRows, error: participantsError } = await supabase
           .from('conversation_participants')
           .select('user_id')
@@ -352,7 +353,23 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
         if (participantsError) throw participantsError;
 
-        const otherId = participantRows?.[0]?.user_id;
+        let otherId = participantRows?.[0]?.user_id;
+        
+        // If no active participants (user left), get from message history
+        if (!otherId) {
+          const { data: messages, error: messagesError } = await supabase
+            .from('messages')
+            .select('sender_id')
+            .eq('conversation_id', conversationId)
+            .neq('sender_id', user.id)
+            .not('message_type', 'eq', 'system')
+            .limit(1);
+
+          if (!messagesError && messages?.length > 0) {
+            otherId = messages[0].sender_id;
+          }
+        }
+
         if (otherId) {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
