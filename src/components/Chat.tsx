@@ -25,6 +25,7 @@ import { useLongPress } from '@/hooks/useLongPress';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
 import { useMessageSenders } from '@/hooks/useMessageSenders';
 import { useNewMessageIndicator } from '@/hooks/useNewMessageIndicator';
+import { stripUserDigits } from '@/lib/utils';
 
 interface ChatProps {
   conversationId: string;
@@ -691,7 +692,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const handleReplyMessage = () => {
     const message = messages.find(m => m.id === contextMenu.messageId);
     if (message) {
-      const senderName = message.sender_id === user?.id ? 'Você' : otherUser?.display_name || 'Usuário';
+      const senderName = message.sender_id === user?.id ? 'Você' : stripUserDigits(otherUser?.display_name || 'Usuário');
       setReplyingTo({
         id: message.id,
         content: message.content || '',

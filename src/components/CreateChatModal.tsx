@@ -13,6 +13,7 @@ import MediaUpload from '@/components/MediaUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { stripUserDigits } from '@/lib/utils';
 
 interface CreateChatModalProps {
   isOpen: boolean;
@@ -561,14 +562,14 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
                         />
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={profile.avatar_url || ''} />
-                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                            {profile.display_name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {profile.display_name}
-                          </p>
+                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                             {stripUserDigits(profile.display_name)[0]}
+                           </AvatarFallback>
+                         </Avatar>
+                         <div className="flex-1 min-w-0">
+                           <p className="font-medium text-sm truncate">
+                             {stripUserDigits(profile.display_name)}
+                           </p>
                           <p className="text-xs text-muted-foreground truncate">
                             @{profile.username}
                           </p>

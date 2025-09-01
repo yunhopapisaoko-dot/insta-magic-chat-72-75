@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLongPress } from '@/hooks/useLongPress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { stripUserDigits } from '@/lib/utils';
 
 interface MessageBubbleProps {
   message: any;
@@ -32,7 +33,7 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
       {/* Show sender name for group chats and non-own messages */}
       {!isOwnMessage && isGroupChat && senderInfo && (
         <span className="text-xs text-muted-foreground font-medium px-1">
-          {senderInfo.display_name}
+          {stripUserDigits(senderInfo.display_name)}
         </span>
       )}
       

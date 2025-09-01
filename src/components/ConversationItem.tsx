@@ -5,6 +5,7 @@ import { type Conversation } from '@/hooks/useConversations';
 import { useMessageSender } from '@/hooks/useMessageSender';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversationReadStatus } from '@/hooks/useConversationReadStatus';
+import { stripUserDigits } from '@/lib/utils';
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -39,12 +40,12 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
     
     // For 1-on-1 chats, show sender name when it's not from current user
     if (!isCustomGroup && !isPublicChat) {
-      return `${conversation.other_user.display_name.replace(/\d{4}$/, '')}: `;
+      return `${stripUserDigits(conversation.other_user.display_name)}: `;
     }
     
     // For groups and public chats, show sender name
     if (senderInfo) {
-      return `${senderInfo.display_name.replace(/\d{4}$/, '')}: `;
+      return `${stripUserDigits(senderInfo.display_name)}: `;
     }
     
     return '';
@@ -72,7 +73,7 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
                 <>
                   <AvatarImage src={conversation.other_user.avatar_url || ''} className="object-cover w-full h-full" />
                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                     {conversation.other_user.display_name.replace(/\d{4}$/, '')[0]}
+                     {stripUserDigits(conversation.other_user.display_name)[0]}
                    </AvatarFallback>
                 </>
               )}
@@ -98,7 +99,7 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
                     {conversation.other_user.display_name}
                   </>
                  ) : (
-                   conversation.other_user.display_name.replace(/\d{4}$/, '')
+                   stripUserDigits(conversation.other_user.display_name)
                  )}
                 {/* Unread message indicator */}
                 {conversation.unread_count > 0 && (

@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Remove 4 digits from the end of usernames for display
+export function stripUserDigits(username: string): string {
+  return username.replace(/\d{4}$/, '');
+}
+
 // Detect if a URL likely points to a video file based on extension
 export function isVideoUrl(url: string | null | undefined): boolean {
   if (!url) return false;
