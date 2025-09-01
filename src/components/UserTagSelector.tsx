@@ -45,23 +45,20 @@ export const UserTagSelector = ({
       setSearchQuery('');
       setUsers([]);
       setHasSearched(false);
+      // Carregar usuários seguidos automaticamente
+      loadFollowedUsers();
     }
   }, [open]);
 
-  const searchUsers = async (query: string) => {
-    if (!query.trim() || query.length < 2) {
-      setUsers([]);
-      setHasSearched(false);
-      return;
-    }
-
+  const loadFollowedUsers = async () => {
+    if (!user?.id) return;
+    
     setLoading(true);
     setHasSearched(true);
 
     try {
-      console.log('Searching users with query:', query, 'user ID:', user?.id);
+      console.log('Loading followed users for:', user.id);
       
-      // Buscar apenas usuários que seguimos
       const { data, error } = await supabase
         .from('follows')
         .select(`
@@ -73,11 +70,7 @@ export const UserTagSelector = ({
             avatar_url
           )
         `)
-        .eq('follower_id', user?.id)
-        .or(`profiles.display_name.ilike.%${query}%,profiles.username.ilike.%${query}%`, { 
-          referencedTable: 'profiles' 
-        })
-        .limit(20);
+        .eq('follower_id', user.id);
 
       console.log('Follows query result:', { data, error });
 
@@ -87,6 +80,58 @@ export const UserTagSelector = ({
       const followedUsers = data?.map(f => f.profiles).filter(Boolean) as User[];
       console.log('Followed users found:', followedUsers);
       setUsers(followedUsers || []);
+    } catch (error) {
+      console.error('Error loading followed users:', error);
+      toast({
+        title: "Erro na busca",
+        description: "Não foi possível carregar usuários seguidos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchUsers = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      // Se não tem busca, carrega todos os seguidos
+      loadFollowedUsers();
+      return;
+    }
+
+    setLoading(true);
+    setHasSearched(true);
+
+    try {
+      console.log('Searching users with query:', query, 'user ID:', user?.id);
+      
+      // Buscar apenas usuários que seguimos com filtro
+      const { data, error } = await supabase
+        .from('follows')
+        .select(`
+          following_id,
+          profiles!follows_following_id_fkey (
+            id,
+            display_name,
+            username,
+            avatar_url
+          )
+        `)
+        .eq('follower_id', user?.id);
+
+      console.log('Follows query result:', { data, error });
+
+      if (error) throw error;
+
+      // Extrair os perfis dos seguidos e filtrar pelo query
+      const followedUsers = data?.map(f => f.profiles).filter(Boolean) as User[];
+      const filteredUsers = followedUsers.filter(user => 
+        user.display_name?.toLowerCase().includes(query.toLowerCase()) ||
+        user.username?.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      console.log('Filtered users found:', filteredUsers);
+      setUsers(filteredUsers || []);
     } catch (error) {
       console.error('Error searching users:', error);
       toast({
@@ -211,9 +256,9 @@ export const UserTagSelector = ({
             ) : !hasSearched ? (
               <div className="flex flex-col items-center justify-center h-32 text-center">
                 <Search className="w-8 h-8 text-muted-foreground/50 mb-2" />
-                 <p className="text-sm text-muted-foreground">
-                   Digite um nome para buscar pessoas que você segue
-                 </p>
+                <p className="text-sm text-muted-foreground">
+                  Carregando pessoas que você segue...
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
