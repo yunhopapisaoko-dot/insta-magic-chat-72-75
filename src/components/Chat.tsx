@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette } from 'lucide-react';
+import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -24,6 +24,7 @@ import { MessageBubble } from '@/components/MessageBubble';
 import { useLongPress } from '@/hooks/useLongPress';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
 import { useMessageSenders } from '@/hooks/useMessageSenders';
+import { useNewMessageIndicator } from '@/hooks/useNewMessageIndicator';
 
 interface ChatProps {
   conversationId: string;
@@ -53,6 +54,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   } = useRealtimeChat(conversationId);
   const { markConversationAsRead } = useUnreadMessages();
   const { getSenderInfo } = useMessageSenders(messages);
+  const { hasNewMessageFrom, clearIndicatorsFromSender } = useNewMessageIndicator(conversationId);
   
   const [otherUser, setOtherUser] = useState<{
     id: string;
@@ -895,27 +897,40 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                          </Avatar>
                        )}
                        
-                        <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
+                         <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
+                           {/* Show new message indicator */}
+                           {!isOwnMessage && hasNewMessageFrom(message.sender_id) && (
+                             <div className="flex items-center space-x-1 mb-1 animate-pulse">
+                               <MessageCircle className="w-3 h-3 text-green-500" />
+                               <span className="text-xs text-green-500 font-medium">Nova mensagem</span>
+                             </div>
+                           )}
+                           
+                           {/* Reply preview */}
+                           {replyingTo && replyingTo.id === message.id && (
+                             <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
+                               <p className="text-xs text-muted-foreground">
+                                 Respondendo a {replyingTo.senderName}
+                               </p>
+                               <p className="text-xs text-muted-foreground truncate">
+                                 {replyingTo.content}
+                               </p>
+                             </div>
+                           )}
                           
-                          {/* Reply preview */}
-                          {replyingTo && replyingTo.id === message.id && (
-                            <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
-                              <p className="text-xs text-muted-foreground">
-                                Respondendo a {replyingTo.senderName}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {replyingTo.content}
-                              </p>
-                            </div>
-                          )}
-                          
-                          <MessageBubble 
-                            message={message}
-                            isOwnMessage={isOwnMessage}
-                            isGroupChat={isPublicChat || !isOneOnOneChat}
-                            senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
-                            onLongPress={(e) => handleMessageLongPress(e, message)}
-                          />
+                           <MessageBubble 
+                             message={message}
+                             isOwnMessage={isOwnMessage}
+                             isGroupChat={isPublicChat || !isOneOnOneChat}
+                             senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
+                             onLongPress={(e) => {
+                               handleMessageLongPress(e, message);
+                               // Clear indicator when user interacts with message
+                               if (!isOwnMessage) {
+                                 clearIndicatorsFromSender(message.sender_id);
+                               }
+                             }}
+                           />
                         </div>
                        
                        {isOwnMessage && user && (
