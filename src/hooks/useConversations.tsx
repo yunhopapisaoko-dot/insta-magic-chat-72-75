@@ -184,24 +184,29 @@ export const useConversations = () => {
         }
 
         if (otherUserId) {
+          console.log('Processing conversation:', conv.id, 'with other user:', otherUserId);
           const profile = profilesMap[otherUserId];
+          console.log('Found profile in map:', profile);
           const details = conversationDetails.find(d => d.conversationId === conv.id);
           
           // If profile is not found, try to get it directly from database
           let finalProfile = profile;
           if (!profile) {
+            console.log('Profile not found in map, fetching directly for user:', otherUserId);
             const { data: directProfile } = await supabase
               .from('profiles')
               .select('id, display_name, username, avatar_url')
               .eq('id', otherUserId)
               .maybeSingle();
             
+            console.log('Direct profile fetch result:', directProfile);
             if (directProfile) {
               finalProfile = {
                 display_name: directProfile.display_name,
                 username: directProfile.username,
                 avatar_url: directProfile.avatar_url,
               };
+              console.log('Set final profile:', finalProfile);
             }
           }
           
@@ -229,8 +234,9 @@ export const useConversations = () => {
           const aTime = a.last_message?.created_at || a.updated_at;
           const bTime = b.last_message?.created_at || b.updated_at;
           return new Date(bTime).getTime() - new Date(aTime).getTime();
-        });
+         });
 
+      console.log('Final conversations:', sortedConversations);
       setConversations(sortedConversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
