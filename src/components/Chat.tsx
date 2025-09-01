@@ -204,7 +204,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     try {
       const { data: conversation, error } = await supabase
         .from('conversations')
-        .select('is_public, name, description, photo_url')
+         .select('*')
         .eq('id', conversationId)
         .single();
 
@@ -297,7 +297,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       // First get conversation details
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
-        .select('is_public, name, description, photo_url')
+        .select('*')
         .eq('id', conversationId)
         .single();
 
@@ -366,6 +366,37 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       markConversationAsRead(conversationId);
     }
   }, [conversationId, messages, markConversationAsRead]);
+
+  // Realtime profile updates for the other participant
+  useEffect(() => {
+    if (!otherUser || isPublicChat) return;
+
+    const channel = supabase
+      .channel(`profile_updates:${otherUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${otherUser.id}`,
+        },
+        (payload) => {
+          const updated: any = (payload as any).new;
+          setOtherUser(prev => prev ? {
+            ...prev,
+            display_name: updated.display_name,
+            username: updated.username,
+            avatar_url: updated.avatar_url,
+          } : prev);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [otherUser, isPublicChat]);
 
   const handleSendMessage = async (messageContent?: string, mediaUrl?: string, mediaType?: string) => {
     const content = messageContent || newMessage.trim();
