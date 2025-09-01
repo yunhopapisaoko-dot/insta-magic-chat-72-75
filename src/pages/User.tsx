@@ -11,6 +11,7 @@ import FollowersList from '@/components/FollowersList';
 import ProfileChat from '@/components/ProfileChat';
 import ProfileNavigator from '@/components/ProfileNavigator';
 import { toast } from '@/hooks/use-toast';
+import { stripUserDigits } from '@/lib/utils';
 import { useConversations } from '@/hooks/useConversations';
 
 interface ProfileData {
@@ -46,13 +47,30 @@ const UserProfile = () => {
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
+      // First try to find by exact username (for backwards compatibility)
+      let { data, error } = await supabase
         .from('profiles')
         .select('id, display_name, username, bio, avatar_url, followers_count, following_count')
         .eq('username', username)
         .maybeSingle();
 
-      if (error) throw error;
+      // If no exact match found and username doesn't end with 4 digits, 
+      // search for username + 4 digits pattern
+      if (!data && username && !/\d{4}$/.test(username)) {
+        const { data: patternData, error: patternError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, bio, avatar_url, followers_count, following_count')
+          .like('username', `${username}____`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (patternError) throw patternError;
+        data = patternData;
+        error = patternError;
+      }
+
+      if (error && error.code !== 'PGRST116') throw error;
       
       if (data) {
         setProfileData(data);
@@ -234,7 +252,7 @@ const UserProfile = () => {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <h1 className="text-lg font-semibold">@{profileData.username}</h1>
+              <h1 className="text-lg font-semibold">@{stripUserDigits(profileData.username)}</h1>
             </div>
             
             {/* Navigation Button */}
@@ -255,12 +273,12 @@ const UserProfile = () => {
             <Avatar className="w-24 h-24 mx-auto">
               <AvatarImage src={profileData.avatar_url || ''} />
               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-2xl font-semibold">
-                {profileData.display_name[0] || 'U'}
+                {stripUserDigits(profileData.display_name)[0] || 'U'}
               </AvatarFallback>
             </Avatar>
 
             <div>
-              <h2 className="text-xl font-bold">{profileData.display_name}</h2>
+              <h2 className="text-xl font-bold">{stripUserDigits(profileData.display_name)}</h2>
               {profileData.bio && (
                 <p className="text-muted-foreground mt-2 max-w-xs mx-auto">
                   {profileData.bio}
