@@ -12,14 +12,14 @@ const Notifications = () => {
 
   // Marcar todas as notificações como lidas automaticamente ao abrir a página
   useEffect(() => {
-    if (unreadCount > 0) {
-      const timer = setTimeout(() => {
+    const timer = setTimeout(() => {
+      if (unreadCount > 0) {
         markAllAsRead();
-      }, 500); // Pequeno delay para melhor UX
-      
-      return () => clearTimeout(timer);
-    }
-  }, [unreadCount, markAllAsRead]);
+      }
+    }, 1000); // Delay de 1 segundo para melhor UX e garantir que as notificações foram carregadas
+    
+    return () => clearTimeout(timer);
+  }, [markAllAsRead]); // Remover unreadCount da dependência para evitar loops
 
   return (
     <MobileLayout>

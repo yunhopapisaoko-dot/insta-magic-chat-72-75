@@ -52,7 +52,7 @@ export const useNotifications = () => {
     }
   }, [user]);
 
-  const markAsRead = useCallback(async (notificationId: string) => {
+   const markAsRead = useCallback(async (notificationId: string) => {
     if (!user) return;
 
     console.log('Marking notification as read:', notificationId);
@@ -79,11 +79,6 @@ export const useNotifications = () => {
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
 
-      // Force a re-fetch to ensure consistency
-      setTimeout(() => {
-        fetchNotifications();
-      }, 500);
-
     } catch (error) {
       console.error('Error marking notification as read:', error);
       toast({
@@ -92,7 +87,7 @@ export const useNotifications = () => {
         variant: "destructive",
       });
     }
-  }, [user, fetchNotifications]);
+  }, [user]);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
@@ -145,8 +140,18 @@ export const useNotifications = () => {
         (payload) => {
           console.log('New notification received:', payload);
           const newNotification = payload.new as Notification;
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
+          setNotifications(prev => {
+            // Check if notification already exists to prevent duplicates
+            if (prev.find(n => n.id === newNotification.id)) {
+              return prev;
+            }
+            return [newNotification, ...prev];
+          });
+          
+          // Only increment if it's actually a new notification and it's unread
+          if (!newNotification.is_read) {
+            setUnreadCount(prev => prev + 1);
+          }
 
           // Show toast for new notification
           toast({
@@ -172,9 +177,12 @@ export const useNotifications = () => {
             )
           );
           
-          if (updatedNotification.is_read) {
-            setUnreadCount(prev => Math.max(0, prev - 1));
-          }
+          // Recalculate unread count to ensure consistency
+          setNotifications(prev => {
+            const unreadCount = prev.filter(n => !n.is_read).length;
+            setUnreadCount(unreadCount);
+            return prev;
+          });
         }
       )
       .subscribe((status) => {
