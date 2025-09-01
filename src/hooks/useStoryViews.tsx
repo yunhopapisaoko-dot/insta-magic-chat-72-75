@@ -5,8 +5,10 @@ export const useStoryViews = (userId: string | null) => {
   const markStoryAsViewed = useCallback(async (storyId: string) => {
     if (!userId) return;
 
+    console.log('Marking story as viewed:', storyId, 'by user:', userId);
+
     try {
-      await supabase
+      const { error } = await supabase
         .from('story_views')
         .upsert({ 
           story_id: storyId, 
@@ -14,6 +16,12 @@ export const useStoryViews = (userId: string | null) => {
         }, { 
           onConflict: 'story_id,user_id' 
         });
+
+      if (error) {
+        console.error('Error marking story as viewed:', error);
+      } else {
+        console.log('Story marked as viewed successfully');
+      }
     } catch (error) {
       console.error('Error marking story as viewed:', error);
     }

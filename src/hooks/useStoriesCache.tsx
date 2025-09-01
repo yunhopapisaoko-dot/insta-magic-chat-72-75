@@ -38,6 +38,7 @@ interface CacheEntry {
   userStories: Story[];
   timestamp: number;
   preloadedMedia: Set<string>;
+  viewedStories: Set<string>;
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -238,6 +239,7 @@ export const useStoriesCache = (userId?: string) => {
         userStories: userStoriesWithProfile,
         timestamp: now,
         preloadedMedia: cacheRef.current?.preloadedMedia || new Set(),
+        viewedStories: viewedStoriesSet,
       };
 
       setStories(groupedStories);
@@ -307,26 +309,42 @@ export const useStoriesCache = (userId?: string) => {
           table: 'story_views'
         },
         async (payload) => {
-          console.log('Story view added:', payload);
-          // Update the hasViewed status in real-time
-          if (cacheRef.current) {
+          console.log('🔴 Real-time story view event received:', payload);
+          // Instant update - don't wait for re-fetch
+          if (cacheRef.current && payload.new.user_id === userId) {
+            console.log('📱 Processing story view for current user');
             const viewedStoryId = payload.new.story_id;
             
-            // Re-calculate hasViewed for affected groups
-            const viewedStoriesSet = await getViewedStories();
+            // Update viewed stories set immediately
+            const currentViewedSet = cacheRef.current.viewedStories || new Set();
+            currentViewedSet.add(viewedStoryId);
+            console.log('🎯 Story added to viewed set:', viewedStoryId);
+            
+            // Update groups with new viewed status
             const updatedGroups = cacheRef.current.data.map(group => {
               const hasStoryInGroup = group.stories.some(story => story.id === viewedStoryId);
               if (hasStoryInGroup) {
+                const newHasViewed = group.stories.every(story => currentViewedSet.has(story.id));
+                console.log(`🔄 Group ${group.user.display_name} hasViewed: ${group.hasViewed} -> ${newHasViewed}`);
                 return {
                   ...group,
-                  hasViewed: group.stories.every(story => viewedStoriesSet.has(story.id))
+                  hasViewed: newHasViewed
                 };
               }
               return group;
             });
 
-            cacheRef.current.data = updatedGroups;
+            // Update cache and state immediately
+            cacheRef.current = {
+              ...cacheRef.current,
+              data: updatedGroups,
+              viewedStories: currentViewedSet
+            };
+            
+            console.log('✅ Stories state updated in real-time');
             setStories(updatedGroups);
+          } else {
+            console.log('❌ Story view not for current user or cache not ready');
           }
         }
       )
