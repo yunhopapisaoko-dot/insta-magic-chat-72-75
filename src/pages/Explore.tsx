@@ -136,7 +136,7 @@ const Explore = () => {
   };
 
   const handleViewProfile = (username: string) => {
-    navigate(`/user/${username}`);
+    navigate(`/user/${stripUserDigits(username)}`);
   };
 
   const handleStartChat = async (userId: string, displayName: string) => {
