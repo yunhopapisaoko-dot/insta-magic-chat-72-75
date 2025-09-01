@@ -883,40 +883,53 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                     
                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
                        {!isOwnMessage && (
-                         <Avatar className="w-8 h-8 mt-1">
-                           <AvatarImage src={
-                             (isPublicChat || !isOneOnOneChat) 
-                               ? getSenderInfo(message.sender_id)?.avatar_url || ''
-                               : otherUser?.avatar_url || ''
-                           } />
-                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                             {((isPublicChat || !isOneOnOneChat) 
-                               ? getSenderInfo(message.sender_id)?.display_name?.[0] 
-                               : otherUser?.display_name?.[0]) || '?'}
-                           </AvatarFallback>
-                         </Avatar>
+                         <div className="relative">
+                           <Avatar className="w-8 h-8 mt-1">
+                             <AvatarImage src={
+                               (isPublicChat || !isOneOnOneChat) 
+                                 ? getSenderInfo(message.sender_id)?.avatar_url || ''
+                                 : otherUser?.avatar_url || ''
+                             } />
+                             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                               {((isPublicChat || !isOneOnOneChat) 
+                                 ? getSenderInfo(message.sender_id)?.display_name?.[0] 
+                                 : otherUser?.display_name?.[0]) || '?'}
+                             </AvatarFallback>
+                           </Avatar>
+                           {/* New message indicator next to avatar */}
+                           {hasNewMessageFrom(message.sender_id) && (
+                             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+                           )}
+                         </div>
                        )}
-                       
-                         <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
-                           {/* Show new message indicator */}
-                           {!isOwnMessage && hasNewMessageFrom(message.sender_id) && (
-                             <div className="flex items-center space-x-1 mb-1 animate-pulse">
-                               <MessageCircle className="w-3 h-3 text-green-500" />
-                               <span className="text-xs text-green-500 font-medium">Nova mensagem</span>
-                             </div>
-                           )}
-                           
-                           {/* Reply preview */}
-                           {replyingTo && replyingTo.id === message.id && (
-                             <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
-                               <p className="text-xs text-muted-foreground">
-                                 Respondendo a {replyingTo.senderName}
-                               </p>
-                               <p className="text-xs text-muted-foreground truncate">
-                                 {replyingTo.content}
-                               </p>
-                             </div>
-                           )}
+                        
+                        <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
+                          {/* Show sender name with new message indicator for group chats */}
+                          {!isOwnMessage && (isPublicChat || !isOneOnOneChat) && (
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="text-xs text-muted-foreground font-medium">
+                                {getSenderInfo(message.sender_id)?.display_name || 'Usuário'}
+                              </span>
+                              {hasNewMessageFrom(message.sender_id) && (
+                                <div className="flex items-center space-x-1 animate-pulse">
+                                  <MessageCircle className="w-3 h-3 text-green-500" />
+                                  <span className="text-xs text-green-500 font-medium">Nova</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Reply preview */}
+                          {replyingTo && replyingTo.id === message.id && (
+                            <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
+                              <p className="text-xs text-muted-foreground">
+                                Respondendo a {replyingTo.senderName}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {replyingTo.content}
+                              </p>
+                            </div>
+                          )}
                           
                            <MessageBubble 
                              message={message}
