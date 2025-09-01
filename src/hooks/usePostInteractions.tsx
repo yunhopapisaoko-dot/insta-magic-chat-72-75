@@ -208,7 +208,17 @@ export const usePostInteractions = (postId: string | null) => {
             replies: []
           };
 
-          setComments(prev => [...prev, newComment]);
+          if (payload.new.parent_comment_id) {
+            // It's a reply - add to parent comment's replies
+            setComments(prev => prev.map(comment => 
+              comment.id === payload.new.parent_comment_id 
+                ? { ...comment, replies: [...(comment.replies || []), newComment] }
+                : comment
+            ));
+          } else {
+            // It's a top-level comment
+            setComments(prev => [...prev, newComment]);
+          }
           setCommentsCount(prev => prev + 1);
         }
       )
@@ -248,12 +258,24 @@ export const usePostInteractions = (postId: string | null) => {
             .single();
             
           if (comment && comment.post_id === postId) {
-            // Update comment likes count
-            setComments(prev => prev.map(commentItem => 
-              commentItem.id === payload.new.comment_id 
-                ? { ...commentItem, likes_count: commentItem.likes_count + 1 }
-                : commentItem
-            ));
+            // Update comment likes count for both top-level comments and replies
+            setComments(prev => prev.map(commentItem => {
+              if (commentItem.id === payload.new.comment_id) {
+                return { ...commentItem, likes_count: commentItem.likes_count + 1 };
+              }
+              // Check replies
+              if (commentItem.replies) {
+                return {
+                  ...commentItem,
+                  replies: commentItem.replies.map(reply =>
+                    reply.id === payload.new.comment_id
+                      ? { ...reply, likes_count: reply.likes_count + 1 }
+                      : reply
+                  )
+                };
+              }
+              return commentItem;
+            }));
             
             // Update user's liked comments if it's their like
             if (user && payload.new.user_id === user.id) {
@@ -280,12 +302,24 @@ export const usePostInteractions = (postId: string | null) => {
             .single();
             
           if (comment && comment.post_id === postId) {
-            // Update comment likes count
-            setComments(prev => prev.map(commentItem => 
-              commentItem.id === payload.old.comment_id 
-                ? { ...commentItem, likes_count: Math.max(0, commentItem.likes_count - 1) }
-                : commentItem
-            ));
+            // Update comment likes count for both top-level comments and replies
+            setComments(prev => prev.map(commentItem => {
+              if (commentItem.id === payload.old.comment_id) {
+                return { ...commentItem, likes_count: Math.max(0, commentItem.likes_count - 1) };
+              }
+              // Check replies
+              if (commentItem.replies) {
+                return {
+                  ...commentItem,
+                  replies: commentItem.replies.map(reply =>
+                    reply.id === payload.old.comment_id
+                      ? { ...reply, likes_count: Math.max(0, reply.likes_count - 1) }
+                      : reply
+                  )
+                };
+              }
+              return commentItem;
+            }));
             
             // Update user's liked comments if it's their unlike
             if (user && payload.old.user_id === user.id) {
@@ -445,25 +479,49 @@ export const usePostInteractions = (postId: string | null) => {
       console.log('Tentando curtir comentário com usuário:', user.id);
       const isLiked = commentLikes.has(commentId);
       
-      // Optimistic update first for better UX
+      // Optimistic update first for better UX - handle both top-level and reply comments
       if (isLiked) {
         setCommentLikes(prev => {
           const newSet = new Set(prev);
           newSet.delete(commentId);
           return newSet;
         });
-        setComments(prev => prev.map(comment => 
-          comment.id === commentId 
-            ? { ...comment, likes_count: Math.max(0, comment.likes_count - 1) }
-            : comment
-        ));
+        setComments(prev => prev.map(comment => {
+          if (comment.id === commentId) {
+            return { ...comment, likes_count: Math.max(0, comment.likes_count - 1) };
+          }
+          // Check replies
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.map(reply =>
+                reply.id === commentId
+                  ? { ...reply, likes_count: Math.max(0, reply.likes_count - 1) }
+                  : reply
+              )
+            };
+          }
+          return comment;
+        }));
       } else {
         setCommentLikes(prev => new Set([...prev, commentId]));
-        setComments(prev => prev.map(comment => 
-          comment.id === commentId 
-            ? { ...comment, likes_count: comment.likes_count + 1 }
-            : comment
-        ));
+        setComments(prev => prev.map(comment => {
+          if (comment.id === commentId) {
+            return { ...comment, likes_count: comment.likes_count + 1 };
+          }
+          // Check replies
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.map(reply =>
+                reply.id === commentId
+                  ? { ...reply, likes_count: reply.likes_count + 1 }
+                  : reply
+              )
+            };
+          }
+          return comment;
+        }));
       }
       
       if (isLiked) {

@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Heart, MoreHorizontal, Smile, X } from 'lucide-react';
+import { Heart, MoreHorizontal, Smile, X, Reply } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { stripUserDigits } from '@/lib/utils';
+import { MentionText } from '@/components/MentionText';
+import { UserMentionInput } from '@/components/UserMentionInput';
 
 interface CommentsModalProps {
   isOpen: boolean;
@@ -95,26 +96,33 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
   };
 
   const renderComment = (comment: any, isReply = false) => (
-    <div key={comment.id} className={`flex gap-3 ${isReply ? 'ml-8 mt-2 pt-3 border-t border-border/30' : ''}`}>
-      <Avatar 
-        className="w-8 h-8 flex-shrink-0 cursor-pointer" 
-        onClick={() => handleProfileClick(comment.profiles.username)}
-      >
-        <AvatarImage src={comment.profiles.avatar_url || ''} />
-        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-          {stripUserDigits(comment.profiles.display_name)[0]}
-        </AvatarFallback>
-      </Avatar>
+    <div key={comment.id} className={`group relative animate-fade-in ${isReply ? 'ml-8 mt-3' : 'mb-6'}`}>
+      {/* Reply indicator line for nested comments */}
+      {isReply && (
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/30 to-transparent -ml-6" />
+      )}
       
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start gap-2">
-          <div 
-            className="flex-1 cursor-pointer"
-            onClick={() => !isReply && handleReply(stripUserDigits(comment.profiles.username), comment.id)}
+      <div className={`p-4 rounded-2xl transition-all duration-300 ${
+        isReply 
+          ? 'bg-gradient-to-r from-muted/30 to-muted/10 border border-border/30' 
+          : 'bg-gradient-to-br from-background to-muted/20 border border-border/50 hover:shadow-md'
+      }`}>
+        <div className="flex gap-3">
+          <Avatar 
+            className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity border-2 border-white/10" 
+            onClick={() => handleProfileClick(comment.profiles.username)}
           >
-            <div className="flex items-center gap-2">
+            <AvatarImage src={comment.profiles.avatar_url || ''} />
+            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-semibold">
+              {stripUserDigits(comment.profiles.display_name)[0]}
+            </AvatarFallback>
+          </Avatar>
+          
+          <div className="flex-1 min-w-0">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-2">
               <span 
-                className="font-semibold text-sm cursor-pointer hover:underline"
+                className="font-bold text-sm cursor-pointer hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleProfileClick(comment.profiles.username);
@@ -122,67 +130,63 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
               >
                 {stripUserDigits(comment.profiles.display_name)}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground/80">
                 {formatTimeAgo(comment.created_at)}
               </span>
               {commentLikes.has(comment.id) && (
-                <span className="text-xs text-red-500">❤️</span>
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
               )}
             </div>
-            <p className="text-sm mt-1 leading-relaxed">
-              {comment.content}
-            </p>
             
-            {!isReply && (
-              <div className="flex items-center gap-4 mt-2">
+            {/* Content with mentions */}
+            <div className="mb-3">
+              <MentionText 
+                text={comment.content}
+                className="text-sm leading-relaxed text-foreground/90"
+              />
+            </div>
+            
+            {/* Action buttons */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {!isReply && (
+                  <button
+                    onClick={() => handleReply(stripUserDigits(comment.profiles.username), comment.id)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium hover:text-primary transition-all duration-200 group/reply"
+                  >
+                    <Reply className="w-3.5 h-3.5 group-hover/reply:scale-110 transition-transform" />
+                    Responder
+                  </button>
+                )}
                 <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleReply(stripUserDigits(comment.profiles.username), comment.id);
-                  }}
-                  className="text-xs text-muted-foreground font-medium hover:text-foreground"
-                >
-                  Responder
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCommentLike(comment.id);
-                  }}
-                  className={`text-xs font-medium hover:text-foreground transition-colors ${
+                  onClick={() => handleCommentLike(comment.id)}
+                  className={`flex items-center gap-1.5 text-xs font-medium transition-all duration-200 hover:scale-105 ${
                     commentLikes.has(comment.id) 
                       ? 'text-red-500' 
-                      : 'text-muted-foreground'
+                      : 'text-muted-foreground hover:text-red-400'
                   }`}
                 >
-                  Curtir
+                  <Heart 
+                    className={`w-3.5 h-3.5 transition-all ${
+                      commentLikes.has(comment.id) 
+                        ? 'fill-red-500 text-red-500 animate-pulse' 
+                        : ''
+                    }`} 
+                  />
+                  {comment.likes_count > 0 && (
+                    <span className={commentLikes.has(comment.id) ? 'text-red-500' : ''}>
+                      {comment.likes_count}
+                    </span>
+                  )}
                 </button>
               </div>
-            )}
-          </div>
-          
-          <div className="flex flex-col items-center gap-1">
-            <button 
-              onClick={() => handleCommentLike(comment.id)}
-              className="p-1 hover:bg-muted rounded-full transition-colors"
-            >
-              <Heart 
-                className={`w-3 h-3 transition-colors ${
-                  commentLikes.has(comment.id) 
-                    ? 'fill-red-500 text-red-500' 
-                    : 'text-muted-foreground'
-                }`} 
-              />
-            </button>
-            <span className="text-xs text-muted-foreground">
-              {comment.likes_count}
-            </span>
+            </div>
           </div>
         </div>
         
-        {/* Render replies */}
+        {/* Render replies with improved styling */}
         {comment.replies && comment.replies.length > 0 && (
-          <div className="mt-3 space-y-2">
+          <div className="mt-4 space-y-3 border-l-2 border-primary/20 pl-4 ml-2">
             {comment.replies.map((reply: any) => renderComment(reply, true))}
           </div>
         )}
@@ -216,44 +220,77 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
           <ScrollArea className="flex-1 px-6">
             <div className="py-4 space-y-4">
               {comments.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Ainda não há comentários.</p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">
-                    Comece a conversa.
-                  </p>
+            <div className="py-16 space-y-4 animate-fade-in">
+              <div className="text-center">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-primary/10 to-accent/10 rounded-3xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center">
+                    <span className="text-2xl">💭</span>
+                  </div>
                 </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  Ainda não há comentários
+                </h3>
+                <p className="text-sm text-muted-foreground/70 max-w-xs mx-auto">
+                  Seja o primeiro a comentar! Use @ para mencionar outros usuários.
+                </p>
+              </div>
+            </div>
               ) : (
                 comments.map((comment) => renderComment(comment))
               )}
             </div>
           </ScrollArea>
 
+          {/* Reply indicator */}
+          {replyingTo && (
+            <div className="px-6 py-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-primary/20 animate-slide-in-right">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Reply className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-primary font-medium">
+                    Respondendo {newComment.split(' ')[0]}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setReplyingTo(null);
+                    setNewComment('');
+                  }}
+                  className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Comment Input */}
-          <div className="px-6 py-4 border-t border-border/50 bg-background">
+          <div className="px-6 py-4 border-t border-border/50 bg-gradient-to-r from-background to-muted/10">
             <div className="flex items-center gap-3">
-              <Avatar className="w-8 h-8 flex-shrink-0">
+              <Avatar className="w-10 h-10 flex-shrink-0 border-2 border-white/10">
                 <AvatarImage src={user?.avatar_url || ''} />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-semibold">
                   {user?.display_name?.[0] || 'U'}
                 </AvatarFallback>
               </Avatar>
               
               <div className="flex-1 relative">
-                <Input
-                  ref={commentInputRef}
-                  placeholder={replyingTo ? `Responder a ${newComment.split(' ')[0]}...` : "Adicione um comentário..."}
+                <UserMentionInput
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  onChange={setNewComment}
                   onKeyPress={handleKeyPress}
-                  className="pr-24 bg-muted/50 border-0 rounded-full text-sm"
+                  placeholder={replyingTo ? `Responder a ${newComment.split(' ')[0]}...` : "Adicione um comentário... (use @ para mencionar)"}
                   disabled={isSubmittingComment}
+                  className="pr-24 bg-muted/30 border border-border/50 rounded-2xl text-sm backdrop-blur-sm hover:bg-muted/40 focus:bg-background transition-all"
                 />
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="w-8 h-8 p-0 rounded-full"
+                    className="w-8 h-8 p-0 rounded-full hover:bg-muted/50"
                   >
                     <Smile className="w-4 h-4 text-muted-foreground" />
                   </Button>
@@ -261,14 +298,14 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                 
                 {/* Emoji Picker */}
                 {showEmojiPicker && (
-                  <div className="absolute bottom-full right-0 mb-2 bg-background border border-border rounded-2xl p-3 shadow-lg">
+                  <div className="absolute bottom-full right-0 mb-2 bg-background border border-border rounded-2xl p-4 shadow-xl animate-scale-in z-50">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium">Emojis</span>
+                      <span className="text-sm font-semibold">Reações</span>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowEmojiPicker(false)}
-                        className="w-6 h-6 p-0"
+                        className="w-6 h-6 p-0 hover:bg-muted/50"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -278,7 +315,7 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                         <button
                           key={emoji}
                           onClick={() => addEmoji(emoji)}
-                          className="text-2xl p-2 hover:bg-muted rounded-lg transition-colors"
+                          className="text-2xl p-3 hover:bg-muted/50 rounded-xl transition-all duration-200 hover:scale-110"
                         >
                           {emoji}
                         </button>
@@ -293,9 +330,20 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                 disabled={!newComment.trim() || isSubmittingComment}
                 variant="ghost"
                 size="sm"
-                className="text-primary font-semibold disabled:text-muted-foreground"
+                className={`font-bold px-4 py-2 rounded-xl transition-all duration-200 ${
+                  newComment.trim() 
+                    ? 'text-primary hover:bg-primary/10 hover:scale-105' 
+                    : 'text-muted-foreground'
+                }`}
               >
-                {isSubmittingComment ? 'Enviando...' : 'Publicar'}
+                {isSubmittingComment ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span>Enviando...</span>
+                  </div>
+                ) : (
+                  'Publicar'
+                )}
               </Button>
             </div>
           </div>

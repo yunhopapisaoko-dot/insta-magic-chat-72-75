@@ -1,36 +1,37 @@
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { stripUserDigits } from '@/lib/utils';
 
 interface MentionTextProps {
   text: string;
   className?: string;
 }
 
-export const MentionText = ({ text, className = '' }: MentionTextProps) => {
+export const MentionText = ({ text, className = "" }: MentionTextProps) => {
   const navigate = useNavigate();
-
-  const renderTextWithMentions = (content: string) => {
-    // Regex para detectar menções (@username)
+  
+  const renderTextWithMentions = (text: string) => {
+    // Regex to find @mentions
     const mentionRegex = /@(\w+)/g;
-    const parts = content.split(mentionRegex);
+    const parts = text.split(mentionRegex);
     
     return parts.map((part, index) => {
-      // Se o índice é ímpar, é um username (parte capturada pelo regex)
       if (index % 2 === 1) {
+        // This is a mention (every odd index after split)
         return (
           <span
             key={index}
+            className="text-primary font-semibold cursor-pointer hover:underline animate-fade-in"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/user/${part}`);
+              navigate(`/user/${stripUserDigits(part)}`);
             }}
-            className="text-primary font-semibold cursor-pointer hover:underline transition-all duration-200"
           >
             @{part}
           </span>
         );
       }
-      // Caso contrário, é texto normal
-      return part;
+      return <span key={index}>{part}</span>;
     });
   };
 
