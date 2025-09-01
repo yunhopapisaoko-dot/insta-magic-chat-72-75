@@ -27,7 +27,7 @@ export const MentionText = ({ text, className = "" }: MentionTextProps) => {
               navigate(`/user/${stripUserDigits(part)}`);
             }}
           >
-            @{part}
+            @{stripUserDigits(part)}
           </span>
         );
       }
