@@ -42,58 +42,75 @@ const Feed = () => {
     if (user) {
       fetchPosts();
       fetchLikedPosts();
-      setupRealtimeSubscriptions();
+      const cleanup = setupRealtimeSubscriptions();
+      
+      return cleanup;
     }
   }, [user]);
 
   const setupRealtimeSubscriptions = () => {
     if (!user) return;
 
-    // Subscribe to post likes changes
+    // Subscribe to post likes changes for real-time updates
     const likesChannel = supabase
-      .channel('post-likes-changes')
+      .channel('post-likes-realtime')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'post_likes',
         },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newLike = payload.new as any;
-            if (newLike.user_id === user.id) {
-              setLikedPosts(prev => new Set([...prev, newLike.post_id]));
-            }
-            // Update likes count in posts
-            setPosts(prev => prev.map(post => 
-              post.id === newLike.post_id 
-                ? { ...post, likes_count: post.likes_count + 1 }
-                : post
-            ));
-          } else if (payload.eventType === 'DELETE') {
-            const deletedLike = payload.old as any;
-            if (deletedLike.user_id === user.id) {
-              setLikedPosts(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(deletedLike.post_id);
-                return newSet;
-              });
-            }
-            // Update likes count in posts
-            setPosts(prev => prev.map(post => 
-              post.id === deletedLike.post_id 
-                ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
-                : post
-            ));
+          const newLike = payload.new as any;
+          console.log('New like received:', newLike);
+          
+          // Update local liked posts if this user liked it
+          if (newLike.user_id === user.id) {
+            setLikedPosts(prev => new Set([...prev, newLike.post_id]));
           }
+          
+          // Update likes count for the post
+          setPosts(prev => prev.map(post => 
+            post.id === newLike.post_id 
+              ? { ...post, likes_count: post.likes_count + 1 }
+              : post
+          ));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'post_likes',
+        },
+        (payload) => {
+          const deletedLike = payload.old as any;
+          console.log('Like removed:', deletedLike);
+          
+          // Update local liked posts if this user unliked it
+          if (deletedLike.user_id === user.id) {
+            setLikedPosts(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(deletedLike.post_id);
+              return newSet;
+            });
+          }
+          
+          // Update likes count for the post
+          setPosts(prev => prev.map(post => 
+            post.id === deletedLike.post_id 
+              ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
+              : post
+          ));
         }
       )
       .subscribe();
 
-    // Subscribe to posts changes
+    // Subscribe to posts changes for new posts
     const postsChannel = supabase
-      .channel('posts-changes')
+      .channel('posts-realtime')
       .on(
         'postgres_changes',
         {
@@ -103,7 +120,6 @@ const Feed = () => {
         },
         (payload) => {
           const newPost = payload.new as any;
-          // Fetch the complete post with profile info
           fetchNewPost(newPost.id);
         }
       )
@@ -178,23 +194,47 @@ const Feed = () => {
     try {
       const isLiked = likedPosts.has(postId);
 
+      // Optimistic update - update UI immediately
       if (isLiked) {
-        // Unlike
+        // Remove like locally first for instant feedback
+        setLikedPosts(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(postId);
+          return newSet;
+        });
+        setPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
+            : post
+        ));
+
+        // Then remove from database
         const { error } = await supabase
           .from('post_likes')
           .delete()
           .eq('user_id', user.id)
           .eq('post_id', postId);
 
-        if (error) throw error;
-
-        setLikedPosts(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(postId);
-          return newSet;
-        });
+        if (error) {
+          // Revert on error
+          console.error('Error unliking post:', error);
+          setLikedPosts(prev => new Set([...prev, postId]));
+          setPosts(prev => prev.map(post => 
+            post.id === postId 
+              ? { ...post, likes_count: post.likes_count + 1 }
+              : post
+          ));
+        }
       } else {
-        // Like
+        // Add like locally first for instant feedback
+        setLikedPosts(prev => new Set([...prev, postId]));
+        setPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { ...post, likes_count: post.likes_count + 1 }
+            : post
+        ));
+
+        // Then add to database
         const { error } = await supabase
           .from('post_likes')
           .insert({
@@ -202,12 +242,23 @@ const Feed = () => {
             post_id: postId,
           });
 
-        if (error) throw error;
-
-        setLikedPosts(prev => new Set([...prev, postId]));
+        if (error) {
+          // Revert on error
+          console.error('Error liking post:', error);
+          setLikedPosts(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(postId);
+            return newSet;
+          });
+          setPosts(prev => prev.map(post => 
+            post.id === postId 
+              ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
+              : post
+          ));
+        }
       }
     } catch (error) {
-      console.error('Error liking/unliking post:', error);
+      console.error('Error in handleLike:', error);
     }
   };
 
