@@ -1,13 +1,19 @@
 import React from 'react';
 import { useLongPress } from '@/hooks/useLongPress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface MessageBubbleProps {
   message: any;
   isOwnMessage: boolean;
+  isGroupChat: boolean;
+  senderInfo?: {
+    display_name: string;
+    avatar_url: string | null;
+  };
   onLongPress: (e: React.TouchEvent | React.MouseEvent) => void;
 }
 
-export const MessageBubble = ({ message, isOwnMessage, onLongPress }: MessageBubbleProps) => {
+export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, onLongPress }: MessageBubbleProps) => {
   const longPressProps = useLongPress({
     onLongPress: onLongPress,
     delay: 500
@@ -22,14 +28,30 @@ export const MessageBubble = ({ message, isOwnMessage, onLongPress }: MessageBub
   };
 
   return (
-    <div 
-      className={`p-3 rounded-2xl ${
-        isOwnMessage 
-          ? 'bg-primary text-primary-foreground' 
-          : 'bg-muted'
-      }`}
-      {...longPressProps}
-    >
+    <div className="flex flex-col space-y-1">
+      {/* Show sender info for group chats and non-own messages */}
+      {!isOwnMessage && isGroupChat && senderInfo && (
+        <div className="flex items-center space-x-2 px-1">
+          <Avatar className="w-5 h-5">
+            <AvatarImage src={senderInfo.avatar_url || ''} className="object-cover w-full h-full" />
+            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+              {senderInfo.display_name[0]}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-muted-foreground font-medium">
+            {senderInfo.display_name}
+          </span>
+        </div>
+      )}
+      
+      <div 
+        className={`p-3 rounded-2xl ${
+          isOwnMessage 
+            ? 'bg-primary text-primary-foreground' 
+            : 'bg-muted'
+        }`}
+        {...longPressProps}
+      >
       {message.content && (
         <p className="text-sm leading-relaxed">{message.content}</p>
       )}
@@ -77,6 +99,7 @@ export const MessageBubble = ({ message, isOwnMessage, onLongPress }: MessageBub
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };

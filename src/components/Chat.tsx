@@ -23,6 +23,7 @@ import { MessageContextMenu } from '@/components/MessageContextMenu';
 import { MessageBubble } from '@/components/MessageBubble';
 import { useLongPress } from '@/hooks/useLongPress';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
+import { useMessageSenders } from '@/hooks/useMessageSenders';
 
 interface ChatProps {
   conversationId: string;
@@ -51,6 +52,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     reconnectChannels,
   } = useRealtimeChat(conversationId);
   const { markConversationAsRead } = useUnreadMessages();
+  const { getSenderInfo } = useMessageSenders(messages);
   
   const [otherUser, setOtherUser] = useState<{
     id: string;
@@ -864,21 +866,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                     )}
                     
                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
-                       {!isOwnMessage && (
-                         <Avatar className="w-8 h-8 mt-1">
-                           <AvatarImage src={otherUser?.avatar_url || ''} />
-                           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                             {otherUser?.display_name?.[0] || '?'}
-                           </AvatarFallback>
-                         </Avatar>
-                       )}
+                       {/* Remove avatars here since MessageBubble handles them for group chats */}
                        
                         <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
-                          {!isOwnMessage && (
-                            <p className="text-xs text-muted-foreground mb-1 px-1">
-                              {otherUser?.display_name || 'Usuário'}
-                            </p>
-                          )}
                           
                           {/* Reply preview */}
                           {replyingTo && replyingTo.id === message.id && (
@@ -895,6 +885,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                           <MessageBubble 
                             message={message}
                             isOwnMessage={isOwnMessage}
+                            isGroupChat={isPublicChat || !isOneOnOneChat}
+                            senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
                             onLongPress={(e) => handleMessageLongPress(e, message)}
                           />
                         </div>
