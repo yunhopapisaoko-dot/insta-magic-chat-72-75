@@ -342,6 +342,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         return;
       }
 
+      // Check if the other user has left the conversation
+      let hasUserLeft = false;
+      
       // For private chats that are 1-on-1, get the other participant
       if (isOneOnOne || participantCount === 1) {
         // First try to get from active participants
@@ -357,6 +360,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         
         // If no active participants (user left), get from message history
         if (!otherId) {
+          hasUserLeft = true;
           const { data: messages, error: messagesError } = await supabase
             .from('messages')
             .select('sender_id')
@@ -384,8 +388,9 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               id: profile.id,
               display_name: profile.display_name as any,
               username: profile.username as any,
-              avatar_url: profile.avatar_url as any
-            });
+              avatar_url: profile.avatar_url as any,
+              hasLeft: hasUserLeft
+            } as any);
             setChatPhoto(null); // No custom photo for 1-on-1 chats
           }
         }
@@ -806,9 +811,16 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 </Avatar>
                 
                 <div>
-                  <h2 className="font-semibold text-lg">
-                    {otherUser?.display_name ? stripUserDigits(otherUser.display_name) : 'Chat'}
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold text-lg">
+                      {otherUser?.display_name ? stripUserDigits(otherUser.display_name) : 'Chat'}
+                    </h2>
+                    {(otherUser as any)?.hasLeft && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border animate-fade-in">
+                        Saiu do chat
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {isPublicChat ? otherUser?.username : `@${otherUser?.username || ''}`}
                   </p>
