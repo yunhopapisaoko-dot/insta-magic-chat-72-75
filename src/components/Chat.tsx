@@ -689,16 +689,13 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 </Button>
                 
                 <Avatar className="w-10 h-10">
-                  {isPublicChat && chatPhoto ? (
-                    <AvatarImage src={chatPhoto} className="object-cover" />
-                  ) : (
-                    <>
-                      <AvatarImage src={otherUser.avatar_url || ''} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                        {otherUser.display_name[0]}
-                      </AvatarFallback>
-                    </>
-                  )}
+                  <AvatarImage 
+                    src={otherUser.avatar_url || ''} 
+                    className="object-cover w-full h-full" 
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+                    {otherUser.display_name[0]}
+                  </AvatarFallback>
                 </Avatar>
                 
                 <div>

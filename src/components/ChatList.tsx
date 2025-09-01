@@ -220,7 +220,7 @@ const ChatList = () => {
                               }
 
                               return chatPhoto ? (
-                                <AvatarImage src={chatPhoto} className="object-cover" />
+                                <AvatarImage src={chatPhoto} className="object-cover w-full h-full" />
                               ) : (
                                 <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                                   <Users className="w-6 h-6 text-white" />
@@ -229,7 +229,7 @@ const ChatList = () => {
                             })()
                           ) : (
                             <>
-                              <AvatarImage src={conversation.other_user.avatar_url || ''} />
+                              <AvatarImage src={conversation.other_user.avatar_url || ''} className="object-cover w-full h-full" />
                               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
                                 {conversation.other_user.display_name[0]}
                               </AvatarFallback>
