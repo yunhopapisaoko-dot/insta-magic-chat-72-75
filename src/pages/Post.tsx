@@ -12,6 +12,7 @@ import MobileLayout from '@/components/MobileLayout';
 import VideoPlayer from '@/components/ui/VideoPlayer';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { CommentsModal } from '@/components/CommentsModal';
+import { stripUserDigits } from '@/lib/utils';
 
 interface Post {
   id: string;
@@ -197,7 +198,7 @@ const PostDetail = () => {
                 <div className="flex-1">
                   <h3 className="font-semibold text-base">{post.profiles.display_name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    @{post.profiles.username} • {formatTimeAgo(post.created_at)}
+                    @{stripUserDigits(post.profiles.username)} • {formatTimeAgo(post.created_at)}
                   </p>
                 </div>
                 {post.user_id === user?.id && (
