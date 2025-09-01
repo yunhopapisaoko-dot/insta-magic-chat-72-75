@@ -464,7 +464,7 @@ const StoryViewerEnhanced = ({
               </div>
               
               <div className="flex items-center space-x-2">
-                {/* Menu de opções para o próprio story */}
+                 {/* Menu de opções para o próprio story */}
                 {currentStory.user_id === user?.id && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -472,12 +472,15 @@ const StoryViewerEnhanced = ({
                         variant="ghost"
                         size="sm"
                         onClick={(e) => e.stopPropagation()}
-                        className="text-white hover:bg-white/20 w-8 h-8 p-0 rounded-full"
+                        onTouchEnd={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onMouseUp={(e) => e.stopPropagation()}
+                        className="text-white hover:bg-white/20 w-8 h-8 p-0 rounded-full z-50 relative pointer-events-auto bg-black/30 backdrop-blur-sm"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-sm">
+                    <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-sm z-50">
                       {/* Only show edit option for text and photo stories (not videos) */}
                       {currentStory.media_type !== 'video' && (
                         <DropdownMenuItem 
