@@ -179,16 +179,34 @@ export const useConversations = () => {
           const profile = profilesMap[otherUserId];
           const details = conversationDetails.find(d => d.conversationId === conv.id);
           
-          if (profile) {
+          // If profile is not found, try to get it directly from database
+          let finalProfile = profile;
+          if (!profile) {
+            const { data: directProfile } = await supabase
+              .from('profiles')
+              .select('id, display_name, username, avatar_url')
+              .eq('id', otherUserId)
+              .single();
+            
+            if (directProfile) {
+              finalProfile = {
+                display_name: directProfile.display_name,
+                username: directProfile.username,
+                avatar_url: directProfile.avatar_url,
+              };
+            }
+          }
+          
+          if (finalProfile) {
             conversationsMap.set(conv.id, {
               id: conv.id,
               created_at: conv.created_at,
               updated_at: conv.updated_at,
               other_user: {
                 id: otherUserId,
-                display_name: profile.display_name,
-                username: profile.username,
-                avatar_url: profile.avatar_url,
+                display_name: finalProfile.display_name,
+                username: finalProfile.username,
+                avatar_url: finalProfile.avatar_url,
               },
               last_message: details?.lastMessage || undefined,
               unread_count: details?.unreadCount || 0,
