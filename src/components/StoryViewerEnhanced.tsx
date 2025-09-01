@@ -234,7 +234,18 @@ const StoryViewerEnhanced = ({
 
   // Deletar story
   const handleDeleteStory = useCallback(async () => {
-    if (!currentStory || currentStory.user_id !== user?.id) return;
+    console.log('handleDeleteStory called');
+    console.log('currentStory:', currentStory);
+    console.log('user:', user);
+    
+    if (!currentStory || currentStory.user_id !== user?.id) {
+      console.log('Cannot delete story - not owner or story not found');
+      console.log('currentStory.user_id:', currentStory?.user_id);
+      console.log('user.id:', user?.id);
+      return;
+    }
+
+    console.log('Attempting to delete story with id:', currentStory.id);
 
     try {
       const { error } = await supabase
@@ -242,7 +253,14 @@ const StoryViewerEnhanced = ({
         .delete()
         .eq('id', currentStory.id);
 
-      if (error) throw error;
+      console.log('Delete response:', { error });
+
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
+
+      console.log('Story deleted successfully');
 
       toast({
         title: "Story deletado",
