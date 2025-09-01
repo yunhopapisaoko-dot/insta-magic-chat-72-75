@@ -385,12 +385,26 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   };
 
-  // Mark conversation as read when viewing
+  // Mark conversation as read when viewing and broadcast read status
   useEffect(() => {
     if (conversationId && messages.length > 0) {
       markConversationAsRead(conversationId);
+      
+      // Broadcast that user opened this conversation
+      const channel = supabase.channel(`conversation_read:${conversationId}`);
+      channel.track({
+        user_id: user?.id,
+        reading: true,
+        timestamp: new Date().toISOString()
+      });
+      
+      return () => {
+        // Clean up when leaving conversation
+        channel.untrack();
+        supabase.removeChannel(channel);
+      };
     }
-  }, [conversationId, messages, markConversationAsRead]);
+  }, [conversationId, messages, markConversationAsRead, user?.id]);
 
   // Realtime profile updates for the other participant
   useEffect(() => {

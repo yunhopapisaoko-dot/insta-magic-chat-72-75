@@ -513,19 +513,6 @@ const StoryViewerEnhanced = ({
                       onTouchStart={(e) => e.stopPropagation()}
                       onTouchEnd={(e) => e.stopPropagation()}
                     >
-                      {/* Only show edit option for text and photo stories (not videos) */}
-                      {currentStory.media_type !== 'video' && (
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsEditingStory(true);
-                          }}
-                          className="cursor-pointer hover:bg-accent focus:bg-accent"
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Editar story
-                        </DropdownMenuItem>
-                      )}
                       <DropdownMenuItem 
                         onClick={(e) => {
                           e.stopPropagation();

@@ -1,9 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Globe } from 'lucide-react';
+import { Users, Globe, Eye } from 'lucide-react';
 import { type Conversation } from '@/hooks/useConversations';
 import { useMessageSender } from '@/hooks/useMessageSender';
 import { useAuth } from '@/hooks/useAuth';
+import { useConversationReadStatus } from '@/hooks/useConversationReadStatus';
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -21,6 +22,9 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
   const isCustomGroup = conversation.other_user.id === 'group' && conversation.other_user.display_name !== 'Novo Chat';
   // Check if message is from current user
   const isOwnMessage = conversation.last_message?.sender_id === user?.id;
+  
+  // Get read status for this conversation
+  const { isAnyoneReading } = useConversationReadStatus(conversation.id);
   
   // Get sender info for messages from other users in groups
   const shouldFetchSender = !isOwnMessage && (isCustomGroup || isPublicChat) && conversation.last_message?.sender_id;
@@ -113,13 +117,23 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
                 }
               </p>
               
-              {conversation.unread_count > 0 && (
-                <div className="relative">
-                  <div className="bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1.5 ml-2 shadow-sm">
-                    {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
+              <div className="flex items-center gap-2">
+                {/* Show reading indicator when someone is currently reading */}
+                {isAnyoneReading() && conversation.unread_count === 0 && isOwnMessage && (
+                  <div className="flex items-center text-green-500 animate-pulse">
+                    <Eye className="w-3 h-3" />
                   </div>
-                </div>
-              )}
+                )}
+                
+                {conversation.unread_count > 0 && (
+                  <div className="relative">
+                    <div className="bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1.5 shadow-sm animate-pulse">
+                      {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
