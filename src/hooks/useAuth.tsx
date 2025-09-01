@@ -80,6 +80,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const forceProfileRefresh = async () => {
+    if (!user) return;
+    console.log('Forcing profile refresh for user:', user.id);
+    await fetchUserProfile(user.id);
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -138,7 +144,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAdmin(true);
     }
 
-    return () => subscription.unsubscribe();
+    // Listener para refresh manual do perfil
+    const handleForceProfileRefresh = (event: any) => {
+      if (event.detail) {
+        console.log('Force profile refresh event received:', event.detail);
+        setUser(prev => {
+          if (!prev) return null;
+          const updatedUser = { ...prev, ...event.detail };
+          
+          // Atualizar localStorage também
+          const shouldRememberLogin = localStorage.getItem('magic-talk-remember-login') === 'true';
+          if (shouldRememberLogin) {
+            localStorage.setItem('magic-talk-user', JSON.stringify(updatedUser));
+          }
+          
+          return updatedUser;
+        });
+      } else {
+        forceProfileRefresh();
+      }
+    };
+
+    window.addEventListener('forceProfileRefresh', handleForceProfileRefresh);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('forceProfileRefresh', handleForceProfileRefresh);
+    };
   }, []);
 
   // Set up realtime profile updates

@@ -110,6 +110,20 @@ const ProfileEditor = ({ open, onOpenChange, onProfileUpdate }: ProfileEditorPro
 
       if (error) throw error;
 
+      // Força atualização imediata do contexto com os novos dados
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (updatedProfile) {
+        // Força uma nova busca dos dados do usuário no contexto global
+        window.dispatchEvent(new CustomEvent('forceProfileRefresh', {
+          detail: updatedProfile
+        }));
+      }
+
       toast({
         title: "Perfil atualizado",
         description: "Suas informações foram salvas com sucesso!",
