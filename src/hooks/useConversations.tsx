@@ -82,14 +82,35 @@ export const useConversations = () => {
 
       if (profilesError) throw profilesError;
 
-      // Get last message for each conversation
-      const { data: lastMessages, error: messagesError } = await supabase
-        .from('messages')
-        .select('*')
-        .in('conversation_id', conversationIds)
-        .order('created_at', { ascending: true });
+      // Get last message and unread count for each conversation
+      const conversationQueries = conversationIds.map(async (convId) => {
+        const [lastMessageQuery, unreadCountQuery] = await Promise.all([
+          // Get last message
+          supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', convId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          
+          // Get unread count
+          supabase
+            .from('messages')
+            .select('id')
+            .eq('conversation_id', convId)
+            .neq('sender_id', user.id)
+            .is('read_at', null)
+        ]);
 
-      if (messagesError) throw messagesError;
+        return {
+          conversationId: convId,
+          lastMessage: lastMessageQuery.data,
+          unreadCount: unreadCountQuery.data?.length || 0
+        };
+      });
+
+      const conversationDetails = await Promise.all(conversationQueries);
 
       // Build conversations list
       const conversationsMap = new Map<string, Conversation>();
@@ -110,6 +131,8 @@ export const useConversations = () => {
         
         if (conv && otherParticipant) {
           const profile = profilesMap[otherParticipant.user_id];
+          const details = conversationDetails.find(d => d.conversationId === conv.id);
+          
           if (profile) {
             conversationsMap.set(conv.id, {
               id: conv.id,
@@ -121,31 +144,20 @@ export const useConversations = () => {
                 username: profile.username,
                 avatar_url: profile.avatar_url,
               },
-              unread_count: 0, // TODO: Calculate unread count
+              last_message: details?.lastMessage || undefined,
+              unread_count: details?.unreadCount || 0,
             });
           }
         }
       });
 
-      // Add last messages
-      const lastMessagesByConv = new Map<string, Message>();
-      lastMessages?.forEach((message) => {
-        if (!lastMessagesByConv.has(message.conversation_id)) {
-          lastMessagesByConv.set(message.conversation_id, message);
-        }
-      });
-
-      // Update conversations with last messages
-      conversationsMap.forEach((conv, id) => {
-        const lastMessage = lastMessagesByConv.get(id);
-        if (lastMessage) {
-          conv.last_message = lastMessage;
-        }
-      });
-
       // Sort by last activity
       const sortedConversations = Array.from(conversationsMap.values())
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+        .sort((a, b) => {
+          const aTime = a.last_message?.created_at || a.updated_at;
+          const bTime = b.last_message?.created_at || b.updated_at;
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
+        });
 
       setConversations(sortedConversations);
     } catch (error) {

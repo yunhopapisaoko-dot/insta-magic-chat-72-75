@@ -1,11 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Globe, Eye, MessageCircle } from 'lucide-react';
+import { Users, Globe, Eye } from 'lucide-react';
 import { type Conversation } from '@/hooks/useConversations';
 import { useMessageSender } from '@/hooks/useMessageSender';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversationReadStatus } from '@/hooks/useConversationReadStatus';
-import { useNewMessageIndicator } from '@/hooks/useNewMessageIndicator';
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -26,15 +25,10 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
   
   // Get read status for this conversation
   const { isAnyoneReading } = useConversationReadStatus(conversation.id);
-  // Get new message indicators for this conversation
-  const { newMessageIndicators } = useNewMessageIndicator(conversation.id);
   
   // Get sender info for messages from other users in groups
   const shouldFetchSender = !isOwnMessage && (isCustomGroup || isPublicChat) && conversation.last_message?.sender_id;
   const { senderInfo } = useMessageSender(shouldFetchSender ? conversation.last_message?.sender_id || null : null);
-  
-  // Check if there are new message indicators for this conversation
-  const hasNewMessages = newMessageIndicators.length > 0;
   
   const getSenderPrefix = () => {
     if (!conversation.last_message) return '';
@@ -43,9 +37,9 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
       return 'Você: ';
     }
     
-    // For 1-on-1 chats, don't show sender name (it's obvious from the conversation)
+    // For 1-on-1 chats, show sender name when it's not from current user
     if (!isCustomGroup && !isPublicChat) {
-      return '';
+      return `${conversation.other_user.display_name}: `;
     }
     
     // For groups and public chats, show sender name
@@ -106,11 +100,9 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
                 ) : (
                   conversation.other_user.display_name
                 )}
-                {/* New message indicator */}
-                {hasNewMessages && (
-                  <div className="flex items-center animate-pulse">
-                    <MessageCircle className="w-3 h-3 text-green-500" />
-                  </div>
+                {/* Unread message indicator */}
+                {conversation.unread_count > 0 && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-2" />
                 )}
               </h4>
               {conversation.last_message && (

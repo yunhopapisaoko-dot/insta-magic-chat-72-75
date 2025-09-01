@@ -55,7 +55,15 @@ const ChatList = () => {
     if (diffInMinutes < 60) return `${diffInMinutes}min`;
     if (diffInHours < 24) return `${diffInHours}h`;
     if (diffInDays < 7) return `${diffInDays}d`;
-    return date.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
+    
+    // Show exact time for older messages
+    return date.toLocaleString('pt-BR', { 
+      day: '2-digit',
+      month: '2-digit', 
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const formatLastMessage = (message: string | null) => {
