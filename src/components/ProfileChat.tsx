@@ -272,6 +272,24 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     if (!conversationId || !user) return;
 
     try {
+      // Create a system message about user leaving
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: `${userProfile?.display_name || 'Usuário'} saiu da conversa`,
+          message_type: 'system'
+        });
+
+      if (messageError) console.error('Error creating leave message:', messageError);
+
       // Remove user from conversation participants
       const { error } = await supabase
         .from('conversation_participants')
