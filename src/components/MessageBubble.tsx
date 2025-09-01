@@ -11,12 +11,12 @@ interface MessageBubbleProps {
     display_name: string;
     avatar_url: string | null;
   };
-  onLongPress: (e: React.TouchEvent | React.MouseEvent) => void;
+  onLongPress: () => void;
 }
 
 export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, onLongPress }: MessageBubbleProps) => {
   const longPressProps = useLongPress({
-    onLongPress: () => onLongPress({} as React.TouchEvent | React.MouseEvent),
+    onLongPress: onLongPress,
     delay: 500
   });
 
