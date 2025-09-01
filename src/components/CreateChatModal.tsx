@@ -91,6 +91,43 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
 
     setIsCreating(true);
     try {
+      let finalPhotoUrl = null;
+      
+      // Upload photo if selected
+      if (chatImageUrl && chatImageUrl.startsWith('blob:')) {
+        try {
+          // Convert blob URL to file
+          const response = await fetch(chatImageUrl);
+          const blob = await response.blob();
+          const file = new File([blob], `chat-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          
+          // Upload to Supabase storage
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('chat-photos')
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('chat-photos')
+            .getPublicUrl(fileName);
+            
+          finalPhotoUrl = publicUrl;
+        } catch (uploadError) {
+          console.error('Error uploading chat photo:', uploadError);
+          toast({
+            title: "Aviso",
+            description: "Não foi possível fazer upload da foto, mas o chat foi criado.",
+            variant: "default",
+          });
+        }
+      } else if (chatImageUrl) {
+        finalPhotoUrl = chatImageUrl;
+      }
+
       // Create conversation with metadata
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
@@ -99,7 +136,7 @@ export const CreateChatModal = ({ isOpen, onClose, onChatCreated }: CreateChatMo
           is_public: chatType === 'public',
           name: chatName,
           description: chatDescription,
-          photo_url: chatImageUrl || null
+          photo_url: finalPhotoUrl
         })
         .select()
         .single();

@@ -311,6 +311,19 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           username: conversation.description || 'Chat público',
           avatar_url: conversation.photo_url || ''
         });
+        setChatPhoto(conversation.photo_url || null);
+        return;
+      }
+      
+      // For private chats with custom name and photo
+      if (conversation?.name || conversation?.photo_url) {
+        setOtherUser({
+          id: conversationId,
+          display_name: conversation.name || 'Chat Privado',
+          username: conversation.description || 'Chat privado',
+          avatar_url: conversation.photo_url || ''
+        });
+        setChatPhoto(conversation.photo_url || null);
         return;
       }
 
