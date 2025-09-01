@@ -131,8 +131,34 @@ export const useOptimizedConversations = () => {
           p => p.conversation_id === participant.conversation_id
         );
         
-        if (otherParticipant) {
-          // Conversation with other participants
+        // Check if this is a group with custom name (private group)
+        if (conv.name) {
+          // This is a group with custom name and potentially custom photo
+          conversationsMap.set(conv.id, {
+            id: conv.id,
+            created_at: conv.created_at,
+            updated_at: conv.updated_at,
+            other_user: {
+              id: 'group',
+              display_name: conv.name,
+              username: conv.description || 'Grupo privado',
+              avatar_url: conv.photo_url,
+            },
+            last_message: lastMessage ? {
+              id: 'temp',
+              conversation_id: conv.id,
+              content: lastMessage.content,
+              created_at: lastMessage.created_at,
+              sender_id: user.id,
+              media_url: null,
+              media_type: null,
+              story_id: null,
+              read_at: null
+            } : undefined,
+            unread_count: 0,
+          });
+        } else if (otherParticipant) {
+          // Regular 1-on-1 conversation with other participants
           const profile = profilesMap[otherParticipant.user_id];
           
           if (profile) {
@@ -162,16 +188,13 @@ export const useOptimizedConversations = () => {
           }
         } else {
           // Solo conversation (newly created chat without other participants yet)
-          let displayName = 'Novo Chat';
-          
-          // For chats without participants, just use default name
           conversationsMap.set(conv.id, {
             id: conv.id,
             created_at: conv.created_at,
             updated_at: conv.updated_at,
             other_user: {
               id: 'group',
-              display_name: displayName,
+              display_name: 'Novo Chat',
               username: 'new_chat',
               avatar_url: null,
             },

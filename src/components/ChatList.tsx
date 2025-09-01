@@ -188,11 +188,10 @@ const ChatList = () => {
             </Card>
           ) : (
             filteredConversations.map((conversation) => {
-              // Check if it's a public chat based on the first message content
-              const isPublicChat = conversation.last_message?.content?.includes('🌐 Chat Público');
-              const chatName = isPublicChat 
-                ? conversation.last_message?.content?.match(/: "([^"]+)"/)?.[1] 
-                : null;
+              // Check if it's a public chat based on display name
+              const isPublicChat = conversation.other_user.display_name.startsWith('🌐');
+              // Check if it's a group with custom name
+              const isCustomGroup = conversation.other_user.id === 'group' && conversation.other_user.display_name !== 'Novo Chat';
               
               return (
                 <Card 
@@ -204,29 +203,14 @@ const ChatList = () => {
                     <div className="flex items-center space-x-3">
                        <div className="relative">
                         <Avatar className="w-12 h-12">
-                          {isPublicChat ? (
-                            (() => {
-                              // Try to extract chat photo from first message metadata
-                              let chatPhoto = null;
-                              try {
-                                const metadata = JSON.parse(conversation.last_message?.content || '{}');
-                                chatPhoto = metadata.chatPhoto;
-                              } catch (e) {
-                                // If it's not JSON metadata, it might be in the format we expect
-                                const photoMatch = conversation.last_message?.content?.match(/"chatPhoto":"([^"]+)"/);
-                                if (photoMatch) {
-                                  chatPhoto = photoMatch[1];
-                                }
-                              }
-
-                              return chatPhoto ? (
-                                <AvatarImage src={chatPhoto} className="object-cover w-full h-full" />
-                              ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                                  <Users className="w-6 h-6 text-white" />
-                                </div>
-                              );
-                            })()
+                          {isPublicChat || isCustomGroup ? (
+                            conversation.other_user.avatar_url ? (
+                              <AvatarImage src={conversation.other_user.avatar_url} className="object-cover w-full h-full" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                                <Users className="w-6 h-6 text-white" />
+                              </div>
+                            )
                           ) : (
                             <>
                               <AvatarImage src={conversation.other_user.avatar_url || ''} className="object-cover w-full h-full" />
@@ -249,7 +233,12 @@ const ChatList = () => {
                             {isPublicChat ? (
                               <>
                                 <Globe className="w-3 h-3 text-green-500" />
-                                {chatName || 'Chat Público'}
+                                {conversation.other_user.display_name.replace('🌐 ', '')}
+                              </>
+                            ) : isCustomGroup ? (
+                              <>
+                                <Users className="w-3 h-3 text-primary" />
+                                {conversation.other_user.display_name}
                               </>
                             ) : (
                               conversation.other_user.display_name
