@@ -100,7 +100,7 @@ export const useOptimizedConversations = () => {
       // Get last messages for each conversation to identify chat names
       const { data: lastMessages, error: messagesError } = await supabase
         .from('messages')
-        .select('conversation_id, content, created_at')
+        .select('conversation_id, content, created_at, sender_id')
         .in('conversation_id', conversationIds)
         .order('created_at', { ascending: true });
 
@@ -149,7 +149,7 @@ export const useOptimizedConversations = () => {
               conversation_id: conv.id,
               content: lastMessage.content,
               created_at: lastMessage.created_at,
-              sender_id: user.id,
+              sender_id: lastMessage.sender_id,
               media_url: null,
               media_type: null,
               story_id: null,
@@ -177,7 +177,7 @@ export const useOptimizedConversations = () => {
                 conversation_id: conv.id,
                 content: lastMessage.content,
                 created_at: lastMessage.created_at,
-                sender_id: user.id,
+                sender_id: lastMessage.sender_id,
                 media_url: null,
                 media_type: null,
                 story_id: null,
@@ -203,7 +203,7 @@ export const useOptimizedConversations = () => {
               conversation_id: conv.id,
               content: lastMessage.content,
               created_at: lastMessage.created_at,
-              sender_id: user.id,
+              sender_id: lastMessage.sender_id,
               media_url: null,
               media_type: null,
               story_id: null,
