@@ -1,7 +1,6 @@
 import { Home, Search, Plus, User, MessageCircle } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import NotificationBell from '@/components/NotificationBell';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { Badge } from '@/components/ui/badge';
 
@@ -54,14 +53,6 @@ const BottomNavigation = () => {
               </span>
             </NavLink>
           ))}
-          
-          {/* Notifications Bell */}
-          <div className="flex flex-col items-center justify-center p-3">
-            <NotificationBell />
-            <span className="text-xs mt-1 font-medium text-muted-foreground">
-              Avisos
-            </span>
-          </div>
           
           {/* Profile Link */}
           <NavLink
