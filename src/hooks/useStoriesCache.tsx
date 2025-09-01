@@ -341,7 +341,7 @@ export const useStoriesCache = (userId?: string) => {
               viewedStories: currentViewedSet
             };
             
-            console.log('✅ Stories state updated in real-time');
+            console.log('✅ Stories state updated in real-time - red dot should disappear');
             setStories(updatedGroups);
           } else {
             console.log('❌ Story view not for current user or cache not ready');

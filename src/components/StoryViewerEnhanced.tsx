@@ -141,10 +141,13 @@ const StoryViewerEnhanced = ({
   // Reset progress quando o story muda e marcar como visualizado
   useEffect(() => {
     setProgress(0);
-    if (open && currentStory) {
-      markStoryAsViewed(currentStory.id);
+    if (open && currentStory && user) {
+      // Marcar como visualizado apenas se não for o próprio story do usuário
+      if (currentStory.user_id !== user.id) {
+        markStoryAsViewed(currentStory.id);
+      }
     }
-  }, [currentStoryIndex, currentGroupIndex, currentStory, markStoryAsViewed, open]);
+  }, [currentStoryIndex, currentGroupIndex, currentStory, markStoryAsViewed, open, user]);
 
   // Controles de toque
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
