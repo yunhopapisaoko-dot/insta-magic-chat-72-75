@@ -58,11 +58,27 @@ const ProfileEditor = ({ open, onOpenChange, onProfileUpdate }: ProfileEditorPro
     if (!user) return null;
 
     const fileExt = file.name.split('.').pop() || 'jpg';
-    const fileName = `${user.id}/avatar.${fileExt}`;
+    const timestamp = Date.now();
+    const fileName = `${user.id}/avatar_${timestamp}.${fileExt}`;
+
+    // Remove old avatar files first
+    const { data: existingFiles } = await supabase.storage
+      .from('avatars')
+      .list(user.id);
+
+    if (existingFiles) {
+      const avatarFiles = existingFiles.filter(file => file.name.startsWith('avatar'));
+      if (avatarFiles.length > 0) {
+        const filesToRemove = avatarFiles.map(file => `${user.id}/${file.name}`);
+        await supabase.storage
+          .from('avatars')
+          .remove(filesToRemove);
+      }
+    }
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(fileName, file, { upsert: true });
+      .upload(fileName, file);
 
     if (uploadError) {
       throw uploadError;
