@@ -59,6 +59,8 @@ export const UserTagSelector = ({
     setHasSearched(true);
 
     try {
+      console.log('Searching users with query:', query, 'user ID:', user?.id);
+      
       // Buscar apenas usuários que seguimos
       const { data, error } = await supabase
         .from('follows')
@@ -77,10 +79,13 @@ export const UserTagSelector = ({
         })
         .limit(20);
 
+      console.log('Follows query result:', { data, error });
+
       if (error) throw error;
 
       // Extrair os perfis dos seguidos
       const followedUsers = data?.map(f => f.profiles).filter(Boolean) as User[];
+      console.log('Followed users found:', followedUsers);
       setUsers(followedUsers || []);
     } catch (error) {
       console.error('Error searching users:', error);
