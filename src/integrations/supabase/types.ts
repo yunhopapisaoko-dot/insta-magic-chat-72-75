@@ -152,6 +152,7 @@ export type Database = {
           media_url: string | null
           message_status: string | null
           read_at: string | null
+          replied_to_message_id: string | null
           sender_id: string
           story_id: string | null
         }
@@ -165,6 +166,7 @@ export type Database = {
           media_url?: string | null
           message_status?: string | null
           read_at?: string | null
+          replied_to_message_id?: string | null
           sender_id: string
           story_id?: string | null
         }
@@ -178,6 +180,7 @@ export type Database = {
           media_url?: string | null
           message_status?: string | null
           read_at?: string | null
+          replied_to_message_id?: string | null
           sender_id?: string
           story_id?: string | null
         }
@@ -187,6 +190,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_replied_to_message_id_fkey"
+            columns: ["replied_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {

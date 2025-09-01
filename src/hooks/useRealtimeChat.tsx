@@ -45,7 +45,7 @@ export const useRealtimeChat = (conversationId: string) => {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select('*')
+        .select('*, replied_message:replied_to_message_id(id, content, media_url, media_type, sender_id)')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
@@ -81,7 +81,7 @@ export const useRealtimeChat = (conversationId: string) => {
   }, [conversationId, user]);
 
   // Send message
-  const sendMessage = useCallback(async (content: string, mediaUrl?: string, mediaType?: string) => {
+  const sendMessage = useCallback(async (content: string, mediaUrl?: string, mediaType?: string, repliedToMessageId?: string) => {
     if (!user || (!content.trim() && !mediaUrl) || sending) return false;
 
     setSending(true);
@@ -94,7 +94,8 @@ export const useRealtimeChat = (conversationId: string) => {
           content: content.trim() || null,
           media_url: mediaUrl || null,
           media_type: mediaType || null,
-          message_status: 'sent'
+          message_status: 'sent',
+          replied_to_message_id: repliedToMessageId || null
         })
         .select()
         .single();

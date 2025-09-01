@@ -152,7 +152,7 @@ export const useRealtimeMessages = (conversationId: string) => {
   }, []);
 
   // Send message with enhanced validation and timeout handling
-  const sendMessage = useCallback(async (content: string, mediaUrl?: string, mediaType?: string) => {
+  const sendMessage = useCallback(async (content: string, mediaUrl?: string, mediaType?: string, repliedToMessageId?: string) => {
     if (!user || (!content.trim() && !mediaUrl) || sending) return null;
 
     // Validate connection before sending
@@ -188,7 +188,7 @@ export const useRealtimeMessages = (conversationId: string) => {
           // Retry logic
           console.log('Retrying message:', messageId);
           try {
-            const result = await sendMessageToServer(content, mediaUrl, mediaType);
+            const result = await sendMessageToServer(content, mediaUrl, mediaType, repliedToMessageId);
             return result ? true : false;
           } catch (error) {
             console.error('Retry failed:', error);
@@ -197,7 +197,7 @@ export const useRealtimeMessages = (conversationId: string) => {
         }
       );
 
-      const result = await sendMessageToServer(content, mediaUrl, mediaType);
+      const result = await sendMessageToServer(content, mediaUrl, mediaType, repliedToMessageId);
       
       if (result) {
         console.log('Mensagem enviada com sucesso:', result);
@@ -232,7 +232,7 @@ export const useRealtimeMessages = (conversationId: string) => {
   }, [user, sending, connectionValidator, messageTimeout]);
 
   // Helper function to send message to server
-  const sendMessageToServer = async (content: string, mediaUrl?: string, mediaType?: string) => {
+  const sendMessageToServer = async (content: string, mediaUrl?: string, mediaType?: string, repliedToMessageId?: string) => {
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -241,7 +241,8 @@ export const useRealtimeMessages = (conversationId: string) => {
         content: content.trim() || null,
         media_url: mediaUrl || null,
         media_type: mediaType || null,
-        message_status: 'sent'
+        message_status: 'sent',
+        replied_to_message_id: repliedToMessageId || null
       })
       .select()
       .single();

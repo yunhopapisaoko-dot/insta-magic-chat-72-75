@@ -437,10 +437,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       typingTimeoutRef.current = null;
     }
 
-    const success = await sendMessage(content, mediaUrl, mediaType);
+    const success = await sendMessage(content, mediaUrl, mediaType, messageReplyTo?.id);
     if (success) {
       setNewMessage('');
       setShowMediaUpload(false);
+      setMessageReplyTo(null); // Clear reply when message is sent
     }
   };
 
@@ -898,31 +899,20 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                            )}
                          </div>
                        )}
-                        
-                         <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
-                           {/* Reply preview */}
-                           {messageReplyTo && messageReplyTo.id === message.id && (
-                             <div className="mb-2 p-2 bg-muted/50 rounded-lg border-l-2 border-primary">
-                               <p className="text-xs text-muted-foreground">
-                                 Respondendo a {messageReplyTo.senderName}
-                               </p>
-                               <p className="text-xs text-muted-foreground truncate">
-                                 {messageReplyTo.content}
-                               </p>
-                             </div>
-                           )}
-                          
-                           <MessageBubble 
-                             message={message}
-                             isOwnMessage={isOwnMessage}
-                             isGroupChat={isPublicChat || !isOneOnOneChat}
-                             senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
-                               onLongPress={() => {
-                                 setSelectedMessage(message);
-                                 setContextMenuOpen(true);
-                               }}
-                           />
-                        </div>
+                         
+                          <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
+                           
+                            <MessageBubble 
+                              message={message}
+                              isOwnMessage={isOwnMessage}
+                              isGroupChat={isPublicChat || !isOneOnOneChat}
+                              senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
+                                onLongPress={() => {
+                                  setSelectedMessage(message);
+                                  setContextMenuOpen(true);
+                                }}
+                            />
+                         </div>
                      </div>
                   </div>
                 );
