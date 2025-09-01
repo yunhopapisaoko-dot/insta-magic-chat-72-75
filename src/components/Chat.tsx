@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette, MessageCircle, Reply, Edit, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -942,26 +942,47 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
               
                {/* Reply/Edit bar */}
                {(messageReplyTo || editingMessage) && (
-                 <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                   <div className="flex-1">
-                     {messageReplyTo && (
-                       <div>
-                         <p className="text-xs text-muted-foreground">Respondendo a {messageReplyTo.senderName}</p>
-                         <p className="text-sm truncate">{messageReplyTo.content}</p>
-                       </div>
-                     )}
-                     {editingMessage && (
-                       <p className="text-xs text-muted-foreground">Editando mensagem</p>
-                     )}
+                 <div className="animate-slide-in-right p-4 rounded-2xl bg-gradient-to-r from-muted/50 to-muted/30 border border-muted-foreground/20 backdrop-blur-sm shadow-lg">
+                   <div className="flex items-start justify-between gap-3">
+                     <div className="flex-1 min-w-0">
+                       {messageReplyTo && (
+                         <div className="space-y-2">
+                           <div className="flex items-center gap-2">
+                             <div className="p-1 rounded-full bg-primary/10">
+                               <Reply className="w-3 h-3 text-primary" />
+                             </div>
+                             <p className="text-xs font-semibold text-primary">
+                               Respondendo a {messageReplyTo.senderName}
+                             </p>
+                           </div>
+                           <div className="pl-6">
+                             <p className="text-sm text-foreground/80 line-clamp-2 leading-relaxed">
+                               {messageReplyTo.content.length > 100 
+                                 ? `${messageReplyTo.content.substring(0, 100)}...`
+                                 : messageReplyTo.content
+                               }
+                             </p>
+                           </div>
+                         </div>
+                       )}
+                       {editingMessage && (
+                         <div className="flex items-center gap-2">
+                           <div className="p-1 rounded-full bg-accent/10">
+                             <Edit className="w-3 h-3 text-accent" />
+                           </div>
+                           <p className="text-xs font-semibold text-accent">Editando mensagem</p>
+                         </div>
+                       )}
+                     </div>
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       onClick={editingMessage ? handleCancelEdit : handleCancelReply}
+                       className="w-8 h-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors duration-200"
+                     >
+                       <X className="w-4 h-4" />
+                     </Button>
                    </div>
-                   <Button 
-                     variant="ghost" 
-                     size="sm" 
-                     onClick={editingMessage ? handleCancelEdit : handleCancelReply}
-                     className="w-8 h-8 p-0"
-                   >
-                     ×
-                   </Button>
                  </div>
                )}
               

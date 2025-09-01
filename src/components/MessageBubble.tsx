@@ -79,10 +79,10 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
       )}
       
       <div 
-        className={`p-3 rounded-2xl ${
+        className={`group relative p-4 rounded-3xl transition-all duration-300 shadow-sm hover:shadow-md ${
           isOwnMessage 
-            ? 'bg-primary text-primary-foreground' 
-            : 'bg-muted'
+            ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground shadow-primary/20' 
+            : 'bg-gradient-to-br from-background to-muted border border-border/50 shadow-muted/30'
         }`}
         {...longPressProps}
       >
@@ -91,53 +91,54 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
           <MessageReply 
             originalMessage={originalMessage}
             senderInfo={originalSenderInfo}
-            isOwnMessage={isOwnMessage}
+            isOwnMessage={originalMessage.sender_id === message.sender_id}
+            className="scale-in"
           />
         )}
         
         {message.content && (
-          <p className="text-sm leading-relaxed">{message.content}</p>
+          <p className="text-sm leading-relaxed font-medium">{message.content}</p>
         )}
         
         {/* Media Content */}
         {message.media_url && (
-          <div className="mt-2">
+          <div className="mt-3">
             {message.media_type === 'video' ? (
               <video
                 src={message.media_url}
                 controls
-                className="max-w-full rounded-lg"
-                style={{ maxHeight: '200px' }}
+                className="max-w-full rounded-2xl shadow-lg"
+                style={{ maxHeight: '240px' }}
                 playsInline
               />
             ) : (
               <img
                 src={message.media_url}
                 alt="Imagem compartilhada"
-                className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                style={{ maxHeight: '200px' }}
+                className="max-w-full rounded-2xl cursor-pointer hover:opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl"
+                style={{ maxHeight: '240px' }}
                 onClick={() => window.open(message.media_url!, '_blank')}
               />
             )}
           </div>
         )}
         
-        <div className={`flex items-center justify-between mt-1 ${
-          isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+        <div className={`flex items-center justify-between mt-2 text-xs ${
+          isOwnMessage ? 'text-primary-foreground/60' : 'text-muted-foreground/80'
         }`}>
-          <span className="text-xs">
+          <span className="font-medium">
             {formatMessageTime(message.created_at)}
           </span>
           {isOwnMessage && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               {message.message_status === 'read' && (
-                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                <div className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-pulse" />
               )}
               {message.message_status === 'delivered' && (
-                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                <div className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse" />
               )}
               {(message.message_status === 'sent' || !message.message_status) && (
-                <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                <div className="w-2.5 h-2.5 bg-white/60 rounded-full" />
               )}
             </div>
           )}
