@@ -278,7 +278,7 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                         disabled={isSubmittingComment}
                       />
                       <Button
-                        onClick={handleSubmitComment}
+                        onClick={() => handleSubmitComment()}
                         disabled={!newComment.trim() || isSubmittingComment}
                         size="sm"
                         className="px-3"

@@ -9,11 +9,13 @@ interface Comment {
   created_at: string;
   user_id: string;
   likes_count: number;
+  parent_comment_id: string | null;
   profiles: {
     display_name: string;
     username: string;
     avatar_url: string | null;
   };
+  replies?: Comment[];
 }
 
 export const usePostInteractions = (postId: string | null) => {
@@ -55,22 +57,51 @@ export const usePostInteractions = (postId: string | null) => {
         setIsLiked(!!like);
       }
 
-      // Get comments with profile data
+      // Get comments with profile data - only top-level comments first
       const { data: commentsData } = await supabase
         .from('post_comments')
-        .select('id, content, created_at, user_id, likes_count')
+        .select('id, content, created_at, user_id, likes_count, parent_comment_id')
         .eq('post_id', postId)
+        .is('parent_comment_id', null)
         .order('created_at', { ascending: true });
 
       if (commentsData) {
-        // Fetch profile data for each comment
+        // Fetch profile data and replies for each comment
         const commentsWithProfiles = await Promise.all(
           commentsData.map(async (comment) => {
+            // Get profile data
             const { data: profile } = await supabase
               .from('profiles')
               .select('display_name, username, avatar_url')
               .eq('id', comment.user_id)
               .single();
+            
+            // Get replies for this comment
+            const { data: repliesData } = await supabase
+              .from('post_comments')
+              .select('id, content, created_at, user_id, likes_count, parent_comment_id')
+              .eq('parent_comment_id', comment.id)
+              .order('created_at', { ascending: true });
+
+            // Get profile data for replies
+            const repliesWithProfiles = repliesData ? await Promise.all(
+              repliesData.map(async (reply) => {
+                const { data: replyProfile } = await supabase
+                  .from('profiles')
+                  .select('display_name, username, avatar_url')
+                  .eq('id', reply.user_id)
+                  .single();
+                
+                return {
+                  ...reply,
+                  profiles: replyProfile || {
+                    display_name: 'Usuário',
+                    username: 'user',
+                    avatar_url: null
+                  }
+                };
+              })
+            ) : [];
             
             return {
               ...comment,
@@ -78,19 +109,25 @@ export const usePostInteractions = (postId: string | null) => {
                 display_name: 'Usuário',
                 username: 'user',
                 avatar_url: null
-              }
+              },
+              replies: repliesWithProfiles
             };
           })
         );
         setComments(commentsWithProfiles);
         
-        // Check which comments the user has liked
-        if (user && commentsData.length > 0) {
+        // Check which comments and replies the user has liked
+        if (user && commentsWithProfiles.length > 0) {
+          const allCommentIds = [
+            ...commentsWithProfiles.map(c => c.id),
+            ...commentsWithProfiles.flatMap(c => c.replies?.map(r => r.id) || [])
+          ];
+          
           const { data: userCommentLikes } = await supabase
             .from('comment_likes')
             .select('comment_id')
             .eq('user_id', user.id)
-            .in('comment_id', commentsData.map(c => c.id));
+            .in('comment_id', allCommentIds);
           
           if (userCommentLikes) {
             setCommentLikes(new Set(userCommentLikes.map(like => like.comment_id)));
@@ -162,11 +199,13 @@ export const usePostInteractions = (postId: string | null) => {
             created_at: payload.new.created_at,
             user_id: payload.new.user_id,
             likes_count: payload.new.likes_count || 0,
+            parent_comment_id: payload.new.parent_comment_id || null,
             profiles: profile || {
               display_name: 'Usuário',
               username: 'user',
               avatar_url: null
-            }
+            },
+            replies: []
           };
 
           setComments(prev => [...prev, newComment]);
@@ -304,7 +343,7 @@ export const usePostInteractions = (postId: string | null) => {
     }
   }, [user, postId, isLiked]);
 
-  const handleSubmitComment = useCallback(async () => {
+  const handleSubmitComment = useCallback(async (parentCommentId?: string) => {
     if (!user || !postId || !newComment.trim()) return;
 
     setIsSubmittingComment(true);
@@ -315,8 +354,9 @@ export const usePostInteractions = (postId: string | null) => {
           post_id: postId,
           user_id: user.id,
           content: newComment.trim(),
+          parent_comment_id: parentCommentId || null,
         })
-        .select('id, content, created_at, user_id')
+        .select('id, content, created_at, user_id, parent_comment_id')
         .single();
 
       if (error) throw error;
@@ -328,21 +368,34 @@ export const usePostInteractions = (postId: string | null) => {
         .eq('id', user.id)
         .single();
 
-      // Adicionar comentário imediatamente à lista local
+      // Add comment to the appropriate place in the comments structure
       const newCommentData = {
         id: data.id,
         content: data.content,
         created_at: data.created_at,
         user_id: data.user_id,
         likes_count: 0,
+        parent_comment_id: data.parent_comment_id,
         profiles: profile || {
           display_name: user.display_name || 'Usuário',
           username: user.username || 'user',
           avatar_url: user.avatar_url || null
-        }
+        },
+        replies: []
       };
 
-      setComments(prev => [...prev, newCommentData]);
+      if (parentCommentId) {
+        // It's a reply - add to the parent comment's replies
+        setComments(prev => prev.map(comment => 
+          comment.id === parentCommentId 
+            ? { ...comment, replies: [...(comment.replies || []), newCommentData] }
+            : comment
+        ));
+      } else {
+        // It's a top-level comment
+        setComments(prev => [...prev, newCommentData]);
+      }
+      
       setCommentsCount(prev => prev + 1);
       setNewComment('');
     } catch (error) {
