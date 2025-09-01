@@ -11,17 +11,26 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showSavedAccount, setShowSavedAccount] = useState(false);
+  const [savedUser, setSavedUser] = useState<any>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   // Carrega o último usuário salvo ao inicializar
   useEffect(() => {
-    const savedUsername = localStorage.getItem('magic-talk-saved-username');
-    const wasRemembered = localStorage.getItem('magic-talk-remember-me') === 'true';
+    const savedUserData = localStorage.getItem('magic-talk-user');
+    const wasRemembered = localStorage.getItem('magic-talk-remember-login') === 'true';
     
-    if (savedUsername && wasRemembered) {
-      setUsername(savedUsername);
-      setRememberMe(true);
+    if (savedUserData && wasRemembered) {
+      try {
+        const userData = JSON.parse(savedUserData);
+        setSavedUser(userData);
+        setShowSavedAccount(true);
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('magic-talk-user');
+        localStorage.removeItem('magic-talk-remember-login');
+      }
     }
   }, []);
 
@@ -31,18 +40,30 @@ const Login = () => {
     
     const success = await login(username, rememberMe);
     if (success) {
-      // Salva ou remove as preferências baseado na opção "Lembrar de mim"
-      if (rememberMe) {
-        localStorage.setItem('magic-talk-saved-username', username);
-        localStorage.setItem('magic-talk-remember-me', 'true');
-      } else {
-        localStorage.removeItem('magic-talk-saved-username');
-        localStorage.removeItem('magic-talk-remember-me');
-      }
       navigate('/feed');
     }
     
     setLoading(false);
+  };
+
+  const handleSavedAccountLogin = async () => {
+    if (!savedUser) return;
+    
+    setLoading(true);
+    const success = await login(savedUser.username, true);
+    if (success) {
+      navigate('/feed');
+    }
+    setLoading(false);
+  };
+
+  const handleEnterAnotherAccount = () => {
+    setShowSavedAccount(false);
+    setSavedUser(null);
+  };
+
+  const stripUserDigits = (username: string): string => {
+    return username.replace(/\d{4}$/, '');
   };
 
   return (
@@ -67,73 +88,126 @@ const Login = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Input
-                type="text"
-                placeholder="Ex: ana1234"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                className="mobile-input"
-                maxLength={20}
-                required
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Formato: letras + exatamente 4 números
-              </p>
+          {showSavedAccount && savedUser ? (
+            // Mostra a conta salva
+            <div className="space-y-6">
+              <div className="text-center space-y-4">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-primary to-accent mx-auto">
+                  <span className="text-white font-bold text-lg">
+                    {savedUser.display_name?.charAt(0).toUpperCase() || savedUser.username?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">{savedUser.display_name}</h3>
+                  <p className="text-sm text-muted-foreground">@{stripUserDigits(savedUser.username)}</p>
+                </div>
+              </div>
+              
+              <Button
+                onClick={handleSavedAccountLogin}
+                className="w-full magic-button"
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Entrar
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+              
+              <div className="text-center">
+                <button
+                  onClick={handleEnterAnotherAccount}
+                  className="text-sm text-primary font-medium hover:underline"
+                >
+                  Entrar em outra conta
+                </button>
+              </div>
+              
+              <div className="mt-4 pt-4 border-t border-border text-center">
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Acesso administrativo
+                </button>
+              </div>
             </div>
+          ) : (
+            // Mostra o formulário normal
+            <>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <Input
+                    type="text"
+                    placeholder="Ex: ana1234"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                    className="mobile-input"
+                    maxLength={20}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Formato: letras + exatamente 4 números
+                  </p>
+                </div>
 
-            {/* Opção Lembrar de mim */}
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="remember-me" 
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(!!checked)}
-              />
-              <label 
-                htmlFor="remember-me" 
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-              >
-                Lembrar de mim
-              </label>
-            </div>
-            
-            <Button
-              type="submit"
-              className="w-full magic-button"
-              disabled={loading}
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  Entrar
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
-          </form>
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Não tem uma conta?{' '}
-              <button
-                onClick={() => navigate('/register')}
-                className="text-primary font-medium hover:underline"
-              >
-                Cadastre-se
-              </button>
-            </p>
-            
-            <div className="mt-4 pt-4 border-t border-border">
-              <button
-                onClick={() => navigate('/admin')}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Acesso administrativo
-              </button>
-            </div>
-          </div>
+                {/* Opção Lembrar de mim */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="remember-me" 
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(!!checked)}
+                  />
+                  <label 
+                    htmlFor="remember-me" 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Lembrar de mim
+                  </label>
+                </div>
+                
+                <Button
+                  type="submit"
+                  className="w-full magic-button"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      Entrar
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </form>
+              
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Não tem uma conta?{' '}
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="text-primary font-medium hover:underline"
+                  >
+                    Cadastre-se
+                  </button>
+                </p>
+                
+                <div className="mt-4 pt-4 border-t border-border">
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Acesso administrativo
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
