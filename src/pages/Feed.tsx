@@ -10,6 +10,7 @@ import MobileLayout from '@/components/MobileLayout';
 import CreatePost from '@/components/CreatePost';
 import StoriesSection from '@/components/StoriesSection';
 import VideoPlayer from '@/components/ui/VideoPlayer';
+import NotificationBell from '@/components/NotificationBell';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -41,8 +42,98 @@ const Feed = () => {
     if (user) {
       fetchPosts();
       fetchLikedPosts();
+      setupRealtimeSubscriptions();
     }
   }, [user]);
+
+  const setupRealtimeSubscriptions = () => {
+    if (!user) return;
+
+    // Subscribe to post likes changes
+    const likesChannel = supabase
+      .channel('post-likes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'post_likes',
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newLike = payload.new as any;
+            if (newLike.user_id === user.id) {
+              setLikedPosts(prev => new Set([...prev, newLike.post_id]));
+            }
+            // Update likes count in posts
+            setPosts(prev => prev.map(post => 
+              post.id === newLike.post_id 
+                ? { ...post, likes_count: post.likes_count + 1 }
+                : post
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedLike = payload.old as any;
+            if (deletedLike.user_id === user.id) {
+              setLikedPosts(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(deletedLike.post_id);
+                return newSet;
+              });
+            }
+            // Update likes count in posts
+            setPosts(prev => prev.map(post => 
+              post.id === deletedLike.post_id 
+                ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
+                : post
+            ));
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to posts changes
+    const postsChannel = supabase
+      .channel('posts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'posts',
+        },
+        (payload) => {
+          const newPost = payload.new as any;
+          // Fetch the complete post with profile info
+          fetchNewPost(newPost.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(likesChannel);
+      supabase.removeChannel(postsChannel);
+    };
+  };
+
+  const fetchNewPost = async (postId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles!inner(display_name, username, avatar_url)
+        `)
+        .eq('id', postId)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setPosts(prev => [data, ...prev]);
+      }
+    } catch (error) {
+      console.error('Error fetching new post:', error);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -194,6 +285,7 @@ const Feed = () => {
             </div>
             
             <div className="flex items-center space-x-2">
+              <NotificationBell />
               {isAdmin && (
                 <Button
                   variant="ghost"
