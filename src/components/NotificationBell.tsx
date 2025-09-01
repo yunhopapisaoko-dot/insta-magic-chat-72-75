@@ -32,7 +32,7 @@ const NotificationBell = () => {
         </SheetHeader>
         
         <div className="mt-6 h-full overflow-auto pb-20">
-          <NotificationsList />
+          <NotificationsList onNotificationClick={() => setOpen(false)} />
         </div>
       </SheetContent>
     </Sheet>

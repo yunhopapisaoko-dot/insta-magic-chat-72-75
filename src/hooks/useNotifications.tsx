@@ -55,6 +55,8 @@ export const useNotifications = () => {
   const markAsRead = useCallback(async (notificationId: string) => {
     if (!user) return;
 
+    console.log('Marking notification as read:', notificationId);
+
     try {
       const { error } = await supabase
         .from('notifications')
@@ -62,18 +64,35 @@ export const useNotifications = () => {
         .eq('id', notificationId)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        throw error;
+      }
 
+      console.log('Successfully marked notification as read');
+
+      // Update local state immediately
       setNotifications(prev => 
         prev.map(n => 
           n.id === notificationId ? { ...n, is_read: true } : n
         )
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
+
+      // Force a re-fetch to ensure consistency
+      setTimeout(() => {
+        fetchNotifications();
+      }, 500);
+
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível marcar a notificação como lida",
+        variant: "destructive",
+      });
     }
-  }, [user]);
+  }, [user, fetchNotifications]);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;

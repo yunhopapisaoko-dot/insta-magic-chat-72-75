@@ -9,7 +9,11 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const NotificationsList = () => {
+interface NotificationsListProps {
+  onNotificationClick?: () => void;
+}
+
+const NotificationsList = ({ onNotificationClick }: NotificationsListProps) => {
   const navigate = useNavigate();
   const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
 
@@ -31,27 +35,38 @@ const NotificationsList = () => {
   };
 
   const handleNotificationClick = async (notification: any) => {
-    // Mark as read if not already read
-    if (!notification.is_read) {
+    try {
+      // Always mark as read when clicked, regardless of current status
       await markAsRead(notification.id);
-    }
 
-    // Navigate based on notification type and entity
-    if (notification.entity_type === 'post' && notification.entity_id) {
-      navigate(`/post/${notification.entity_id}`);
-    } else if (notification.entity_type === 'comment' && notification.entity_id) {
-      // For comment notifications and likes, navigate to the post
-      // We'll need to get the post_id from the comment
-      // For now, navigate to feed and let user find the post
-      navigate('/feed');
-    } else if (notification.entity_type === 'user' && notification.actor_id) {
-      // For follow notifications, navigate to the follower's profile
-      navigate(`/user/${notification.actor_id}`);
-    } else if (notification.type === 'follow' && notification.actor_id) {
-      // Navigate to follower's profile
-      navigate(`/user/${notification.actor_id}`);
-    } else {
-      // Fallback to feed
+      // Close the notifications panel if callback provided
+      onNotificationClick?.();
+
+      // Small delay to ensure the update is processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Navigate based on notification type and entity
+      if (notification.entity_type === 'post' && notification.entity_id) {
+        navigate(`/post/${notification.entity_id}`);
+      } else if (notification.entity_type === 'comment' && notification.entity_id) {
+        // For comment notifications and likes, navigate to the post
+        // We'll need to get the post_id from the comment
+        // For now, navigate to feed and let user find the post
+        navigate('/feed');
+      } else if (notification.entity_type === 'user' && notification.actor_id) {
+        // For follow notifications, navigate to the follower's profile
+        navigate(`/user/${notification.actor_id}`);
+      } else if (notification.type === 'follow' && notification.actor_id) {
+        // Navigate to follower's profile
+        navigate(`/user/${notification.actor_id}`);
+      } else {
+        // Fallback to feed
+        navigate('/feed');
+      }
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+      // Close panel and navigate even if marking as read fails
+      onNotificationClick?.();
       navigate('/feed');
     }
   };
