@@ -18,7 +18,11 @@ export const useOptimizedConversations = () => {
 
   // Simple fetch conversations without complex optimizations
   const fetchConversations = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setConversations([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -98,18 +102,30 @@ export const useOptimizedConversations = () => {
       }
 
       // Get last messages for each conversation to identify chat names
-      const { data: lastMessages, error: messagesError } = await supabase
-        .from('messages')
-        .select('conversation_id, content, created_at, sender_id')
-        .in('conversation_id', conversationIds)
-        .order('created_at', { ascending: true });
+      const lastMessagePromises = conversationIds.map(async (convId) => {
+        const { data: lastMessageData, error } = await supabase
+          .from('messages')
+          .select('conversation_id, content, created_at, sender_id')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (error) {
+          console.error('Error fetching last message for conversation:', convId, error);
+          return { conversationId: convId, lastMessage: null };
+        }
+        
+        return { 
+          conversationId: convId, 
+          lastMessage: lastMessageData 
+        };
+      });
 
-      if (messagesError) console.error('Error fetching messages:', messagesError);
-
-      // Group messages by conversation and get the latest one
-      const lastMessageMap = (lastMessages || []).reduce((acc, message) => {
-        if (!acc[message.conversation_id]) {
-          acc[message.conversation_id] = message;
+      const lastMessagesResults = await Promise.all(lastMessagePromises);
+      const lastMessageMap = lastMessagesResults.reduce((acc, result) => {
+        if (result.lastMessage) {
+          acc[result.conversationId] = result.lastMessage;
         }
         return acc;
       }, {} as Record<string, any>);
@@ -296,11 +312,21 @@ export const useOptimizedConversations = () => {
 
   // Initial load and realtime setup
   useEffect(() => {
-    fetchConversations();
+    if (!user?.id) {
+      console.log('No user ID available, skipping conversations setup');
+      return;
+    }
+    
+    console.log('Setting up conversations for user:', user.id);
+    
+    // Add small delay to ensure user is fully loaded
+    const timer = setTimeout(() => {
+      fetchConversations();
+    }, 100);
 
-    // Set up realtime subscriptions
+    // Set up realtime subscriptions with more specific channel name
     const conversationsChannel = supabase
-      .channel('conversations-changes')
+      .channel(`conversations-user-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -308,7 +334,8 @@ export const useOptimizedConversations = () => {
           schema: 'public',
           table: 'conversations'
         },
-        () => {
+        (payload) => {
+          console.log('Conversation change:', payload);
           fetchConversations();
         }
       )
@@ -319,7 +346,8 @@ export const useOptimizedConversations = () => {
           schema: 'public',
           table: 'conversation_participants'
         },
-        () => {
+        (payload) => {
+          console.log('Participants change:', payload);
           fetchConversations();
         }
       )
@@ -330,7 +358,8 @@ export const useOptimizedConversations = () => {
           schema: 'public',
           table: 'profiles'
         },
-        () => {
+        (payload) => {
+          console.log('Profile update:', payload);
           fetchConversations();
         }
       )
@@ -341,7 +370,8 @@ export const useOptimizedConversations = () => {
           schema: 'public',
           table: 'messages'
         },
-        () => {
+        (payload) => {
+          console.log('New message:', payload);
           // Refresh conversations when new messages arrive to update unread counts
           fetchConversations();
         }
@@ -353,17 +383,22 @@ export const useOptimizedConversations = () => {
           schema: 'public',
           table: 'messages'
         },
-        () => {
+        (payload) => {
+          console.log('Message update:', payload);
           // Refresh conversations when messages are marked as read
           fetchConversations();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up realtime subscription');
+      clearTimeout(timer);
       supabase.removeChannel(conversationsChannel);
     };
-  }, [fetchConversations]);
+  }, [fetchConversations, user?.id]);
 
 
   // Create or get conversation simplified

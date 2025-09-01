@@ -39,12 +39,12 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
     
     // For 1-on-1 chats, show sender name when it's not from current user
     if (!isCustomGroup && !isPublicChat) {
-      return `${conversation.other_user.display_name}: `;
+      return `${conversation.other_user.display_name.replace(/\d{4}$/, '')}: `;
     }
     
     // For groups and public chats, show sender name
     if (senderInfo) {
-      return `${senderInfo.display_name}: `;
+      return `${senderInfo.display_name.replace(/\d{4}$/, '')}: `;
     }
     
     return '';
@@ -71,9 +71,9 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
               ) : (
                 <>
                   <AvatarImage src={conversation.other_user.avatar_url || ''} className="object-cover w-full h-full" />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                    {conversation.other_user.display_name[0]}
-                  </AvatarFallback>
+                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+                     {conversation.other_user.display_name.replace(/\d{4}$/, '')[0]}
+                   </AvatarFallback>
                 </>
               )}
             </Avatar>
@@ -97,9 +97,9 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
                     <Users className="w-3 h-3 text-primary" />
                     {conversation.other_user.display_name}
                   </>
-                ) : (
-                  conversation.other_user.display_name
-                )}
+                 ) : (
+                   conversation.other_user.display_name.replace(/\d{4}$/, '')
+                 )}
                 {/* Unread message indicator */}
                 {conversation.unread_count > 0 && (
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-2" />
