@@ -276,30 +276,63 @@ export const useOptimizedConversations = () => {
             });
           }
         } else {
-          // Solo conversation (newly created chat without other participants yet)
-          conversationsMap.set(conv.id, {
-            id: conv.id,
-            created_at: conv.created_at,
-            updated_at: conv.updated_at,
-            other_user: {
-              id: 'group',
-              display_name: 'Novo Chat',
-              username: 'new_chat',
-              avatar_url: null,
-            },
-            last_message: lastMessage ? {
-              id: 'temp',
-              conversation_id: conv.id,
-              content: lastMessage.content,
-              created_at: lastMessage.created_at,
-              sender_id: lastMessage.sender_id,
-              media_url: null,
-              media_type: null,
-              story_id: null,
-              read_at: null
-            } : undefined,
-            unread_count: unreadCountMap[conv.id] || 0,
-          });
+          // Solo conversation (user left) - try to find the other user from message history
+          const messages = messagesMap[conv.id] || [];
+          const otherUserMessage = messages.find(msg => msg.sender_id !== user.id);
+          
+          if (otherUserMessage) {
+            const profile = profilesMap[otherUserMessage.sender_id];
+            if (profile) {
+              conversationsMap.set(conv.id, {
+                id: conv.id,
+                created_at: conv.created_at,
+                updated_at: conv.updated_at,
+                other_user: {
+                  id: otherUserMessage.sender_id,
+                  display_name: profile.display_name,
+                  username: profile.username,
+                  avatar_url: profile.avatar_url,
+                },
+                last_message: lastMessage ? {
+                  id: 'temp',
+                  conversation_id: conv.id,
+                  content: lastMessage.content,
+                  created_at: lastMessage.created_at,
+                  sender_id: lastMessage.sender_id,
+                  media_url: null,
+                  media_type: null,
+                  story_id: null,
+                  read_at: null
+                } : undefined,
+                unread_count: unreadCountMap[conv.id] || 0,
+              });
+            }
+          } else {
+            // Truly new chat without messages
+            conversationsMap.set(conv.id, {
+              id: conv.id,
+              created_at: conv.created_at,
+              updated_at: conv.updated_at,
+              other_user: {
+                id: 'group',
+                display_name: 'Novo Chat',
+                username: 'new_chat',
+                avatar_url: null,
+              },
+              last_message: lastMessage ? {
+                id: 'temp',
+                conversation_id: conv.id,
+                content: lastMessage.content,
+                created_at: lastMessage.created_at,
+                sender_id: lastMessage.sender_id,
+                media_url: null,
+                media_type: null,
+                story_id: null,
+                read_at: null
+              } : undefined,
+              unread_count: unreadCountMap[conv.id] || 0,
+            });
+          }
         }
       });
 
@@ -352,7 +385,8 @@ export const useOptimizedConversations = () => {
           return new Date(bTime).getTime() - new Date(aTime).getTime();
         });
 
-      // Update cache
+      // Clear old cache and update with new data
+      localStorage.removeItem(CACHE_KEY);
       conversationsCache = sortedConversations;
       lastFetchTime = now;
       saveCache(sortedConversations);

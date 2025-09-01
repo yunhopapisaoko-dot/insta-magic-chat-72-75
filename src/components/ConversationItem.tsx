@@ -34,14 +34,6 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
   // Check if message is from current user
   const isOwnMessage = conversation.last_message?.sender_id === user?.id;
   
-  console.log('ConversationItem render:', {
-    conversationId: conversation.id,
-    otherUserId: conversation.other_user.id,
-    displayName: conversation.other_user.display_name,
-    isPublicChat,
-    isCustomGroup
-  });
-  
   // Get read status for this conversation
   const { isAnyoneReading } = useConversationReadStatus(conversation.id);
   
