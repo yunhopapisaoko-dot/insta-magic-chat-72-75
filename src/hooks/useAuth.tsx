@@ -100,13 +100,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           fetchUserProfile(session.user.id);
         }, 0);
       } else {
-        // Fallback: Check for saved login (quando "lembrar de mim" está ativo)
+        // Check for saved login (quando "lembrar de mim" está ativo)
         const shouldRememberLogin = localStorage.getItem('magic-talk-remember-login') === 'true';
         const savedUser = localStorage.getItem('magic-talk-user');
         
         if (shouldRememberLogin && savedUser) {
           try {
-            setUser(JSON.parse(savedUser));
+            const userData = JSON.parse(savedUser);
+            setUser(userData);
+            console.log('Restored saved user:', userData);
           } catch (error) {
             console.error('Error parsing saved user:', error);
             localStorage.removeItem('magic-talk-user');

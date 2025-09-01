@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { X, ChevronLeft, ChevronRight, MessageCircle, Volume2, VolumeX, MoreVertical, Trash2, Edit } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, MessageCircle, Volume2, VolumeX, MoreVertical, Trash2, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import StoryEditor from '@/components/StoryEditor';
+import StoryViewsList from '@/components/StoryViewsList';
 
 interface Story {
   id: string;
@@ -69,6 +70,7 @@ const StoryViewerEnhanced = ({
   const [isMuted, setIsMuted] = useState(true);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; time: number } | null>(null);
   const [isEditingStory, setIsEditingStory] = useState(false);
+  const [showViewsList, setShowViewsList] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -513,16 +515,26 @@ const StoryViewerEnhanced = ({
                       onTouchStart={(e) => e.stopPropagation()}
                       onTouchEnd={(e) => e.stopPropagation()}
                     >
-                      <DropdownMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteStory();
-                        }}
-                        className="text-destructive focus:text-destructive cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Deletar story
-                      </DropdownMenuItem>
+                       <DropdownMenuItem 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setShowViewsList(true);
+                         }}
+                         className="cursor-pointer hover:bg-muted focus:bg-muted"
+                       >
+                         <Eye className="w-4 h-4 mr-2" />
+                         Ver visualizações
+                       </DropdownMenuItem>
+                       <DropdownMenuItem 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           handleDeleteStory();
+                         }}
+                         className="text-destructive focus:text-destructive cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
+                       >
+                         <Trash2 className="w-4 h-4 mr-2" />
+                         Deletar story
+                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -665,6 +677,13 @@ const StoryViewerEnhanced = ({
           onStoryUpdated={() => {
             onStoryDeleted?.(); // Refresh stories list
           }}
+        />
+
+        {/* Story Views List Modal */}
+        <StoryViewsList
+          open={showViewsList}
+          onOpenChange={setShowViewsList}
+          storyId={currentStory?.id || ''}
         />
       </DialogContent>
     </Dialog>
