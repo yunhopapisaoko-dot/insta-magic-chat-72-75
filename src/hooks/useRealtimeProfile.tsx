@@ -17,7 +17,9 @@ interface UseRealtimeProfileProps {
 
 export const useRealtimeProfile = ({ userId, onProfileUpdate }: UseRealtimeProfileProps) => {
   const handleProfileChange = useCallback((payload: any) => {
+    console.log('Profile realtime change:', payload);
     if (payload.eventType === 'UPDATE' && payload.new?.id === userId) {
+      console.log('Processing profile update for user:', userId);
       onProfileUpdate({
         id: payload.new.id,
         display_name: payload.new.display_name,
@@ -32,8 +34,10 @@ export const useRealtimeProfile = ({ userId, onProfileUpdate }: UseRealtimeProfi
   useEffect(() => {
     if (!userId) return;
 
+    console.log('Setting up realtime profile listener for user:', userId);
+
     const channel = supabase
-      .channel('profile_changes')
+      .channel(`profile_changes_${userId}`)
       .on(
         'postgres_changes',
         {
@@ -44,9 +48,12 @@ export const useRealtimeProfile = ({ userId, onProfileUpdate }: UseRealtimeProfi
         },
         handleProfileChange
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Profile realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up profile realtime listener');
       supabase.removeChannel(channel);
     };
   }, [userId, handleProfileChange]);

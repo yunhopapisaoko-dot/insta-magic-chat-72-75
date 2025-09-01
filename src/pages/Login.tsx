@@ -93,9 +93,17 @@ const Login = () => {
             <div className="space-y-6">
               <div className="text-center space-y-4">
                 <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-primary to-accent mx-auto">
-                  <span className="text-white font-bold text-lg">
-                    {savedUser.display_name?.charAt(0).toUpperCase() || savedUser.username?.charAt(0).toUpperCase()}
-                  </span>
+                  {savedUser.avatar_url ? (
+                    <img 
+                      src={savedUser.avatar_url} 
+                      alt={savedUser.display_name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-lg">
+                      {savedUser.display_name?.charAt(0).toUpperCase() || savedUser.username?.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg">{savedUser.display_name}</h3>

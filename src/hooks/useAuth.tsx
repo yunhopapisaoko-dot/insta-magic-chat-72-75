@@ -65,7 +65,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleRealtimeProfileUpdate = (profileUpdate: any) => {
-    setUser(prev => prev ? { ...prev, ...profileUpdate } : null);
+    console.log('Realtime profile update received:', profileUpdate);
+    setUser(prev => {
+      if (!prev) return null;
+      const updatedUser = { ...prev, ...profileUpdate };
+      
+      // Atualizar também o localStorage se "lembrar de mim" estiver ativo
+      const shouldRememberLogin = localStorage.getItem('magic-talk-remember-login') === 'true';
+      if (shouldRememberLogin) {
+        localStorage.setItem('magic-talk-user', JSON.stringify(updatedUser));
+      }
+      
+      return updatedUser;
+    });
   };
 
   useEffect(() => {
