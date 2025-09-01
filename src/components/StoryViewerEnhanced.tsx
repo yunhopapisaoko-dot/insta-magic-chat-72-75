@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import StoryEditor from '@/components/StoryEditor';
 import StoryViewsList from '@/components/StoryViewsList';
+import { useStoryViews } from '@/hooks/useStoryViews';
 
 interface Story {
   id: string;
@@ -65,6 +66,7 @@ const StoryViewerEnhanced = ({
   onStoryDeleted 
 }: StoryViewerEnhancedProps) => {
   const { user } = useAuth();
+  const { markStoryAsViewed } = useStoryViews(user?.id || null);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -136,10 +138,13 @@ const StoryViewerEnhanced = ({
     };
   }, [open, isPaused, currentGroupIndex, currentStoryIndex, handleNext]);
 
-  // Reset progress quando o story muda
+  // Reset progress quando o story muda e marcar como visualizado
   useEffect(() => {
     setProgress(0);
-  }, [currentStoryIndex, currentGroupIndex]);
+    if (open && currentStory) {
+      markStoryAsViewed(currentStory.id);
+    }
+  }, [currentStoryIndex, currentGroupIndex, currentStory, markStoryAsViewed, open]);
 
   // Controles de toque
   const handleTouchStart = useCallback((e: React.TouchEvent) => {

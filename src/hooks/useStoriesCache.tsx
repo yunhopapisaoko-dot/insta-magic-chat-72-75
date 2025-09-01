@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useStoryViews } from './useStoryViews';
 
 interface Story {
   id: string;
@@ -48,6 +49,7 @@ export const useStoriesCache = (userId?: string) => {
   const [userStories, setUserStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getViewedStories } = useStoryViews(userId || null);
   const cacheRef = useRef<CacheEntry | null>(null);
   const preloadQueueRef = useRef<Set<string>>(new Set());
 
@@ -209,11 +211,11 @@ export const useStoriesCache = (userId?: string) => {
             };
 
             if (!storyGroups[story.user_id]) {
-              storyGroups[story.user_id] = {
+            storyGroups[story.user_id] = {
                 user_id: story.user_id,
                 user: profile,
                 stories: [],
-                hasViewed: false, // TODO: Implement view tracking
+                hasViewed: false, // Will be calculated below
               };
             }
             storyGroups[story.user_id].stories.push(storyWithProfile);
@@ -222,6 +224,13 @@ export const useStoriesCache = (userId?: string) => {
 
         groupedStories = Object.values(storyGroups);
       }
+
+      // Get viewed stories and calculate hasViewed
+      const viewedStoriesSet = await getViewedStories();
+      groupedStories.forEach(group => {
+        // A group is considered viewed if ALL stories in the group have been viewed
+        group.hasViewed = group.stories.every(story => viewedStoriesSet.has(story.id));
+      });
 
       // Update cache
       cacheRef.current = {
@@ -257,7 +266,7 @@ export const useStoriesCache = (userId?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [userId, preloadMedia]);
+  }, [userId, preloadMedia, getViewedStories]);
 
   // Set up real-time updates
   useEffect(() => {

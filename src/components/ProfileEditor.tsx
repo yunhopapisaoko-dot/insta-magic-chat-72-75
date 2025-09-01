@@ -115,6 +115,10 @@ const ProfileEditor = ({ open, onOpenChange, onProfileUpdate }: ProfileEditorPro
         description: "Suas informações foram salvas com sucesso!",
       });
 
+      // Reset form state
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      
       onProfileUpdate();
       onOpenChange(false);
     } catch (error) {
