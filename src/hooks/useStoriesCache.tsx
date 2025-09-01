@@ -229,8 +229,15 @@ export const useStoriesCache = (userId?: string) => {
       // Get viewed stories and calculate hasViewed
       const viewedStoriesSet = await getViewedStories();
       groupedStories.forEach(group => {
-        // A group is considered viewed if ALL stories in the group have been viewed
-        group.hasViewed = group.stories.every(story => viewedStoriesSet.has(story.id));
+        // Para stories próprios, considera visualizado se pelo menos um story foi visto
+        // Para stories de outros usuários, considera visualizado se TODOS foram vistos
+        if (group.user_id === userId) {
+          // Stories próprios: considera visualizado se pelo menos um foi visto
+          group.hasViewed = group.stories.some(story => viewedStoriesSet.has(story.id));
+        } else {
+          // Stories de outros: considera visualizado se TODOS foram vistos
+          group.hasViewed = group.stories.every(story => viewedStoriesSet.has(story.id));
+        }
       });
 
       // Update cache
@@ -324,7 +331,14 @@ export const useStoriesCache = (userId?: string) => {
             const updatedGroups = cacheRef.current.data.map(group => {
               const hasStoryInGroup = group.stories.some(story => story.id === viewedStoryId);
               if (hasStoryInGroup) {
-                const newHasViewed = group.stories.every(story => currentViewedSet.has(story.id));
+                let newHasViewed;
+                // Para stories próprios, considera visualizado se pelo menos um story foi visto
+                // Para stories de outros usuários, considera visualizado se TODOS foram vistos
+                if (group.user_id === userId) {
+                  newHasViewed = group.stories.some(story => currentViewedSet.has(story.id));
+                } else {
+                  newHasViewed = group.stories.every(story => currentViewedSet.has(story.id));
+                }
                 console.log(`🔄 Group ${group.user.display_name} hasViewed: ${group.hasViewed} -> ${newHasViewed}`);
                 return {
                   ...group,
