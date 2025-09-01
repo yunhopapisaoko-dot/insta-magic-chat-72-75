@@ -291,6 +291,9 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
         setEditPhoto(null);
       }
 
+      // Close settings to show changes
+      onClose();
+
       toast({
         title: "Sucesso",
         description: "Informações do chat atualizadas.",

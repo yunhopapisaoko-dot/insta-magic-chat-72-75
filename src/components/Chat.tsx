@@ -120,6 +120,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   };
 
+  const handleWallpaperChange = (wallpaper: { type: 'color' | 'image'; value: string } | null) => {
+    setCurrentWallpaper(wallpaper);
+  };
+
   const checkPublicChatStatus = async () => {
     if (!user || !conversationId) return;
 
@@ -140,6 +144,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       const isPublic = conversation?.is_public || false;
       setIsPublicChat(isPublic);
       setChatPhoto(conversation?.photo_url || null);
+      
+      // Force re-fetch conversation data to get updated photo
+      if (conversation?.photo_url !== chatPhoto) {
+        setChatPhoto(conversation?.photo_url || null);
+      }
 
       // Check if user is a participant
       const { data: participants, error: participantsError } = await supabase
@@ -906,9 +915,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           onClose={() => setShowWallpaperSettings(false)}
           conversationId={conversationId}
           currentWallpaper={currentWallpaper}
-          onWallpaperChange={(wallpaper) => {
-            setCurrentWallpaper(wallpaper);
-          }}
+          onWallpaperChange={handleWallpaperChange}
         />
       </div>
     );
