@@ -101,8 +101,18 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       checkPublicChatStatus();
       fetchOtherUser();
       loadWallpaper();
+      
+      // Setup realtime updates and cleanup
+      const cleanup = setupRealtimeUpdates();
+      return cleanup;
     }
   }, [conversationId, user]);
+
+  useEffect(() => {
+    if (conversationId && user && isPublicChat !== null) {
+      checkParticipantStatus();
+    }
+  }, [conversationId, user, isPublicChat]);
 
   const loadWallpaper = () => {
     if (!user || !conversationId) return;
@@ -124,32 +134,100 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     setCurrentWallpaper(wallpaper);
   };
 
-  const checkPublicChatStatus = async () => {
-    if (!user || !conversationId) return;
+  const setupRealtimeUpdates = () => {
+    if (!conversationId) return;
 
+    // Listen for conversation updates (photo changes)
+    const conversationChannel = supabase
+      .channel(`conversation_updates:${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations',
+          filter: `id=eq.${conversationId}`
+        },
+        (payload) => {
+          console.log('Conversation updated:', payload);
+          const updatedConversation = payload.new as any;
+          
+          // Update chat photo if changed
+          if (updatedConversation.photo_url !== chatPhoto) {
+            setChatPhoto(updatedConversation.photo_url);
+          }
+          
+          // Update conversation name if changed
+          if (updatedConversation.name) {
+            setOtherUser(prev => prev ? {
+              ...prev,
+              display_name: updatedConversation.name
+            } : null);
+          }
+        }
+      )
+      .subscribe();
+
+    // Listen for wallpaper changes in localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `wallpaper_${user?.id}_${conversationId}`) {
+        if (e.newValue) {
+          try {
+            const newWallpaper = JSON.parse(e.newValue);
+            setCurrentWallpaper(newWallpaper);
+          } catch (error) {
+            console.error('Error parsing wallpaper from storage:', error);
+          }
+        } else {
+          setCurrentWallpaper(null);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      supabase.removeChannel(conversationChannel);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  };
+
+  const checkPublicChatStatus = async () => {
     try {
-      // Check if this conversation is marked as public
-      const { data: conversation, error: convError } = await supabase
+      const { data: conversation, error } = await supabase
         .from('conversations')
-        .select('is_public, creator_id, name, photo_url')
+        .select('is_public, name, description, photo_url')
         .eq('id', conversationId)
         .single();
 
-      if (convError) {
-        console.error('Error checking conversation:', convError);
-        return;
-      }
+      if (error) throw error;
 
-      // Use the database flag directly
       const isPublic = conversation?.is_public || false;
       setIsPublicChat(isPublic);
       setChatPhoto(conversation?.photo_url || null);
+      
+      // Update other user info with conversation name if it's a named chat
+      if (conversation?.name && otherUser) {
+        setOtherUser(prev => prev ? {
+          ...prev,
+          display_name: conversation.name,
+          username: conversation.description || prev.username
+        } : prev);
+      }
       
       // Force re-fetch conversation data to get updated photo
       if (conversation?.photo_url !== chatPhoto) {
         setChatPhoto(conversation?.photo_url || null);
       }
+    } catch (error) {
+      console.error('Error checking public chat status:', error);
+    }
+  };
 
+  const checkParticipantStatus = async () => {
+    if (!user || !conversationId) return;
+
+    try {
       // Check if user is a participant
       const { data: participants, error: participantsError } = await supabase
         .from('conversation_participants')
@@ -158,7 +236,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
       if (participantsError) throw participantsError;
 
-      if (isPublic) {
+      if (isPublicChat) {
         // Check if user is already a participant
         const isUserParticipant = participants?.some(p => p.user_id === user.id) || false;
         setIsParticipant(isUserParticipant);
@@ -171,7 +249,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         setIsParticipant(true); // For private chats, assume user is participant if they can access
       }
     } catch (error) {
-      console.error('Error checking public chat status:', error);
+      console.error('Error checking participant status:', error);
     }
   };
 
@@ -626,8 +704,18 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 </Avatar>
                 
                 <div>
-                  <h2 className="font-semibold text-lg">{otherUser.display_name}</h2>
-                  <p className="text-sm text-muted-foreground">@{otherUser.username}</p>
+                  <h2 className="font-semibold text-lg">
+                    {isPublicChat && otherUser?.display_name !== otherUser?.username 
+                      ? otherUser?.display_name 
+                      : otherUser?.display_name || 'Chat'
+                    }
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {isPublicChat && otherUser?.username !== otherUser?.display_name 
+                      ? otherUser?.username 
+                      : `@${otherUser?.username || ''}`
+                    }
+                  </p>
                 </div>
               </div>
               
