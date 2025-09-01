@@ -47,8 +47,8 @@ export const MessageReply = ({ originalMessage, senderInfo, isOwnMessage, classN
     <div className={`animate-fade-in ${className}`}>
       <div className={`relative mb-3 p-3 rounded-xl border-l-4 backdrop-blur-sm transition-all duration-300 hover:shadow-md ${
         isOwnMessage 
-          ? 'bg-gradient-to-r from-primary/5 to-primary/10 border-primary shadow-primary/20' 
-          : 'bg-gradient-to-r from-muted/30 to-muted/50 border-accent shadow-accent/20'
+          ? 'bg-gradient-to-r from-primary/20 to-primary/30 border-primary shadow-primary/40' 
+          : 'bg-gradient-to-r from-muted/60 to-muted/80 border-accent shadow-accent/40'
       }`}>
         {/* Decorative accent line */}
         <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r ${
