@@ -160,18 +160,26 @@ export const useConversations = () => {
         if (otherParticipant) {
           otherUserId = otherParticipant.user_id;
         } else {
-          // If no active participant, get from messages
-          const { data: message } = await supabase
+          // If no active participant, get from message history to find who the other user was
+          const { data: messages } = await supabase
             .from('messages')
             .select('sender_id')
             .eq('conversation_id', participant.conversation_id)
             .neq('sender_id', user.id)
             .not('message_type', 'eq', 'system')
-            .limit(1)
-            .maybeSingle();
+            .order('created_at', { ascending: false })
+            .limit(10);
           
-          if (message) {
-            otherUserId = message.sender_id;
+          if (messages && messages.length > 0) {
+            // Get the most frequent sender (the other user)
+            const senderCounts = messages.reduce((acc, msg) => {
+              acc[msg.sender_id] = (acc[msg.sender_id] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+            
+            otherUserId = Object.keys(senderCounts).reduce((a, b) => 
+              senderCounts[a] > senderCounts[b] ? a : b
+            );
           }
         }
 
@@ -186,7 +194,7 @@ export const useConversations = () => {
               .from('profiles')
               .select('id, display_name, username, avatar_url')
               .eq('id', otherUserId)
-              .single();
+              .maybeSingle();
             
             if (directProfile) {
               finalProfile = {
