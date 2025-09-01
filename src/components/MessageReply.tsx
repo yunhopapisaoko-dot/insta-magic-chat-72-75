@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { stripUserDigits } from '@/lib/utils';
 import { Reply } from 'lucide-react';
@@ -20,6 +21,7 @@ interface MessageReplyProps {
 }
 
 export const MessageReply = ({ originalMessage, senderInfo, isOwnMessage, className = "" }: MessageReplyProps) => {
+  const navigate = useNavigate();
   const getReplyContent = () => {
     if (originalMessage.content) {
       return originalMessage.content.length > 80 
@@ -70,7 +72,15 @@ export const MessageReply = ({ originalMessage, senderInfo, isOwnMessage, classN
           <div className="flex-1 min-w-0">
             {/* Sender info */}
             <div className="flex items-center gap-2 mb-1.5">
-              <Avatar className="w-5 h-5 border border-white/20">
+              <Avatar 
+                className="w-5 h-5 border border-white/20 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isOwnMessage && senderInfo) {
+                    navigate(`/user/${stripUserDigits(senderInfo.display_name)}`);
+                  }
+                }}
+              >
                 <AvatarImage src={senderInfo?.avatar_url || ''} />
                 <AvatarFallback className="text-[10px] bg-gradient-to-br from-primary to-accent text-white font-semibold">
                   {getSenderName()[0]}

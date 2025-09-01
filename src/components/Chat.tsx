@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ interface ChatParticipant {
 }
 
 const Chat = ({ conversationId, onBack }: ChatProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { 
     messages, 
@@ -750,7 +752,14 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
                 
-                <Avatar className="w-10 h-10">
+                <Avatar 
+                  className="w-10 h-10 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => {
+                    if (!isPublicChat && isOneOnOneChat) {
+                      navigate(`/user/${stripUserDigits(otherUser.username)}`);
+                    }
+                  }}
+                >
                   <AvatarImage 
                     src={otherUser.avatar_url || ''} 
                     className="object-cover w-full h-full" 
@@ -879,26 +888,34 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                     )}
                     
                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
-                       {!isOwnMessage && (
-                         <div className="relative">
-                           <Avatar className="w-8 h-8 mt-1">
-                             <AvatarImage src={
-                               (isPublicChat || !isOneOnOneChat) 
-                                 ? getSenderInfo(message.sender_id)?.avatar_url || ''
-                                 : otherUser?.avatar_url || ''
-                             } />
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                                {((isPublicChat || !isOneOnOneChat) 
-                                  ? (getSenderInfo(message.sender_id)?.display_name ? stripUserDigits(getSenderInfo(message.sender_id)?.display_name!)[0] : '?')
-                                  : (otherUser?.display_name ? stripUserDigits(otherUser.display_name)[0] : '?')) || '?'}
-                              </AvatarFallback>
-                           </Avatar>
-                           {/* New message indicator next to avatar */}
-                           {hasNewMessageFrom(message.sender_id) && (
-                             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
-                           )}
-                         </div>
-                       )}
+                        {!isOwnMessage && (
+                          <div className="relative">
+                            <Avatar 
+                              className="w-8 h-8 mt-1 cursor-pointer hover:opacity-80 transition-opacity"
+                               onClick={() => {
+                                 const senderInfo = getSenderInfo(message.sender_id);
+                                 if (senderInfo) {
+                                   navigate(`/user/${stripUserDigits(senderInfo.display_name)}`);
+                                 }
+                               }}
+                            >
+                              <AvatarImage src={
+                                (isPublicChat || !isOneOnOneChat) 
+                                  ? getSenderInfo(message.sender_id)?.avatar_url || ''
+                                  : otherUser?.avatar_url || ''
+                              } />
+                               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                                 {((isPublicChat || !isOneOnOneChat) 
+                                   ? (getSenderInfo(message.sender_id)?.display_name ? stripUserDigits(getSenderInfo(message.sender_id)?.display_name!)[0] : '?')
+                                   : (otherUser?.display_name ? stripUserDigits(otherUser.display_name)[0] : '?')) || '?'}
+                               </AvatarFallback>
+                            </Avatar>
+                            {/* New message indicator next to avatar */}
+                            {hasNewMessageFrom(message.sender_id) && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+                            )}
+                          </div>
+                        )}
                          
                           <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
                            

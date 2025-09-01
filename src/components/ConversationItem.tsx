@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Users, Globe, Eye, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { type Conversation } from '@/hooks/useConversations';
 import { useMessageSender } from '@/hooks/useMessageSender';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +23,7 @@ interface ConversationItemProps {
 }
 
 const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMessage, onLeaveChat }: ConversationItemProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   
@@ -117,7 +119,15 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
       <CardContent className="p-4">
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <Avatar className="w-12 h-12">
+            <Avatar 
+              className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isPublicChat && !isCustomGroup) {
+                  navigate(`/user/${stripUserDigits(conversation.other_user.username)}`);
+                }
+              }}
+            >
               {isPublicChat || isCustomGroup ? (
                 conversation.other_user.avatar_url ? (
                   <AvatarImage src={conversation.other_user.avatar_url} className="object-cover w-full h-full" />

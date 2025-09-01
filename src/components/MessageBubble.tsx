@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLongPress } from '@/hooks/useLongPress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { stripUserDigits } from '@/lib/utils';
@@ -17,6 +18,7 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, onLongPress }: MessageBubbleProps) => {
+  const navigate = useNavigate();
   const [originalMessage, setOriginalMessage] = useState<any>(null);
   const [originalSenderInfo, setOriginalSenderInfo] = useState<any>(null);
   
@@ -73,7 +75,10 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
     <div className="flex flex-col space-y-1">
       {/* Show sender name for group chats and non-own messages */}
       {!isOwnMessage && isGroupChat && senderInfo && (
-        <span className="text-xs text-muted-foreground font-medium px-1">
+        <span 
+          className="text-xs text-muted-foreground font-medium px-1 cursor-pointer hover:underline"
+          onClick={() => navigate(`/user/${stripUserDigits(senderInfo.display_name)}`)}
+        >
           {stripUserDigits(senderInfo.display_name)}
         </span>
       )}
