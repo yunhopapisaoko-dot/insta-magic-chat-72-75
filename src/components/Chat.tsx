@@ -866,11 +866,17 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                     )}
                     
                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
-                       {!isOwnMessage && (isPublicChat || !isOneOnOneChat) && (
+                       {!isOwnMessage && (
                          <Avatar className="w-8 h-8 mt-1">
-                           <AvatarImage src={getSenderInfo(message.sender_id)?.avatar_url || ''} />
+                           <AvatarImage src={
+                             (isPublicChat || !isOneOnOneChat) 
+                               ? getSenderInfo(message.sender_id)?.avatar_url || ''
+                               : otherUser?.avatar_url || ''
+                           } />
                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-                             {getSenderInfo(message.sender_id)?.display_name?.[0] || '?'}
+                             {((isPublicChat || !isOneOnOneChat) 
+                               ? getSenderInfo(message.sender_id)?.display_name?.[0] 
+                               : otherUser?.display_name?.[0]) || '?'}
                            </AvatarFallback>
                          </Avatar>
                        )}
