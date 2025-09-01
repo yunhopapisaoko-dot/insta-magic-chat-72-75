@@ -329,31 +329,33 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
       }
 
       // For regular private chats (1-on-1), get the other participant
-      const { data: participants, error: participantsError } = await supabase
+      const { data: participantRows, error: participantsError } = await supabase
         .from('conversation_participants')
-        .select(`
-          user_id,
-          profiles:user_id (
-            id,
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('user_id')
         .eq('conversation_id', conversationId)
         .neq('user_id', user.id);
 
       if (participantsError) throw participantsError;
 
-      if (participants && participants.length > 0) {
-        const profile = participants[0].profiles as any;
-        setOtherUser({
-          id: profile.id,
-          display_name: profile.display_name,
-          username: profile.username,
-          avatar_url: profile.avatar_url
-        });
-        setChatPhoto(null); // No custom photo for 1-on-1 chats
+      const otherId = participantRows?.[0]?.user_id;
+      if (otherId) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url')
+          .eq('id', otherId)
+          .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (profile) {
+          setOtherUser({
+            id: profile.id,
+            display_name: profile.display_name as any,
+            username: profile.username as any,
+            avatar_url: profile.avatar_url as any
+          });
+          setChatPhoto(null); // No custom photo for 1-on-1 chats
+        }
       }
     } catch (error) {
       console.error('Error fetching conversation info:', error);
