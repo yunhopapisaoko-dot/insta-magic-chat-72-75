@@ -142,10 +142,9 @@ const StoryViewerEnhanced = ({
   useEffect(() => {
     setProgress(0);
     if (open && currentStory && user) {
-      // Marcar como visualizado apenas se não for o próprio story do usuário
-      if (currentStory.user_id !== user.id) {
-        markStoryAsViewed(currentStory.id);
-      }
+      // Marcar como visualizado (incluindo stories próprios para fazer a bolinha desaparecer)
+      console.log('🎯 Marking story as viewed:', currentStory.id, 'by user:', user?.id);
+      markStoryAsViewed(currentStory.id);
     }
   }, [currentStoryIndex, currentGroupIndex, currentStory, markStoryAsViewed, open, user]);
 
