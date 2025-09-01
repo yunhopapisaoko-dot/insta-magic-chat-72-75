@@ -1,11 +1,25 @@
 import { ArrowLeft, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import MobileLayout from '@/components/MobileLayout';
 import NotificationsList from '@/components/NotificationsList';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const Notifications = () => {
   const navigate = useNavigate();
+  const { markAllAsRead, unreadCount } = useNotifications();
+
+  // Marcar todas as notificações como lidas automaticamente ao abrir a página
+  useEffect(() => {
+    if (unreadCount > 0) {
+      const timer = setTimeout(() => {
+        markAllAsRead();
+      }, 500); // Pequeno delay para melhor UX
+      
+      return () => clearTimeout(timer);
+    }
+  }, [unreadCount, markAllAsRead]);
 
   return (
     <MobileLayout>
