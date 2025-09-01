@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MessageCircle, UserPlus, AtSign, Check, CheckCheck } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
+import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -17,6 +18,25 @@ const NotificationsList = ({ onNotificationClick }: NotificationsListProps) => {
   const navigate = useNavigate();
   const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
 
+  const fetchUserProfileAndNavigate = async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', userId)
+        .single();
+      
+      if (profile?.username) {
+        navigate(`/user/${profile.username}`);
+      } else {
+        navigate('/feed');
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      navigate('/feed');
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'like':
@@ -27,6 +47,9 @@ const NotificationsList = ({ onNotificationClick }: NotificationsListProps) => {
         return <Heart className="w-4 h-4 text-pink-500" />;
       case 'follow':
         return <UserPlus className="w-4 h-4 text-green-500" />;
+      case 'post_tag':
+      case 'story_tag':
+        return <AtSign className="w-4 h-4 text-purple-500" />;
       case 'mention':
         return <AtSign className="w-4 h-4 text-purple-500" />;
       default:
@@ -48,6 +71,9 @@ const NotificationsList = ({ onNotificationClick }: NotificationsListProps) => {
       // Navigate based on notification type and entity
       if (notification.entity_type === 'post' && notification.entity_id) {
         navigate(`/post/${notification.entity_id}`);
+      } else if (notification.entity_type === 'story' && notification.entity_id) {
+        // Para notificações de story, navegar para o feed onde stories são visualizadas
+        navigate('/feed');
       } else if (notification.entity_type === 'comment' && notification.entity_id) {
         // For comment notifications and likes, navigate to the post
         // We'll need to get the post_id from the comment
@@ -55,10 +81,11 @@ const NotificationsList = ({ onNotificationClick }: NotificationsListProps) => {
         navigate('/feed');
       } else if (notification.entity_type === 'user' && notification.actor_id) {
         // For follow notifications, navigate to the follower's profile
-        navigate(`/user/${notification.actor_id}`);
+        // Use actor_id to get the username first, then navigate
+        fetchUserProfileAndNavigate(notification.actor_id);
       } else if (notification.type === 'follow' && notification.actor_id) {
         // Navigate to follower's profile
-        navigate(`/user/${notification.actor_id}`);
+        fetchUserProfileAndNavigate(notification.actor_id);
       } else {
         // Fallback to feed
         navigate('/feed');

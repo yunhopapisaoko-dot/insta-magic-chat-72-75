@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Heart, MessageCircle, Grid3X3 } from 'lucide-react';
+import { MentionText } from '@/components/MentionText';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import VideoPlayer from '@/components/ui/VideoPlayer';
@@ -117,9 +118,7 @@ const PostsGrid = ({ userId, showAllUsers = false, onPostUpdate }: PostsGridProp
                 )
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center p-2">
-                  <p className="text-xs text-center text-muted-foreground line-clamp-3">
-                    {post.content}
-                  </p>
+                  <MentionText text={post.content} className="text-xs text-center text-muted-foreground line-clamp-3" />
                 </div>
               )}
               

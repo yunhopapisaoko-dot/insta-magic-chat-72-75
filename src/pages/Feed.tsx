@@ -11,6 +11,7 @@ import CreatePost from '@/components/CreatePost';
 import StoriesSection from '@/components/StoriesSection';
 import VideoPlayer from '@/components/ui/VideoPlayer';
 import NotificationBell from '@/components/NotificationBell';
+import { MentionText } from '@/components/MentionText';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -502,12 +503,12 @@ const Feed = () => {
                       </div>
                     )}
                     
-                    {/* Post Content */}
-                    {post.content && (
-                      <div className="px-4 pb-3">
-                        <p className="text-sm leading-relaxed">{post.content}</p>
-                      </div>
-                    )}
+                     {/* Post Content */}
+                     {post.content && (
+                       <div className="px-4 pb-3">
+                         <MentionText text={post.content} className="text-sm leading-relaxed" />
+                       </div>
+                     )}
                     
                     {/* Post Actions */}
                     <div className="px-4 py-3 border-t border-border">

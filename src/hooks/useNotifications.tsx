@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 interface Notification {
   id: string;
   user_id: string;
-  type: 'like' | 'comment' | 'comment_like' | 'follow' | 'mention';
+  type: 'like' | 'comment' | 'comment_like' | 'follow' | 'post_tag' | 'story_tag' | 'mention';
   title: string;
   message: string;
   is_read: boolean;

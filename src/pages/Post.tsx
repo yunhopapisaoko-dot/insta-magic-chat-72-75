@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, Heart, MessageCircle, Share, MoreHorizontal, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MentionText } from '@/components/MentionText';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -242,7 +243,7 @@ const PostDetail = () => {
               {/* Post Content */}
               {post.content && (
                 <div className="py-3">
-                  <p className="text-base leading-relaxed">{post.content}</p>
+                  <MentionText text={post.content} className="text-base leading-relaxed" />
                 </div>
               )}
               
