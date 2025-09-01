@@ -118,6 +118,7 @@ const ProfileEditor = ({ open, onOpenChange, onProfileUpdate }: ProfileEditorPro
         .single();
 
       if (updatedProfile) {
+        console.log('Dispatching profile update:', updatedProfile);
         // Força uma nova busca dos dados do usuário no contexto global
         window.dispatchEvent(new CustomEvent('forceProfileRefresh', {
           detail: updatedProfile

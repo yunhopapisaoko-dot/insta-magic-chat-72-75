@@ -60,7 +60,8 @@ const Profile = () => {
 
   // Update local state when user context changes (from realtime updates)
   useEffect(() => {
-    if (user && profileData) {
+    if (user) {
+      console.log('User context changed, updating profile data:', user);
       setProfileData({
         display_name: user.display_name,
         bio: user.bio,
