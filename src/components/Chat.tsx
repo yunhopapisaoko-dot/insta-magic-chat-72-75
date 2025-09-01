@@ -52,8 +52,15 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   } = useRealtimeChat(conversationId);
   const { markConversationAsRead } = useUnreadMessages();
   
+  const [otherUser, setOtherUser] = useState<{
+    id: string;
+    display_name: string;
+    username: string;
+    avatar_url: string | null;
+  } | null>(null);
+  const [chatPhoto, setChatPhoto] = useState<string | null>(null);
+  const [isOneOnOneChat, setIsOneOnOneChat] = useState(false);
   const [newMessage, setNewMessage] = useState('');
-  const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showPublicSettings, setShowPublicSettings] = useState(false);
@@ -65,7 +72,6 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   const [isPublicChat, setIsPublicChat] = useState(false);
   const [isParticipant, setIsParticipant] = useState(true);
   const [joining, setJoining] = useState(false);
-  const [chatPhoto, setChatPhoto] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     position: { x: number; y: number };
@@ -303,6 +309,18 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
       if (convError) throw convError;
 
+      // First check how many participants are in this conversation
+      const { data: allParticipants, error: participantCountError } = await supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId);
+
+      if (participantCountError) throw participantCountError;
+
+      const participantCount = allParticipants ? allParticipants.length : 0;
+      const isOneOnOne = participantCount === 2;
+      setIsOneOnOneChat(isOneOnOne);
+
       // For public chats, always use conversation name and photo
       if (conversation?.is_public) {
         setOtherUser({
@@ -315,47 +333,50 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         return;
       }
 
-      // For private chats/groups, check if it has custom name and photo
-      if (conversation?.name) {
-        // This is a private group with custom name
+      // For private chats that are 1-on-1, get the other participant
+      if (isOneOnOne) {
+        const { data: participantRows, error: participantsError } = await supabase
+          .from('conversation_participants')
+          .select('user_id')
+          .eq('conversation_id', conversationId)
+          .neq('user_id', user.id);
+
+        if (participantsError) throw participantsError;
+
+        const otherId = participantRows?.[0]?.user_id;
+        if (otherId) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, display_name, username, avatar_url')
+            .eq('id', otherId)
+            .maybeSingle();
+
+          if (profileError) throw profileError;
+
+          if (profile) {
+            setOtherUser({
+              id: profile.id,
+              display_name: profile.display_name as any,
+              username: profile.username as any,
+              avatar_url: profile.avatar_url as any
+            });
+            setChatPhoto(null); // No custom photo for 1-on-1 chats
+          }
+        }
+        return;
+      }
+
+      // For private groups with multiple participants, check if it has custom name and photo
+      if (conversation?.name || participantCount > 2) {
+        // This is a private group with custom name or multiple participants
         setOtherUser({
           id: conversationId,
-          display_name: conversation.name,
-          username: conversation.description || 'Grupo privado',
+          display_name: conversation.name || 'Grupo Privado',
+          username: conversation.description || `${participantCount} participantes`,
           avatar_url: conversation.photo_url || ''
         });
         setChatPhoto(conversation.photo_url || null);
         return;
-      }
-
-      // For regular private chats (1-on-1), get the other participant
-      const { data: participantRows, error: participantsError } = await supabase
-        .from('conversation_participants')
-        .select('user_id')
-        .eq('conversation_id', conversationId)
-        .neq('user_id', user.id);
-
-      if (participantsError) throw participantsError;
-
-      const otherId = participantRows?.[0]?.user_id;
-      if (otherId) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, display_name, username, avatar_url')
-          .eq('id', otherId)
-          .maybeSingle();
-
-        if (profileError) throw profileError;
-
-        if (profile) {
-          setOtherUser({
-            id: profile.id,
-            display_name: profile.display_name as any,
-            username: profile.username as any,
-            avatar_url: profile.avatar_url as any
-          });
-          setChatPhoto(null); // No custom photo for 1-on-1 chats
-        }
       }
     } catch (error) {
       console.error('Error fetching conversation info:', error);
@@ -988,6 +1009,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           isOpen={showSettings}
           onClose={() => setShowSettings(false)}
           conversationId={conversationId}
+          isOneOnOneChat={isOneOnOneChat}
         />
 
         {/* Leave Confirmation Modal */}

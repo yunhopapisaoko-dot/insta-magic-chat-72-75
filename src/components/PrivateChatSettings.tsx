@@ -19,6 +19,7 @@ interface PrivateChatSettingsProps {
   isOpen: boolean;
   onClose: () => void;
   conversationId: string;
+  isOneOnOneChat?: boolean;
 }
 
 interface User {
@@ -53,7 +54,7 @@ interface Profile {
   avatar_url?: string;
 }
 
-export const PrivateChatSettings = ({ isOpen, onClose, conversationId }: PrivateChatSettingsProps) => {
+export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOneChat = false }: PrivateChatSettingsProps) => {
   const { user } = useAuth();
   const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -410,7 +411,7 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId }: Private
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="w-5 h-5" />
-            Informações do Chat Privado
+            {isOneOnOneChat ? 'Conversa' : 'Informações do Chat Privado'}
           </DialogTitle>
         </DialogHeader>
 
@@ -434,8 +435,8 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId }: Private
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2">
                     <h2 className="text-xl font-semibold">{chatInfo.name}</h2>
-                    {/* Settings Menu - Only for creator */}
-                    {chatInfo && user?.id === chatInfo.creatorId && (
+                    {/* Settings Menu - Only for group creator */}
+                    {!isOneOnOneChat && chatInfo && user?.id === chatInfo.creatorId && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -457,7 +458,7 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId }: Private
                   </div>
                   <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
                     <MessageSquare className="w-3 h-3" />
-                    Chat Privado
+                    {isOneOnOneChat ? 'Conversa Privada' : 'Chat Privado'}
                   </p>
                 </div>
               </div>
@@ -466,7 +467,10 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId }: Private
             {/* Description */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Informações do Chat</h3>
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      {isOneOnOneChat ? 'Chat' : 'Informações do Chat'}
+                    </h3>
               </div>
               
               {isEditingInfo ? (
@@ -586,161 +590,181 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId }: Private
 
             <Separator />
 
-            {/* Quick Actions - Modern Card Layout */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium">Ações</h3>
-              
-              <div className="grid grid-cols-2 gap-3">
+            {/* Quick Actions - For 1-on-1 chats, only show wallpaper */}
+            {isOneOnOneChat ? (
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium">Ações</h3>
+                
                 <Button
                   variant="outline"
-                  className="h-16 flex flex-col gap-1 text-xs"
+                  className="w-full h-16 flex flex-col gap-1 text-xs"
                   onClick={() => setShowWallpaperSettings(true)}
                 >
                   <Palette className="w-5 h-5 text-blue-500" />
                   <span>Papel de Parede</span>
                 </Button>
-                
-                <Button
-                  variant="outline"
-                  className="h-16 flex flex-col gap-1 text-xs"
-                  onClick={() => {
-                    setShowAddUsers(true);
-                    fetchAvailableUsers();
-                  }}
-                >
-                  <UserPlus className="w-5 h-5 text-green-500" />
-                  <span>Adicionar Pessoas</span>
-                </Button>
               </div>
-            </div>
-
-            <Separator />
-
-            {/* Creator Info */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Criado por
-              </h3>
-              
-              <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={chatInfo.creatorAvatar || ''} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
-                    {chatInfo.creatorName[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{chatInfo.creatorName}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {formatDate(chatInfo.createdAt)}
-                  </p>
+            ) : (
+              // For group chats, show all actions
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium">Ações</h3>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-16 flex flex-col gap-1 text-xs"
+                    onClick={() => setShowWallpaperSettings(true)}
+                  >
+                    <Palette className="w-5 h-5 text-blue-500" />
+                    <span>Papel de Parede</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-16 flex flex-col gap-1 text-xs"
+                    onClick={() => {
+                      setShowAddUsers(true);
+                      fetchAvailableUsers();
+                    }}
+                  >
+                    <UserPlus className="w-5 h-5 text-green-500" />
+                    <span>Adicionar Pessoas</span>
+                  </Button>
                 </div>
               </div>
-            </div>
+            )}
 
-            <Separator />
+            {!isOneOnOneChat && <Separator />}
 
-            {/* Participants */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Creator Info - Only for group chats */}
+            {!isOneOnOneChat && (
+              <div className="space-y-3">
                 <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Participantes ({participants.length})
+                  <User className="w-4 h-4" />
+                  Criado por
                 </h3>
                 
-                {/* Add participants button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowAddUsers(true);
-                    fetchAvailableUsers();
-                  }}
-                  className="h-8 px-3"
-                >
-                  <UserPlus className="w-4 h-4 mr-1" />
-                  Adicionar
-                </Button>
-              </div>
-               
-              {/* Participant list - Show only first 5 */}
-              <div className="space-y-2">
-                {participants.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Nenhum participante no momento</p>
-                    <p className="text-xs">Adicione pessoas para começar a conversar!</p>
+                <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={chatInfo.creatorAvatar || ''} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+                      {chatInfo.creatorName[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{chatInfo.creatorName}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {formatDate(chatInfo.createdAt)}
+                    </p>
                   </div>
-                ) : (
-                  <>
-                    {/* Show first 5 participants */}
-                    {participants.slice(0, 5).map((participant) => (
-                      <div key={participant.user_id} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={participant.profiles?.avatar_url || ''} />
-                          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
-                            {participant.profiles?.display_name?.[0] || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {participant.profiles?.display_name || 'Usuário'}
-                            {participant.user_id === chatInfo.creatorId && (
-                              <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                                Criador
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            @{participant.profiles?.username || 'unknown'}
-                          </p>
-                        </div>
-                        {participant.user_id !== chatInfo.creatorId && user?.id === chatInfo.creatorId && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
-                                onClick={() => handleRemoveParticipant(participant.user_id)}
-                                className="text-red-600"
-                              >
-                                <UserMinus className="w-4 h-4 mr-2" />
-                                Remover
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {/* Show more button if there are more than 5 participants */}
-                    {participants.length > 5 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowAllParticipants(true)}
-                        className="w-full mt-2"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Ver todos os {participants.length} participantes
-                      </Button>
-                    )}
-                  </>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <Separator />
+            {!isOneOnOneChat && <Separator />}
 
-            {/* Footer Actions - Movidos para dentro do scroll */}
+            {/* Participants - Only for group chats */}
+            {!isOneOnOneChat && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Participantes ({participants.length})
+                  </h3>
+                  
+                  {/* Add participants button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddUsers(true);
+                      fetchAvailableUsers();
+                    }}
+                    className="h-8 px-3"
+                  >
+                    <UserPlus className="w-4 h-4 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
+                 
+                {/* Participant list - Show only first 5 */}
+                <div className="space-y-2">
+                  {participants.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Nenhum participante no momento</p>
+                      <p className="text-xs">Adicione pessoas para começar a conversar!</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Show first 5 participants */}
+                      {participants.slice(0, 5).map((participant) => (
+                        <div key={participant.user_id} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={participant.profiles?.avatar_url || ''} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm">
+                              {participant.profiles?.display_name?.[0] || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {participant.profiles?.display_name || 'Usuário'}
+                              {participant.user_id === chatInfo.creatorId && (
+                                <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                                  Criador
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              @{participant.profiles?.username || 'unknown'}
+                            </p>
+                          </div>
+                          {participant.user_id !== chatInfo.creatorId && user?.id === chatInfo.creatorId && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleRemoveParticipant(participant.user_id)}
+                                  className="text-red-600"
+                                >
+                                  <UserMinus className="w-4 h-4 mr-2" />
+                                  Remover
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {/* Show more button if there are more than 5 participants */}
+                      {participants.length > 5 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAllParticipants(true)}
+                          className="w-full mt-2"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Ver todos os {participants.length} participantes
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!isOneOnOneChat && <Separator />}
+
+            {/* Footer Actions */}
             <div className="space-y-3">
-              {/* Delete Chat Button - Only for creator */}
-              {chatInfo && user?.id === chatInfo.creatorId && (
+              {/* Delete Chat Button - Only for group creator */}
+              {!isOneOnOneChat && chatInfo && user?.id === chatInfo.creatorId && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" size="sm" className="w-full">
@@ -782,8 +806,8 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId }: Private
           </div>
         </div>
 
-        {/* Add Users Modal */}
-        {showAddUsers && (
+        {/* Add Users Modal - Only for group chats */}
+        {!isOneOnOneChat && showAddUsers && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddUsers(false)}>
             <div className="bg-background p-4 rounded-lg max-w-md w-full mx-4 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
