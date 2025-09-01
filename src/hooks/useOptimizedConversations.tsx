@@ -114,6 +114,24 @@ export const useOptimizedConversations = () => {
         return acc;
       }, {} as Record<string, any>);
 
+      // Get unread count for each conversation
+      const unreadCountMap: Record<string, number> = {};
+      for (const convId of conversationIds) {
+        const { data: unreadMessages, error: unreadError } = await supabase
+          .from('messages')
+          .select('id')
+          .eq('conversation_id', convId)
+          .neq('sender_id', user.id)
+          .is('read_at', null);
+
+        if (unreadError) {
+          console.error('Error fetching unread count:', unreadError);
+          unreadCountMap[convId] = 0;
+        } else {
+          unreadCountMap[convId] = unreadMessages?.length || 0;
+        }
+      }
+
       // Build conversations list
       const conversationsMap = new Map<string, Conversation>();
       const profilesMap = profiles.reduce((acc, profile) => {
@@ -155,7 +173,7 @@ export const useOptimizedConversations = () => {
               story_id: null,
               read_at: null
             } : undefined,
-            unread_count: 0,
+            unread_count: unreadCountMap[conv.id] || 0,
           });
         } else if (otherParticipant) {
           // Regular 1-on-1 conversation with other participants
@@ -183,7 +201,7 @@ export const useOptimizedConversations = () => {
                 story_id: null,
                 read_at: null
               } : undefined,
-              unread_count: 0,
+              unread_count: unreadCountMap[conv.id] || 0,
             });
           }
         } else {
@@ -209,7 +227,7 @@ export const useOptimizedConversations = () => {
               story_id: null,
               read_at: null
             } : undefined,
-            unread_count: 0,
+            unread_count: unreadCountMap[conv.id] || 0,
           });
         }
       });
@@ -251,7 +269,7 @@ export const useOptimizedConversations = () => {
             story_id: null,
             read_at: null
           },
-          unread_count: 0,
+          unread_count: unreadCountMap[publicChat.id] || 0,
         });
       });
 
@@ -313,6 +331,30 @@ export const useOptimizedConversations = () => {
           table: 'profiles'
         },
         () => {
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
+        () => {
+          // Refresh conversations when new messages arrive to update unread counts
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages'
+        },
+        () => {
+          // Refresh conversations when messages are marked as read
           fetchConversations();
         }
       )
@@ -395,11 +437,37 @@ export const useOptimizedConversations = () => {
     }
   }, [user, fetchConversations]);
 
+  // Function to mark messages as read
+  const markMessagesAsRead = useCallback(async (conversationId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
+        .neq('sender_id', user.id)
+        .is('read_at', null);
+
+      if (error) throw error;
+      
+      // Update conversations locally to reflect the change immediately
+      setConversations(prev => prev.map(conv => 
+        conv.id === conversationId 
+          ? { ...conv, unread_count: 0 }
+          : conv
+      ));
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }, [user]);
+
   return {
     conversations,
     loading,
     error,
     fetchConversations,
-    createOrGetConversation
+    createOrGetConversation,
+    markMessagesAsRead
   };
 };

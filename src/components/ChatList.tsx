@@ -20,7 +20,8 @@ const ChatList = () => {
   const { 
     conversations, 
     loading, 
-    error
+    error,
+    markMessagesAsRead
   } = useOptimizedConversations();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(
@@ -91,6 +92,17 @@ const ChatList = () => {
     // Add chat parameter to URL
     searchParams.set('chat', chatId);
     setSearchParams(searchParams);
+    // Mark messages as read when opening the conversation
+    markMessagesAsRead(chatId);
+  };
+
+  const handleConversationSelect = (conversationId: string) => {
+    setSelectedConversation(conversationId);
+    // Add chat parameter to URL
+    searchParams.set('chat', conversationId);
+    setSearchParams(searchParams);
+    // Mark messages as read when opening the conversation
+    markMessagesAsRead(conversationId);
   };
 
   if (selectedConversation) {
@@ -198,7 +210,7 @@ const ChatList = () => {
               <ConversationItem
                 key={conversation.id}
                 conversation={conversation}
-                onSelect={setSelectedConversation}
+                onSelect={handleConversationSelect}
                 formatTimeAgo={formatTimeAgo}
                 formatLastMessage={formatLastMessage}
               />
