@@ -47,6 +47,8 @@ const UserProfile = () => {
 
   const fetchProfile = async () => {
     try {
+      console.log('Fetching profile for username:', username);
+      
       // First try to find by exact username (for backwards compatibility)
       let { data, error } = await supabase
         .from('profiles')
@@ -54,27 +56,36 @@ const UserProfile = () => {
         .eq('username', username)
         .maybeSingle();
 
+      console.log('Exact match result:', data);
+
       // If no exact match found and username doesn't end with 4 digits, 
-      // search for username + 4 digits pattern
+      // search for username + any 4 digits pattern
       if (!data && username && !/\d{4}$/.test(username)) {
-        const { data: patternData, error: patternError } = await supabase
-          .from('profiles')
-          .select('id, display_name, username, bio, avatar_url, followers_count, following_count')
-          .like('username', `${username}____`)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        console.log('No exact match, searching with pattern for:', username);
         
-        if (patternError) throw patternError;
-        data = patternData;
-        error = patternError;
+        const { data: allProfiles, error: searchError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, bio, avatar_url, followers_count, following_count');
+        
+        if (searchError) throw searchError;
+        
+        // Find profile where username starts with our search term and ends with 4 digits
+        const matchedProfile = allProfiles?.find(profile => {
+          const profileUsernameStripped = stripUserDigits(profile.username);
+          return profileUsernameStripped === username;
+        });
+        
+        console.log('Pattern search result:', matchedProfile);
+        data = matchedProfile || null;
       }
 
       if (error && error.code !== 'PGRST116') throw error;
       
       if (data) {
+        console.log('Profile found:', data);
         setProfileData(data);
       } else {
+        console.log('No profile found for username:', username);
         toast({
           title: "Perfil não encontrado",
           description: "O usuário que você está procurando não existe.",
