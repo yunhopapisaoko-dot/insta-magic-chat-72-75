@@ -822,7 +822,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {isPublicChat ? otherUser?.username : `@${otherUser?.username || ''}`}
+                    {isPublicChat ? otherUser?.username : `@${stripUserDigits(otherUser?.username || '')}`}
                   </p>
                 </div>
               </div>
