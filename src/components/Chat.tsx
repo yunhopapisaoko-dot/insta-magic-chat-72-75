@@ -872,10 +872,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           ) : (
             <div className="flex flex-col justify-end min-h-full">
               <div className="space-y-4">
-                {messages.map((message, index) => {
+                 {messages.map((message, index) => {
                 const previousMessage = messages[index - 1];
                 const isOwnMessage = message.sender_id === user?.id;
                 const showDateSeparator = shouldShowDateSeparator(message, previousMessage);
+                const isSystemMessage = message.message_type === 'system';
 
                 return (
                   <div key={message.id}>
@@ -887,7 +888,17 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                       </div>
                     )}
                     
-                     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
+                    {/* System messages are rendered differently */}
+                    {isSystemMessage ? (
+                      <MessageBubble 
+                        message={message}
+                        isOwnMessage={isOwnMessage}
+                        isGroupChat={isPublicChat || !isOneOnOneChat}
+                        senderInfo={undefined}
+                        onLongPress={() => {}}
+                      />
+                    ) : (
+                      <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
                         {!isOwnMessage && (
                           <div className="relative">
                             <Avatar 
@@ -917,20 +928,21 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                           </div>
                         )}
                          
-                          <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
-                           
-                            <MessageBubble 
-                              message={message}
-                              isOwnMessage={isOwnMessage}
-                              isGroupChat={isPublicChat || !isOneOnOneChat}
-                              senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
-                                onLongPress={() => {
-                                  setSelectedMessage(message);
-                                  setContextMenuOpen(true);
-                                }}
-                            />
+                        <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : ''}`}>
+                         
+                          <MessageBubble 
+                            message={message}
+                            isOwnMessage={isOwnMessage}
+                            isGroupChat={isPublicChat || !isOneOnOneChat}
+                            senderInfo={!isOwnMessage ? getSenderInfo(message.sender_id) : undefined}
+                              onLongPress={() => {
+                                setSelectedMessage(message);
+                                setContextMenuOpen(true);
+                              }}
+                          />
                          </div>
-                     </div>
+                      </div>
+                    )}
                   </div>
                 );
                 })}

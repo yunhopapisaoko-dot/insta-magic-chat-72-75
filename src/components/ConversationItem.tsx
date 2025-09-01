@@ -80,7 +80,7 @@ const ConversationItem = ({ conversation, onSelect, formatTimeAgo, formatLastMes
         .insert({
           conversation_id: conversation.id,
           sender_id: user.id,
-          content: `${user.display_name || 'Usuário'} saiu do chat`,
+          content: `👋 ${stripUserDigits(user.display_name || 'Usuário')} deixou a conversa`,
           message_type: 'system'
         });
 

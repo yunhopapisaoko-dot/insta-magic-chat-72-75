@@ -151,6 +151,7 @@ export type Database = {
           media_type: string | null
           media_url: string | null
           message_status: string | null
+          message_type: string | null
           read_at: string | null
           replied_to_message_id: string | null
           sender_id: string
@@ -165,6 +166,7 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           message_status?: string | null
+          message_type?: string | null
           read_at?: string | null
           replied_to_message_id?: string | null
           sender_id: string
@@ -179,6 +181,7 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           message_status?: string | null
+          message_type?: string | null
           read_at?: string | null
           replied_to_message_id?: string | null
           sender_id?: string

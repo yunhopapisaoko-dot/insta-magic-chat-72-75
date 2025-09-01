@@ -12,6 +12,7 @@ export interface Message {
   story_id: string | null;
   created_at: string;
   read_at: string | null;
+  message_type?: string;
   sender?: {
     display_name: string;
     username: string;

@@ -14,6 +14,7 @@ interface Message {
   delivered_at: string | null;
   read_at: string | null;
   message_status: string | null;
+  message_type?: string;
 }
 
 interface TypingUser {

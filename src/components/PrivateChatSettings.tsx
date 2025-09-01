@@ -14,6 +14,7 @@ import { MessageSquare, User, Calendar, Users, Plus, MoreHorizontal, Check, X, E
 import { supabase } from '@/integrations/supabase/client';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { stripUserDigits } from '@/lib/utils';
 
 interface PrivateChatSettingsProps {
   isOpen: boolean;
@@ -387,7 +388,7 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
         .insert({
           conversation_id: conversationId,
           sender_id: userId,
-          content: `${participantName} foi removido do chat`,
+          content: `🚫 ${stripUserDigits(participantName)} foi removido da conversa`,
           message_type: 'system'
         });
 
@@ -426,7 +427,7 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
-          content: `${user.display_name || 'Usuário'} saiu do chat`,
+          content: `👋 ${stripUserDigits(user.display_name || 'Usuário')} deixou a conversa`,
           message_type: 'system'
         });
 

@@ -72,6 +72,19 @@ export const MessageBubble = ({ message, isOwnMessage, isGroupChat, senderInfo, 
     });
   };
 
+  // Check if this is a system message
+  if (message.message_type === 'system') {
+    return (
+      <div className="flex justify-center my-4">
+        <div className="max-w-sm mx-auto">
+          <div className="bg-muted/80 text-muted-foreground text-center px-4 py-2 rounded-full text-xs font-medium shadow-sm animate-fade-in border border-border/30">
+            {message.content}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col space-y-1">
       {/* Show sender name for group chats and non-own messages */}
