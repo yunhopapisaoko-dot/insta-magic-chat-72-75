@@ -29,10 +29,13 @@ export const useRealtimeChat = (conversationId: string) => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   
   const messagesChannelRef = useRef<any>(null);
   const typingChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Fetch initial messages
   const fetchMessages = useCallback(async () => {
@@ -132,31 +135,49 @@ export const useRealtimeChat = (conversationId: string) => {
     }
   }, [conversationId, user]);
 
-  // Mark messages as read
-  const markMessagesAsRead = useCallback(async () => {
-    if (!user) return;
-
-    const unreadMessages = messages.filter(
-      msg => msg.sender_id !== user.id && msg.message_status !== 'read'
-    );
-
-    if (unreadMessages.length > 0) {
-      try {
-        await supabase
-          .from('messages')
-          .update({ 
-            read_at: new Date().toISOString(),
-            message_status: 'read'
-          })
-          .in('id', unreadMessages.map(m => m.id));
-      } catch (error) {
-        console.error('Error marking messages as read:', error);
-      }
-    }
-  }, [messages, user]);
-
-  // Setup real-time subscriptions
+  // Online/offline status monitoring
   useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setReconnectAttempts(0);
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setConnectionStatus('disconnected');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Reconnect channels function
+  const reconnectChannels = useCallback(() => {
+    if (!conversationId || !user) return;
+
+    setReconnectAttempts(prev => prev + 1);
+    setConnectionStatus('connecting');
+
+    // Clear existing channels
+    if (messagesChannelRef.current) {
+      supabase.removeChannel(messagesChannelRef.current);
+    }
+    if (typingChannelRef.current) {
+      supabase.removeChannel(typingChannelRef.current);
+    }
+
+    // Recreate channels after a short delay
+    setTimeout(() => {
+      setupChannels();
+    }, 1000);
+  }, [conversationId, user]);
+
+  const setupChannels = useCallback(() => {
     if (!conversationId || !user) return;
 
     console.log('Setting up realtime channels for conversation:', conversationId);
@@ -228,6 +249,20 @@ export const useRealtimeChat = (conversationId: string) => {
       .subscribe((status) => {
         console.log('Messages channel status:', status);
         setConnectionStatus(status === 'SUBSCRIBED' ? 'connected' : 'connecting');
+        
+        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionStatus('disconnected');
+          
+          // Auto-reconnect after 3 seconds if online and attempts < 5
+          if (isOnline && reconnectAttempts < 5) {
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current);
+            }
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectChannels();
+            }, 3000);
+          }
+        }
       });
 
     // Typing channel for typing indicators
@@ -270,6 +305,36 @@ export const useRealtimeChat = (conversationId: string) => {
       .subscribe((status) => {
         console.log('Typing channel status:', status);
       });
+  }, [conversationId, user, isOnline, reconnectAttempts, reconnectChannels]);
+
+  // Mark messages as read
+  const markMessagesAsRead = useCallback(async () => {
+    if (!user) return;
+
+    const unreadMessages = messages.filter(
+      msg => msg.sender_id !== user.id && msg.message_status !== 'read'
+    );
+
+    if (unreadMessages.length > 0) {
+      try {
+        await supabase
+          .from('messages')
+          .update({ 
+            read_at: new Date().toISOString(),
+            message_status: 'read'
+          })
+          .in('id', unreadMessages.map(m => m.id));
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    }
+  }, [messages, user]);
+
+  // Setup real-time subscriptions
+  useEffect(() => {
+    if (!conversationId || !user) return;
+
+    setupChannels();
 
     // Cleanup function
     return () => {
@@ -284,6 +349,10 @@ export const useRealtimeChat = (conversationId: string) => {
         supabase.removeChannel(typingChannelRef.current);
         typingChannelRef.current = null;
       }
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
       
       // Clear all typing timeouts
       Object.values(typingTimeoutRef.current).forEach(timeout => clearTimeout(timeout));
@@ -291,7 +360,7 @@ export const useRealtimeChat = (conversationId: string) => {
       
       setConnectionStatus('disconnected');
     };
-  }, [conversationId, user]);
+  }, [setupChannels]);
 
   // Auto-mark messages as read when component is visible
   useEffect(() => {
@@ -313,9 +382,12 @@ export const useRealtimeChat = (conversationId: string) => {
     loading,
     sending,
     connectionStatus,
+    isOnline,
+    reconnectAttempts,
     sendMessage,
     sendTypingIndicator,
     markMessagesAsRead,
     fetchMessages,
+    reconnectChannels,
   };
 };

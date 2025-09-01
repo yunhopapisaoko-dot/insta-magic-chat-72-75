@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import TypingIndicator from '@/components/ui/TypingIndicator';
+import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 import { PublicChatSettings } from '@/components/PublicChatSettings';
 import { MessageContextMenu } from '@/components/MessageContextMenu';
 import { MessageBubble } from '@/components/MessageBubble';
@@ -42,8 +43,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     loading, 
     sending, 
     connectionStatus,
+    isOnline,
+    reconnectAttempts,
     sendMessage,
     sendTypingIndicator,
+    reconnectChannels,
   } = useRealtimeChat(conversationId);
   const { markConversationAsRead } = useUnreadMessages();
   
@@ -607,31 +611,23 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
-                {/* Connection Status Indicator */}
-                <div className="flex items-center gap-1">
-                  {connectionStatus === 'connected' ? (
-                    <Wifi className="w-4 h-4 text-green-500" />
-                  ) : connectionStatus === 'connecting' ? (
-                    <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <WifiOff className="w-4 h-4 text-red-500" />
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {connectionStatus === 'connected' ? 'Online' : 
-                     connectionStatus === 'connecting' ? 'Conectando...' : 'Offline'}
-                  </span>
-                </div>
+               <div className="flex items-center gap-2">
+                 <ConnectionStatus
+                   status={connectionStatus}
+                   isOnline={isOnline}
+                   reconnectAttempts={reconnectAttempts}
+                   onReconnect={reconnectChannels}
+                 />
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenSettings}
-                  className="w-8 h-8 p-0"
-                >
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </div>
+                 <Button
+                   variant="ghost"
+                   size="sm"
+                   onClick={handleOpenSettings}
+                   className="w-8 h-8 p-0"
+                 >
+                   <Settings className="w-4 h-4" />
+                 </Button>
+               </div>
             </div>
           </CardHeader>
         </Card>
