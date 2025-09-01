@@ -223,32 +223,33 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         return;
       }
 
-      // Regular private chat - get other user
-      const { data: participants, error } = await supabase
+      // Regular private chat - get participants first
+      const { data: participants, error: participantsError } = await supabase
         .from('conversation_participants')
-        .select(`
-          user_id,
-          profiles:user_id (
-            id,
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('user_id')
         .eq('conversation_id', conversationId)
         .neq('user_id', user.id);
 
-      if (error) throw error;
+      if (participantsError) throw participantsError;
 
       if (participants?.length > 0) {
-        const firstParticipant = participants[0];
-        if (firstParticipant.profiles && typeof firstParticipant.profiles === 'object' && !('error' in (firstParticipant.profiles || {}))) {
-          const profile = firstParticipant.profiles as any;
+        // Get the profiles for these participants
+        const participantIds = participants.map(p => p.user_id);
+        
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url')
+          .in('id', participantIds);
+
+        if (profilesError) throw profilesError;
+
+        if (profiles && profiles.length > 0) {
+          const firstProfile = profiles[0];
           setOtherUser({
-            id: profile.id,
-            display_name: profile.display_name,
-            username: profile.username,
-            avatar_url: profile.avatar_url
+            id: firstProfile.id,
+            display_name: firstProfile.display_name,
+            username: firstProfile.username,
+            avatar_url: firstProfile.avatar_url
           });
         } else {
           setOtherUser({
@@ -381,21 +382,30 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   // Settings helpers
   const fetchParticipants = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: participantData, error } = await supabase
         .from('conversation_participants')
-        .select(`
-          user_id,
-          profiles:user_id (
-            id,
-            display_name,
-            username,
-            avatar_url
-          )
-        `)
+        .select('user_id')
         .eq('conversation_id', conversationId);
 
       if (error) throw error;
-      setParticipants(data || []);
+
+      if (participantData && participantData.length > 0) {
+        const userIds = participantData.map(p => p.user_id);
+        
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name, username, avatar_url')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+
+        const participantsWithProfiles = participantData.map(participant => ({
+          user_id: participant.user_id,
+          profiles: profiles?.find(p => p.id === participant.user_id)
+        }));
+
+        setParticipants(participantsWithProfiles);
+      }
     } catch (error) {
       console.error('Error fetching participants:', error);
     }
