@@ -26,6 +26,8 @@ export const useNotifications = () => {
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
 
+    console.log('Fetching notifications for user:', user.id);
+    
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -34,8 +36,12 @@ export const useNotifications = () => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in fetchNotifications:', error);
+        throw error;
+      }
 
+      console.log('Notifications fetched:', data);
       setNotifications(data as Notification[] || []);
       const unread = data?.filter(n => !n.is_read).length || 0;
       setUnreadCount(unread);
@@ -104,10 +110,11 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up realtime notifications for user:', user.id);
     fetchNotifications();
 
     const channel = supabase
-      .channel('notifications-changes')
+      .channel('notifications-realtime')
       .on(
         'postgres_changes',
         {
@@ -117,6 +124,7 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          console.log('New notification received:', payload);
           const newNotification = payload.new as Notification;
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
@@ -137,6 +145,7 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          console.log('Notification updated:', payload);
           const updatedNotification = payload.new as Notification;
           setNotifications(prev =>
             prev.map(n =>
@@ -149,9 +158,12 @@ export const useNotifications = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Notifications channel status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up notifications channel');
       supabase.removeChannel(channel);
     };
   }, [user, fetchNotifications]);
