@@ -813,7 +813,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="font-semibold text-lg">
-                      {otherUser?.display_name ? stripUserDigits(otherUser.display_name) : 'Chat'}
+                      {otherUser?.display_name || 'Chat'}
                     </h2>
                     {(otherUser as any)?.hasLeft && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border animate-fade-in">
