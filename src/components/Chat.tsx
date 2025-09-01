@@ -294,7 +294,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     if (!conversationId || !user) return;
 
     try {
-      // First check if this conversation is public from the database
+      // First get conversation details
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
         .select('is_public, name, description, photo_url')
@@ -303,8 +303,8 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
       if (convError) throw convError;
 
+      // For public chats, always use conversation name and photo
       if (conversation?.is_public) {
-        // For public chats, use the conversation name and photo
         setOtherUser({
           id: conversationId,
           display_name: conversation.name || 'Chat Público',
@@ -314,20 +314,21 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
         setChatPhoto(conversation.photo_url || null);
         return;
       }
-      
-      // For private chats with custom name and photo
-      if (conversation?.name || conversation?.photo_url) {
+
+      // For private chats/groups, check if it has custom name and photo
+      if (conversation?.name) {
+        // This is a private group with custom name
         setOtherUser({
           id: conversationId,
-          display_name: conversation.name || 'Chat Privado',
-          username: conversation.description || 'Chat privado',
+          display_name: conversation.name,
+          username: conversation.description || 'Grupo privado',
           avatar_url: conversation.photo_url || ''
         });
         setChatPhoto(conversation.photo_url || null);
         return;
       }
 
-      // For private chats, get the other participant
+      // For regular private chats (1-on-1), get the other participant
       const { data: participants, error: participantsError } = await supabase
         .from('conversation_participants')
         .select(`
@@ -352,9 +353,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           username: profile.username,
           avatar_url: profile.avatar_url
         });
+        setChatPhoto(null); // No custom photo for 1-on-1 chats
       }
     } catch (error) {
-      console.error('Error fetching other user:', error);
+      console.error('Error fetching conversation info:', error);
     }
   };
 
