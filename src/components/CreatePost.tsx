@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Image, X, Send, Video } from 'lucide-react';
+import { Image, X, Send, Video, Tag } from 'lucide-react';
+import { UserTagSelector } from '@/components/UserTagSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -76,6 +77,8 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [taggedUsers, setTaggedUsers] = useState<any[]>([]);
+  const [showTagSelector, setShowTagSelector] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -295,22 +298,42 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
 
       setUploadProgress(75);
 
-      const { error } = await supabase
+      const { data: postData, error: postError } = await supabase
         .from('posts')
         .insert({
           user_id: user.id,
           content: content.trim() || '',
           image_url: mediaUrl,
           media_type: mediaType,
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (postError) throw postError;
+
+      // Insert tagged users
+      if (taggedUsers.length > 0 && postData) {
+        const tags = taggedUsers.map(taggedUser => ({
+          post_id: postData.id,
+          user_id: taggedUser.id,
+          tagged_by: user.id
+        }));
+
+        const { error: tagsError } = await supabase
+          .from('post_tags')
+          .insert(tags);
+
+        if (tagsError) {
+          console.error('Error creating tags:', tagsError);
+          // Don't fail the whole post creation for tag errors
+        }
+      }
 
       setUploadProgress(100);
 
       toast({
         title: "✅ Post criado com sucesso!",
-        description: "Seu conteúdo foi compartilhado no feed",
+        description: `Seu conteúdo foi compartilhado no feed${taggedUsers.length > 0 ? ` e ${taggedUsers.length} pessoa${taggedUsers.length > 1 ? 's foram marcadas' : ' foi marcada'}` : ''}`,
       });
 
       // Reset form
@@ -345,6 +368,8 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
     setProcessedVideoBlob(null);
     setImagePreview(null);
     setVideoPreview(null);
+    setTaggedUsers([]);
+    setShowTagSelector(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
@@ -519,7 +544,21 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
               
               <div className="flex justify-between items-center text-xs text-muted-foreground">
                 <span>{content.length}/500</span>
+                {taggedUsers.length > 0 && (
+                  <span>{taggedUsers.length} pessoa{taggedUsers.length > 1 ? 's marcadas' : ' marcada'}</span>
+                )}
               </div>
+
+              {/* Tag Users Button */}
+              <Button
+                variant="outline"
+                onClick={() => setShowTagSelector(true)}
+                className="w-full rounded-xl flex items-center gap-2"
+                disabled={loading}
+              >
+                <Tag className="w-4 h-4" />
+                Marcar pessoas {taggedUsers.length > 0 && `(${taggedUsers.length})`}
+              </Button>
 
               {/* Actions */}
               <div className="flex space-x-3 pt-4">
@@ -552,6 +591,15 @@ const CreatePost = ({ open, onOpenChange, onPostCreated }: CreatePostProps) => {
             </div>
           )}
         </div>
+        
+        {/* User Tag Selector */}
+        <UserTagSelector
+          open={showTagSelector}
+          onOpenChange={setShowTagSelector}
+          selectedUsers={taggedUsers}
+          onUsersChange={setTaggedUsers}
+          maxTags={5}
+        />
       </DialogContent>
     </Dialog>
   );

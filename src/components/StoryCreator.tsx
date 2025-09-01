@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { X, Send, Image, Upload, CheckCircle, AlertCircle, Video, Clock } from 'lucide-react';
+import { X, Send, Image, Upload, CheckCircle, AlertCircle, Video, Clock, Tag } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useVideoValidation, VideoValidationResult } from '@/hooks/useVideoValidation';
 import VideoValidationStatus from '@/components/ui/VideoValidationStatus';
+import { UserTagSelector } from '@/components/UserTagSelector';
 
 interface StoryCreatorProps {
   open: boolean;
@@ -30,6 +31,8 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [validationResult, setValidationResult] = useState<VideoValidationResult | null>(null);
+  const [taggedUsers, setTaggedUsers] = useState<any[]>([]);
+  const [showTagSelector, setShowTagSelector] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { 
@@ -54,6 +57,8 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
       setTextColor('#ffffff');
       setIsDragging(false);
       setValidationResult(null);
+      setTaggedUsers([]);
+      setShowTagSelector(false);
     }
   }, [open]);
 
@@ -204,7 +209,7 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
       }
 
       // Create story in database
-      const { error: insertError } = await supabase
+      const { data: storyData, error: insertError } = await supabase
         .from('stories')
         .insert({
           user_id: user.id,
@@ -213,13 +218,33 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
           media_type: mediaType,
           background_color: backgroundColor,
           text_color: textColor,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      // Insert tagged users
+      if (taggedUsers.length > 0 && storyData) {
+        const tags = taggedUsers.map(taggedUser => ({
+          story_id: storyData.id,
+          user_id: taggedUser.id,
+          tagged_by: user.id
+        }));
+
+        const { error: tagsError } = await supabase
+          .from('story_tags')
+          .insert(tags);
+
+        if (tagsError) {
+          console.error('Error creating story tags:', tagsError);
+          // Don't fail the whole story creation for tag errors
+        }
+      }
       
       toast({
         title: "Story criado",
-        description: "Seu story foi publicado com sucesso!",
+        description: `Seu story foi publicado com sucesso!${taggedUsers.length > 0 ? ` ${taggedUsers.length} pessoa${taggedUsers.length > 1 ? 's foram marcadas' : ' foi marcada'}` : ''}`,
       });
 
       onStoryCreated();
@@ -451,6 +476,26 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
                   )}
                 </Button>
 
+                {/* Tag Users */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTagSelector(true)}
+                  disabled={loading}
+                  className={cn(
+                    "text-white hover:bg-white/20 w-10 h-10 p-0 rounded-full transition-all duration-200 backdrop-blur-sm",
+                    taggedUsers.length > 0 && "bg-blue-500/20 border border-blue-500/30",
+                    loading && "animate-pulse"
+                  )}
+                >
+                  <Tag className="w-4 h-4" />
+                  {taggedUsers.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full text-xs flex items-center justify-center">
+                      {taggedUsers.length}
+                    </span>
+                  )}
+                </Button>
+
                 {/* Background Colors */}
                 <div className="flex space-x-1 overflow-x-auto">
                   {backgroundColors.slice(0, 6).map((color) => (
@@ -499,8 +544,11 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
 
             {/* Character Count & Status */}
             <div className="flex items-center justify-between text-xs">
-              <div className="text-white/70">
-                {text.length}/150 caracteres
+              <div className="text-white/70 flex items-center gap-2">
+                <span>{text.length}/150 caracteres</span>
+                {taggedUsers.length > 0 && (
+                  <span>• {taggedUsers.length} marcado{taggedUsers.length > 1 ? 's' : ''}</span>
+                )}
               </div>
               {(text.trim() || mediaFile) && (
                 <div className="flex items-center space-x-1 text-green-400">
@@ -518,6 +566,15 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
           accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime"
           onChange={handleFileChange}
           className="hidden"
+        />
+        
+        {/* User Tag Selector */}
+        <UserTagSelector
+          open={showTagSelector}
+          onOpenChange={setShowTagSelector}
+          selectedUsers={taggedUsers}
+          onUsersChange={setTaggedUsers}
+          maxTags={3}
         />
       </DialogContent>
     </Dialog>
