@@ -466,7 +466,7 @@ const StoryViewerEnhanced = ({
             )}
 
             {/* Informações do usuário */}
-            <div className="absolute top-14 left-4 right-4 flex items-center justify-between z-10">
+            <div className="absolute top-14 left-4 right-4 flex items-center justify-between z-30">
               <div className="flex items-center space-x-2">
                 <Avatar className="w-8 h-8 border-2 border-white">
                   <AvatarImage src={currentStory.profiles.avatar_url || ''} />
@@ -493,6 +493,7 @@ const StoryViewerEnhanced = ({
                         variant="ghost"
                         size="sm"
                         onClick={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                         onTouchEnd={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
@@ -589,7 +590,7 @@ const StoryViewerEnhanced = ({
             {currentStory.content && (
               <div
                 className={cn(
-                  "absolute p-8 z-10 flex animate-fade-in",
+                  "absolute p-8 z-10 flex animate-fade-in pointer-events-none",
                   {
                     'inset-0 items-center justify-center': (currentStory.text_position || 'center') === 'center',
                     'top-0 left-0 right-0 items-start justify-center': (currentStory.text_position || 'center') === 'top',
@@ -601,7 +602,7 @@ const StoryViewerEnhanced = ({
                 style={{ color: currentStory.text_color }}
               >
                 <p 
-                  className="font-bold text-center drop-shadow-lg leading-tight animate-scale-in break-words max-w-[80%]"
+                  className="font-bold text-center drop-shadow-lg leading-tight animate-scale-in break-words max-w-[80%] pointer-events-auto"
                   style={{ fontSize: `${currentStory.text_size || 24}px` }}
                 >
                   {currentStory.content}
