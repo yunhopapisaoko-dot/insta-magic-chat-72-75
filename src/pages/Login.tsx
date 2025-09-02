@@ -92,24 +92,21 @@ const Login = () => {
             // Mostra a conta salva
             <div className="space-y-6">
               <div className="text-center space-y-4">
-                <div className="relative mx-auto">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent p-1 shadow-xl">
-                    <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
-                      {savedUser.avatar_url ? (
-                        <img 
-                          src={savedUser.avatar_url} 
-                          alt={savedUser.display_name}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-foreground font-bold text-xl">
+                <div className="relative mx-auto w-20 h-20">
+                  <div className="w-full h-full rounded-full overflow-hidden shadow-lg">
+                    {savedUser.avatar_url ? (
+                      <img 
+                        src={savedUser.avatar_url} 
+                        alt={savedUser.display_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                        <span className="text-white font-bold text-xl">
                           {savedUser.display_name?.charAt(0).toUpperCase() || savedUser.username?.charAt(0).toUpperCase()}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-background flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
