@@ -125,7 +125,7 @@ const StoriesSection = () => {
               >
                 <div className="relative">
                   {userStories.length > 0 ? (
-                    <div className="w-16 h-16 rounded-full story-gradient p-0.5 transition-all duration-300 group-hover:scale-110 animate-story-ring-pulse">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-muted to-muted-foreground/30 p-0.5 transition-all duration-300 group-hover:scale-110">
                       <Avatar className="w-full h-full border-2 border-white">
                         <AvatarImage src={user?.avatar_url || ''} />
                         <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-semibold">
