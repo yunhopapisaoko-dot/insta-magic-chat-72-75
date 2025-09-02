@@ -46,9 +46,11 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
     newComment,
     setNewComment,
     isSubmittingComment,
+    commentLikes,
     handleLike,
     handleSubmitComment,
     handleDeleteComment,
+    handleCommentLike,
   } = usePostInteractions(post?.id || null);
 
   const focusCommentInput = () => {
@@ -224,34 +226,103 @@ const PostModal = ({ open, onOpenChange, post, onPostUpdate }: PostModalProps) =
                   ) : (
                     <div className="space-y-4">
                       {comments.map((comment) => (
-                        <div key={comment.id} className="flex space-x-3">
-                          <Avatar className="w-8 h-8 flex-shrink-0">
-                            <AvatarImage src={comment.profiles.avatar_url || ''} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                              {stripUserDigits(comment.profiles.display_name)[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <span className="font-semibold text-sm">{stripUserDigits(comment.profiles.display_name)}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatTimeAgo(comment.created_at)}
-                                </span>
+                        <div key={comment.id} className="space-y-3">
+                          {/* Main Comment */}
+                          <div className="flex space-x-3">
+                            <Avatar className="w-8 h-8 flex-shrink-0">
+                              <AvatarImage src={comment.profiles.avatar_url || ''} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                                {stripUserDigits(comment.profiles.display_name)[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-semibold text-sm">{stripUserDigits(comment.profiles.display_name)}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatTimeAgo(comment.created_at)}
+                                  </span>
+                                </div>
+                                {comment.user_id === user?.id && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                    className="w-6 h-6 p-0 text-muted-foreground hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                )}
                               </div>
-                              {comment.user_id === user?.id && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  className="w-6 h-6 p-0 text-muted-foreground hover:text-destructive"
+                              <p className="text-sm text-foreground break-words mb-2">{comment.content}</p>
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  onClick={() => handleCommentLike?.(comment.id)}
+                                  className={`flex items-center space-x-1 text-xs transition-colors ${
+                                    commentLikes?.has(comment.id)
+                                      ? 'text-red-500'
+                                      : 'text-muted-foreground hover:text-red-500'
+                                  }`}
                                 >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
+                                  <Heart className={`w-3 h-3 ${commentLikes?.has(comment.id) ? 'fill-current' : ''}`} />
+                                  <span>{comment.likes_count}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Replies */}
+                          {comment.replies && comment.replies.length > 0 && (
+                            <div className="ml-8 space-y-3 border-l-2 border-border pl-4">
+                              {comment.replies.slice(0, 3).map((reply) => (
+                                <div key={reply.id} className="flex space-x-3">
+                                  <Avatar className="w-6 h-6 flex-shrink-0">
+                                    <AvatarImage src={reply.profiles.avatar_url || ''} />
+                                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
+                                      {stripUserDigits(reply.profiles.display_name)[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-2">
+                                        <span className="font-semibold text-xs">{stripUserDigits(reply.profiles.display_name)}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {formatTimeAgo(reply.created_at)}
+                                        </span>
+                                      </div>
+                                      {reply.user_id === user?.id && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDeleteComment(reply.id)}
+                                          className="w-5 h-5 p-0 text-muted-foreground hover:text-destructive"
+                                        >
+                                          <Trash2 className="w-2.5 h-2.5" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-foreground break-words mb-1">{reply.content}</p>
+                                    <button
+                                      onClick={() => handleCommentLike?.(reply.id)}
+                                      className={`flex items-center space-x-1 text-xs transition-colors ${
+                                        commentLikes?.has(reply.id)
+                                          ? 'text-red-500'
+                                          : 'text-muted-foreground hover:text-red-500'
+                                      }`}
+                                    >
+                                      <Heart className={`w-3 h-3 ${commentLikes?.has(reply.id) ? 'fill-current' : ''}`} />
+                                      <span>{reply.likes_count}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                              {comment.replies.length > 3 && (
+                                <button className="text-xs text-primary hover:underline ml-9">
+                                  Ver mais {comment.replies.length - 3} resposta{comment.replies.length - 3 > 1 ? 's' : ''}
+                                </button>
                               )}
                             </div>
-                            <p className="text-sm text-foreground break-words">{comment.content}</p>
-                          </div>
+                          )}
                         </div>
                       ))}
                     </div>

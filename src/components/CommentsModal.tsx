@@ -187,7 +187,12 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
         {/* Render replies with improved styling */}
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-4 space-y-3 border-l-2 border-primary/20 pl-4 ml-2">
-            {comment.replies.map((reply: any) => renderComment(reply, true))}
+            {comment.replies.slice(0, 3).map((reply: any) => renderComment(reply, true))}
+            {comment.replies.length > 3 && (
+              <button className="text-xs text-primary hover:underline font-medium ml-2 py-1">
+                Ver mais {comment.replies.length - 3} resposta{comment.replies.length - 3 > 1 ? 's' : ''}
+              </button>
+            )}
           </div>
         )}
       </div>
