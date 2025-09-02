@@ -228,15 +228,23 @@ export const useStoriesCache = (userId?: string) => {
 
       // Get viewed stories and calculate hasViewed
       const viewedStoriesSet = await getViewedStories();
+      console.log('🔍 Current user ID:', userId);
+      console.log('📋 Viewed stories set:', Array.from(viewedStoriesSet));
+      
       groupedStories.forEach(group => {
+        console.log(`👤 Processing group for user: ${group.user.display_name} (ID: ${group.user_id})`);
+        console.log(`🆔 Is own stories? ${group.user_id === userId}`);
+        
         // Para stories próprios, sempre considera como visualizado (stories próprios não precisam de bolinha)
         // Para stories de outros usuários, considera visualizado se TODOS foram vistos
         if (group.user_id === userId) {
           // Stories próprios: sempre visualizado (sem bolinha vermelha)
           group.hasViewed = true;
+          console.log(`✅ Own stories - setting hasViewed to true for ${group.user.display_name}`);
         } else {
           // Stories de outros: considera visualizado se TODOS foram vistos
           group.hasViewed = group.stories.every(story => viewedStoriesSet.has(story.id));
+          console.log(`👥 Other stories - hasViewed: ${group.hasViewed} for ${group.user.display_name}`);
         }
       });
 
@@ -281,7 +289,9 @@ export const useStoriesCache = (userId?: string) => {
   useEffect(() => {
     if (!userId) return;
 
-    fetchStories();
+    // Force refresh on mount to ensure correct hasViewed status
+    console.log('🚀 Stories cache initializing - forcing refresh');
+    fetchStories(true);
 
     const channel = supabase
       .channel('stories-updates')
@@ -332,12 +342,15 @@ export const useStoriesCache = (userId?: string) => {
               const hasStoryInGroup = group.stories.some(story => story.id === viewedStoryId);
               if (hasStoryInGroup) {
                 let newHasViewed;
+                console.log(`🔄 Updating group ${group.user.display_name} (user_id: ${group.user_id}, current userId: ${userId})`);
                 // Para stories próprios, sempre considera como visualizado (sem bolinha)
                 // Para stories de outros usuários, considera visualizado se TODOS foram vistos
                 if (group.user_id === userId) {
                   newHasViewed = true;
+                  console.log(`✅ Own stories - forcing hasViewed to true`);
                 } else {
                   newHasViewed = group.stories.every(story => currentViewedSet.has(story.id));
+                  console.log(`👥 Other stories - calculated hasViewed: ${newHasViewed}`);
                 }
                 console.log(`🔄 Group ${group.user.display_name} hasViewed: ${group.hasViewed} -> ${newHasViewed}`);
                 return {
