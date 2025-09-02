@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette, MessageCircle, Reply, Edit, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useOptimizedRealtimeMessages } from '@/hooks/useOptimizedRealtimeMessages';
+import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -47,18 +47,14 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     messages, 
     typingUsers, 
     loading, 
-    loadingOlder,
     sending, 
     connectionStatus,
     isOnline,
     reconnectAttempts,
-    hasMoreMessages,
     sendMessage,
     sendTypingIndicator,
     reconnectChannels,
-    loadOlderMessages,
-    refreshMessages
-  } = useOptimizedRealtimeMessages(conversationId, { pageSize: 30 });
+  } = useRealtimeChat(conversationId);
   const { markConversationAsRead } = useUnreadMessages();
   const { getSenderInfo } = useMessageSenders(messages);
   const { hasNewMessageFrom, clearIndicatorsFromSender } = useNewMessageIndicator(conversationId);
@@ -113,9 +109,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     value: string;
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (conversationId && user) {
@@ -420,38 +414,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     }
   };
 
-  // Infinite scroll for older messages
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && hasMoreMessages && !loadingOlder) {
-          console.log('Carregando mensagens mais antigas...');
-          loadOlderMessages();
-        }
-      },
-      { threshold: 1.0 }
-    );
-
-    if (loadMoreTriggerRef.current) {
-      observer.observe(loadMoreTriggerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [hasMoreMessages, loadingOlder, loadOlderMessages]);
-
-  // Reset scroll state when conversation changes and auto-scroll to bottom
+  // Reset scroll state when conversation changes
   useEffect(() => {
     setHasInitialScrolled(false);
-    if (messagesContainerRef.current && messages.length > 0) {
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-          setHasInitialScrolled(true);
-        }
-      }, 100);
-    }
-  }, [conversationId]);
+  }, [conversationId, messages.length]); // Também resetar quando mensagens mudarem
 
   // Realtime profile updates for the other participant
   useEffect(() => {
@@ -884,17 +850,16 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
          {/* Messages - with bottom padding to account for fixed input */}
          <div 
-           ref={messagesContainerRef}
            className="flex-1 overflow-y-auto p-4 pb-32 relative" 
            style={{ 
              scrollBehavior: 'auto',
              backgroundColor: currentWallpaper?.type === 'color' ? currentWallpaper.value : undefined
            }}
-            onScroll={(e) => {
-              const element = e.currentTarget;
-              if (element && messages.length > 0 && !hasInitialScrolled) {
-                // Initial scroll to bottom completed
-                if (Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop) < 50) {
+            ref={(el) => {
+              if (el && messages.length > 0 && !hasInitialScrolled) {
+                // Posicionar no final das mensagens instantaneamente, sem qualquer movimento
+                if (el.scrollHeight > el.clientHeight) {
+                  el.scrollTop = el.scrollHeight;
                   setHasInitialScrolled(true);
                 }
               }
@@ -955,20 +920,6 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
           ) : (
             <div className="flex flex-col justify-end min-h-full">
               <div className="space-y-4">
-                {/* Load more messages trigger */}
-                {hasMoreMessages && (
-                  <div ref={loadMoreTriggerRef} className="flex justify-center py-4">
-                    {loadingOlder ? (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-                        <span className="text-sm">Carregando mensagens antigas...</span>
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8" />
-                    )}
-                  </div>
-                )}
-                
                  {messages.map((message, index) => {
                 const previousMessage = messages[index - 1];
                 const isOwnMessage = message.sender_id === user?.id;
