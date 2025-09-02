@@ -469,6 +469,7 @@ export const useConversations = () => {
           table: 'messages',
         },
         () => {
+          console.log('New message detected, refreshing conversations');
           fetchConversations();
         }
       )
@@ -480,6 +481,31 @@ export const useConversations = () => {
           table: 'conversations',
         },
         () => {
+          console.log('Conversation updated, refreshing conversations');
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversation_participants',
+        },
+        () => {
+          console.log('New participant added, refreshing conversations');
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversations',
+        },
+        () => {
+          console.log('New conversation created, refreshing conversations');
           fetchConversations();
         }
       )
