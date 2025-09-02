@@ -15,6 +15,7 @@ import { MentionText } from '@/components/MentionText';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { stripUserDigits } from '@/lib/utils';
+import { useProfileNavigation } from '@/hooks/useProfileNavigation';
 
 interface Post {
   id: string;
@@ -39,6 +40,7 @@ const Feed = () => {
   const [loading, setLoading] = useState(true);
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const { navigateToProfile } = useProfileNavigation();
 
   useEffect(() => {
     if (user) {
@@ -307,8 +309,11 @@ const Feed = () => {
     navigate(`/post/${post.id}`);
   };
 
-  const handleProfileClick = (username: string) => {
-    navigate(`/user/${username}`);
+  const handleProfileClick = async (username: string, userId?: string) => {
+    const profile = await navigateToProfile(username, userId);
+    if (profile) {
+      navigate(`/user/${stripUserDigits(profile.username)}`);
+    }
   };
 
   const handleLogout = async () => {
@@ -427,7 +432,7 @@ const Feed = () => {
                   <CardContent className="p-0">
                      {/* Post Header */}
                     <div className="flex items-center space-x-3 p-4 pb-3">
-                      <Avatar className="w-10 h-10 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleProfileClick(stripUserDigits(post.profiles.username)); }}>
+                      <Avatar className="w-10 h-10 cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => { e.stopPropagation(); handleProfileClick(stripUserDigits(post.profiles.username), post.user_id); }}>
                         <AvatarImage src={post.profiles.avatar_url || ''} />
                         <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-semibold">
                           {post.profiles.display_name[0]}
@@ -436,7 +441,7 @@ const Feed = () => {
                       <div className="flex-1">
                         <h3 
                           className="font-semibold text-sm cursor-pointer hover:underline" 
-                          onClick={(e) => { e.stopPropagation(); handleProfileClick(stripUserDigits(post.profiles.username)); }}
+                          onClick={(e) => { e.stopPropagation(); handleProfileClick(stripUserDigits(post.profiles.username), post.user_id); }}
                         >
                           {post.profiles.display_name}
                         </h3>

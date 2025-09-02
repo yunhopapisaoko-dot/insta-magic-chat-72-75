@@ -13,6 +13,7 @@ import VideoPlayer from '@/components/ui/VideoPlayer';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { CommentsModal } from '@/components/CommentsModal';
 import { stripUserDigits } from '@/lib/utils';
+import { useProfileNavigation } from '@/hooks/useProfileNavigation';
 
 interface Post {
   id: string;
@@ -44,6 +45,8 @@ const PostDetail = () => {
     commentsCount,
     handleLike,
   } = usePostInteractions(id || null);
+
+  const { navigateToProfile } = useProfileNavigation();
 
   useEffect(() => {
     if (id) {
@@ -189,14 +192,22 @@ const PostDetail = () => {
             <div className="bg-background">
               {/* Post Header */}
               <div className="flex items-center space-x-3 py-4">
-                <Avatar className="w-12 h-12">
+                <Avatar 
+                  className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigateToProfile(stripUserDigits(post.profiles.username), post.user_id)}
+                >
                   <AvatarImage src={post.profiles.avatar_url || ''} />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
                     {post.profiles.display_name[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-base">{post.profiles.display_name}</h3>
+                  <h3 
+                    className="font-semibold text-base cursor-pointer hover:underline"
+                    onClick={() => navigateToProfile(stripUserDigits(post.profiles.username), post.user_id)}
+                  >
+                    {post.profiles.display_name}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     @{stripUserDigits(post.profiles.username)} • {formatTimeAgo(post.created_at)}
                   </p>
