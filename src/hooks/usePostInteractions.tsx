@@ -461,7 +461,10 @@ export const usePostInteractions = (postId: string | null) => {
 
       const { error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting comment:', error);
+        throw error;
+      }
 
       // Optimistically remove comment from UI
       setComments(prev => {
@@ -485,7 +488,7 @@ export const usePostInteractions = (postId: string | null) => {
       
       toast({
         title: "Sucesso",
-        description: "Comentário deletado com sucesso.",
+        description: isPostOwner ? "Comentário removido do seu post." : "Comentário deletado com sucesso.",
       });
     } catch (error) {
       console.error('Error deleting comment:', error);

@@ -199,18 +199,21 @@ export const CommentsModal = ({ isOpen, onClose, postId, postOwnerId }: Comments
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10"
                     >
-                      <MoreHorizontal className="w-3.5 h-3.5" />
+                      <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-background border border-border">
+                  <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg">
                     <DropdownMenuItem 
                       onClick={() => onDeleteComment(comment.id, comment.user_id)}
-                      className="text-destructive focus:text-destructive"
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Deletar comentário
+                      {user.id === postOwnerId && user.id !== comment.user_id 
+                        ? 'Remover comentário' 
+                        : 'Deletar comentário'
+                      }
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
