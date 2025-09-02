@@ -194,7 +194,7 @@ const PostDetail = () => {
               <div className="flex items-center space-x-3 py-4">
                 <Avatar 
                   className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => navigateToProfile(stripUserDigits(post.profiles.username), post.user_id)}
+                  onClick={() => navigate(`/user/${post.profiles.username}`)}
                 >
                   <AvatarImage src={post.profiles.avatar_url || ''} />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg font-semibold">
@@ -204,7 +204,7 @@ const PostDetail = () => {
                 <div className="flex-1">
                   <h3 
                     className="font-semibold text-base cursor-pointer hover:underline"
-                    onClick={() => navigateToProfile(stripUserDigits(post.profiles.username), post.user_id)}
+                    onClick={() => navigate(`/user/${post.profiles.username}`)}
                   >
                     {post.profiles.display_name}
                   </h3>

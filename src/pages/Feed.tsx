@@ -310,9 +310,11 @@ const Feed = () => {
   };
 
   const handleProfileClick = async (username: string, userId?: string) => {
-    const profile = await navigateToProfile(username, userId);
-    if (profile) {
-      navigate(`/user/${stripUserDigits(profile.username)}`);
+    try {
+      // Navigate directly using the username from the post
+      navigate(`/user/${username}`);
+    } catch (error) {
+      console.error('Error navigating to profile:', error);
     }
   };
 
@@ -432,7 +434,7 @@ const Feed = () => {
                   <CardContent className="p-0">
                      {/* Post Header */}
                     <div className="flex items-center space-x-3 p-4 pb-3">
-                      <Avatar className="w-10 h-10 cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => { e.stopPropagation(); handleProfileClick(stripUserDigits(post.profiles.username), post.user_id); }}>
+                      <Avatar className="w-10 h-10 cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => { e.stopPropagation(); handleProfileClick(post.profiles.username); }}>
                         <AvatarImage src={post.profiles.avatar_url || ''} />
                         <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-sm font-semibold">
                           {post.profiles.display_name[0]}
@@ -441,7 +443,7 @@ const Feed = () => {
                       <div className="flex-1">
                         <h3 
                           className="font-semibold text-sm cursor-pointer hover:underline" 
-                          onClick={(e) => { e.stopPropagation(); handleProfileClick(stripUserDigits(post.profiles.username), post.user_id); }}
+                          onClick={(e) => { e.stopPropagation(); handleProfileClick(post.profiles.username); }}
                         >
                           {post.profiles.display_name}
                         </h3>
