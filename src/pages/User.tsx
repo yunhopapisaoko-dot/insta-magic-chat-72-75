@@ -188,10 +188,7 @@ const UserProfile = () => {
       const conversationId = await createOrGetConversation(profileData.id);
       
       if (conversationId) {
-        toast({
-          title: "Conversa iniciada",
-          description: `Iniciando conversa com ${profileData.display_name}`,
-        });
+        // Navigate immediately without waiting for toast
         navigate(`/messages?chat=${conversationId}`);
       } else {
         throw new Error('Failed to create conversation');

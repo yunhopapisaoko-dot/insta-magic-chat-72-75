@@ -45,13 +45,16 @@ export const useInstantConversations = () => {
     if (!user) return;
 
     try {
-      // Get user's conversations
+      // Get user's conversations with group info
       const { data: conversationsData, error: conversationsError } = await supabase
         .from('conversation_participants')
         .select(`
           conversation_id,
           conversations:conversation_id (
             id,
+            name,
+            description,
+            photo_url,
             created_at,
             updated_at
           )
@@ -128,6 +131,37 @@ export const useInstantConversations = () => {
           const conv = participant.conversations;
           if (!conv) return null;
 
+          // Check if this is a group conversation with custom name
+          if (conv.name) {
+            const lastMessage = lastMessageMap.get(conv.id);
+            const unreadCount = unreadCountMap.get(conv.id) || 0;
+
+            return {
+              id: conv.id,
+              created_at: conv.created_at,
+              updated_at: conv.updated_at,
+              other_user: {
+                id: 'group',
+                display_name: conv.name,
+                username: conv.description || 'Grupo',
+                avatar_url: conv.photo_url,
+              },
+              last_message: lastMessage ? {
+                id: lastMessage.id,
+                conversation_id: lastMessage.conversation_id,
+                content: lastMessage.content,
+                created_at: lastMessage.created_at,
+                sender_id: lastMessage.sender_id,
+                media_url: lastMessage.media_url,
+                media_type: lastMessage.media_type,
+                story_id: lastMessage.story_id,
+                read_at: lastMessage.read_at
+              } : undefined,
+              unread_count: unreadCount,
+            };
+          }
+
+          // Regular 1-on-1 conversation
           const otherUserId = participantsMap.get(conv.id);
           if (!otherUserId) return null;
 
@@ -257,11 +291,118 @@ export const useInstantConversations = () => {
     };
   }, [user?.id, fetchConversations]);
 
+  const createOrGetConversation = useCallback(async (otherUserId: string, storyId?: string) => {
+    if (!user) return null;
+
+    try {
+      // Check for existing conversation first (optimized)
+      const { data: existingConvs } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', user.id);
+
+      if (existingConvs?.length) {
+        const convIds = existingConvs.map(c => c.conversation_id);
+        const { data: otherConvs } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', otherUserId)
+          .in('conversation_id', convIds);
+
+        if (otherConvs?.length) {
+          // Check if it's a private 1-on-1 conversation
+          for (const conv of otherConvs) {
+            const { data: participants } = await supabase
+              .from('conversation_participants')
+              .select('user_id')
+              .eq('conversation_id', conv.conversation_id);
+
+            if (participants?.length === 2) {
+              return conv.conversation_id;
+            }
+          }
+        }
+      }
+
+      // Create new conversation
+      const { data: newConv, error } = await supabase
+        .from('conversations')
+        .insert({})
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add participants
+      await supabase
+        .from('conversation_participants')
+        .insert([
+          { conversation_id: newConv.id, user_id: user.id },
+          { conversation_id: newConv.id, user_id: otherUserId }
+        ]);
+
+      // Add initial message if from story
+      if (storyId) {
+        await supabase
+          .from('messages')
+          .insert({
+            conversation_id: newConv.id,
+            sender_id: user.id,
+            content: 'Oi! Vi seu story 👋',
+            story_id: storyId,
+            message_status: 'sent'
+          });
+      }
+
+      // Update cache immediately with new conversation
+      const { data: otherProfile } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, avatar_url')
+        .eq('id', otherUserId)
+        .single();
+
+      if (otherProfile) {
+        const newConversation: Conversation = {
+          id: newConv.id,
+          created_at: newConv.created_at,
+          updated_at: newConv.updated_at,
+          other_user: {
+            id: otherProfile.id,
+            display_name: otherProfile.display_name,
+            username: otherProfile.username,
+            avatar_url: otherProfile.avatar_url,
+          },
+          last_message: storyId ? {
+            id: '',
+            conversation_id: newConv.id,
+            content: 'Oi! Vi seu story 👋',
+            created_at: new Date().toISOString(),
+            sender_id: user.id,
+            media_url: null,
+            media_type: null,
+            story_id: storyId,
+            read_at: null
+          } : undefined,
+          unread_count: 0,
+        };
+
+        setConversations(prev => [newConversation, ...prev]);
+        saveToCache([newConversation, ...conversations]);
+      }
+
+      return newConv.id;
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      return null;
+    }
+  }, [user, conversations, saveToCache]);
+
   return {
     conversations,
     loading,
     error,
     fetchConversations,
     markMessagesAsRead,
+    createOrGetConversation,
   };
 };

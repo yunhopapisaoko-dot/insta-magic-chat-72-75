@@ -170,10 +170,6 @@ const Explore = () => {
       console.log('Conversation result:', conversationId);
       
       if (conversationId) {
-        toast({
-          title: "Conversa iniciada",
-          description: `Iniciando conversa com ${displayName}`,
-        });
         console.log('Navigating to /messages with conversation:', conversationId);
         navigate(`/messages?chat=${conversationId}`);
       } else {
