@@ -152,8 +152,7 @@ export const useNotifications = () => {
               const duplicateLike = prev.find(n => 
                 n.type === newNotification.type &&
                 n.actor_id === newNotification.actor_id &&
-                n.entity_id === newNotification.entity_id &&
-                Math.abs(new Date(n.created_at).getTime() - new Date(newNotification.created_at).getTime()) < 5000 // Within 5 seconds
+                n.entity_id === newNotification.entity_id
               );
               if (duplicateLike) {
                 console.log('Duplicate like notification prevented:', newNotification);
