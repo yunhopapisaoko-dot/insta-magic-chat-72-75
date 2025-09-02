@@ -857,18 +857,11 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
            }}
             ref={(el) => {
               if (el && messages.length > 0 && !hasInitialScrolled) {
-                // Posicionar no final das mensagens sem animação - mais robusto
-                const scrollToEnd = () => {
-                  if (el.scrollHeight > el.clientHeight) {
-                    el.scrollTop = el.scrollHeight;
-                    setHasInitialScrolled(true);
-                  }
-                };
-                
-                // Tentar múltiplas vezes para garantir que funcione
-                setTimeout(scrollToEnd, 10);
-                setTimeout(scrollToEnd, 100);
-                setTimeout(scrollToEnd, 300);
+                // Posicionar no final das mensagens instantaneamente, sem qualquer movimento
+                if (el.scrollHeight > el.clientHeight) {
+                  el.scrollTop = el.scrollHeight;
+                  setHasInitialScrolled(true);
+                }
               }
             }}
          >

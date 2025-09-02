@@ -322,14 +322,14 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
     };
   }, [user]);
 
-  // Auto-scroll effect - carrega mensagens direto no final sem animação
+  // Auto-scroll effect - aparece no final instantaneamente, sem movimento
   useEffect(() => {
     if (messages.length > lastMessageCountRef.current) {
       lastMessageCountRef.current = messages.length;
 
-      // Sempre posiciona no final sem qualquer animação
+      // Sempre posiciona no final instantaneamente, sem qualquer animação
       if (messages.length > 0) {
-        setTimeout(() => scrollToBottom(false), 50);
+        scrollToBottom(false);
       }
     }
   }, [messages.length, scrollToBottom]);

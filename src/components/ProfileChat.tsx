@@ -70,19 +70,12 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
     }
   }, [isOpen, user?.id, otherUser.id, conversationId]);
 
-  // Load messages at bottom position without scrolling - start from bottom - mais robusto
+  // Load messages at bottom position - aparece diretamente no final, sem movimento
   useEffect(() => {
     if (messages.length > 0 && !loading && !hasInitialScrolled && conversationId && messagesEndRef.current) {
-      // Posicionar no final das mensagens sem animação
-      const scrollToEnd = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-        setHasInitialScrolled(true);
-      };
-      
-      // Tentar múltiplas vezes para garantir que funcione
-      setTimeout(scrollToEnd, 10);
-      setTimeout(scrollToEnd, 100);
-      setTimeout(scrollToEnd, 300);
+      // Posicionar no final instantaneamente, sem qualquer efeito
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+      setHasInitialScrolled(true);
     }
   }, [messages.length, loading, hasInitialScrolled, conversationId]);
 
