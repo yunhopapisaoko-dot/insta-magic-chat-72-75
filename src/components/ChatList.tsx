@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MessageCircle, Search, Users, LogOut, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useOptimizedConversations } from '@/hooks/useOptimizedConversations';
+import { useInstantConversations } from '@/hooks/useInstantConversations';
 import { type Conversation } from '@/hooks/useConversations';
 import { useAuth } from '@/hooks/useAuth';
 import Chat from '@/components/Chat';
@@ -23,7 +23,7 @@ const ChatList = () => {
     error,
     markMessagesAsRead,
     fetchConversations
-  } = useOptimizedConversations();
+  } = useInstantConversations();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(
     searchParams.get('chat') || null
@@ -196,12 +196,12 @@ const ChatList = () => {
 
         {/* Conversations List */}
         <div className="space-y-2">
-          {loading ? (
+          {loading && conversations.length === 0 ? (
             <Card className="card-shadow border-0">
-              <CardContent className="p-8 text-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Carregando conversas...</h3>
-                <p className="text-muted-foreground text-sm">Aguarde um momento</p>
+              <CardContent className="p-6 text-center">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <h3 className="text-base font-semibold mb-1">Carregando...</h3>
+                <p className="text-muted-foreground text-xs">Buscando suas conversas</p>
               </CardContent>
             </Card>
           ) : error ? (

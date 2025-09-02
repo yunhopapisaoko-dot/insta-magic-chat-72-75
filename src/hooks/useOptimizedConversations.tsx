@@ -327,10 +327,12 @@ export const useOptimizedConversations = () => {
     if (conversationsCache.length > 0) {
       setConversations(conversationsCache);
       setLoading(false);
+      // Still fetch fresh data in background but don't show loading
+      setTimeout(() => fetchConversations(true), 100);
+    } else {
+      // No cache, show loading and fetch
+      fetchConversations(false);
     }
-    
-    // Then fetch fresh data
-    fetchConversations(false); // Don't use cache for initial load
 
     // Set up optimized realtime with incremental updates
     const conversationsChannel = supabase
