@@ -229,11 +229,11 @@ export const useStoriesCache = (userId?: string) => {
       // Get viewed stories and calculate hasViewed
       const viewedStoriesSet = await getViewedStories();
       groupedStories.forEach(group => {
-        // Para stories próprios, considera visualizado se pelo menos um story foi visto
+        // Para stories próprios, sempre considera como visualizado (stories próprios não precisam de bolinha)
         // Para stories de outros usuários, considera visualizado se TODOS foram vistos
         if (group.user_id === userId) {
-          // Stories próprios: considera visualizado se pelo menos um foi visto
-          group.hasViewed = group.stories.some(story => viewedStoriesSet.has(story.id));
+          // Stories próprios: sempre visualizado (sem bolinha vermelha)
+          group.hasViewed = true;
         } else {
           // Stories de outros: considera visualizado se TODOS foram vistos
           group.hasViewed = group.stories.every(story => viewedStoriesSet.has(story.id));
@@ -332,10 +332,10 @@ export const useStoriesCache = (userId?: string) => {
               const hasStoryInGroup = group.stories.some(story => story.id === viewedStoryId);
               if (hasStoryInGroup) {
                 let newHasViewed;
-                // Para stories próprios, considera visualizado se pelo menos um story foi visto
+                // Para stories próprios, sempre considera como visualizado (sem bolinha)
                 // Para stories de outros usuários, considera visualizado se TODOS foram vistos
                 if (group.user_id === userId) {
-                  newHasViewed = group.stories.some(story => currentViewedSet.has(story.id));
+                  newHasViewed = true;
                 } else {
                   newHasViewed = group.stories.every(story => currentViewedSet.has(story.id));
                 }
