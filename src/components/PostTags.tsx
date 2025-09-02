@@ -152,7 +152,7 @@ export const PostTags = ({ postId, storyId, variant = 'compact', showCount = tru
                       {tag.display_name}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      @{tag.username}
+                      Pessoa marcada
                     </p>
                   </div>
                 </div>
