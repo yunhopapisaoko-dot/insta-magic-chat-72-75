@@ -596,6 +596,14 @@ const Feed = () => {
       <Dialog open={phoneOpen} onOpenChange={setPhoneOpen}>
         <DialogContent className="max-w-full h-full p-0 m-0">
           <DialogTitle className="sr-only">Meu Celular</DialogTitle>
+          <div className="absolute top-4 left-4 z-10">
+            <Button 
+              onClick={() => setPhoneOpen(false)}
+              className="magic-button"
+            >
+              Voltar ao Magic Talk
+            </Button>
+          </div>
           <iframe
             src="https://virtual-life-sim-00-10.vercel.app/"
             className="w-full h-full border-0"
