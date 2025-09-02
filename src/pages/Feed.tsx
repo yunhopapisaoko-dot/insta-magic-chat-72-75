@@ -346,6 +346,20 @@ const Feed = () => {
             
             <div className="flex items-center space-x-2">
               <NotificationBell />
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => window.open('https://virtual-life-sim-00-10.vercel.app/', '_blank')}>
+                    meu celular
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
               {isAdmin && (
                 <Button
                   variant="ghost"
