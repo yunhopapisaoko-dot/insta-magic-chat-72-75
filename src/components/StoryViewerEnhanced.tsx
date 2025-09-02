@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import StoryEditor from '@/components/StoryEditor';
 import StoryViewsList from '@/components/StoryViewsList';
 import { useStoryViews } from '@/hooks/useStoryViews';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface Story {
   id: string;
@@ -67,6 +68,7 @@ const StoryViewerEnhanced = ({
 }: StoryViewerEnhancedProps) => {
   const { user } = useAuth();
   const { markStoryAsViewed } = useStoryViews(user?.id || null);
+  const { notifications, markAsRead } = useNotifications();
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -145,8 +147,20 @@ const StoryViewerEnhanced = ({
       // Marcar como visualizado (incluindo stories próprios para fazer a bolinha desaparecer)
       console.log('🎯 Marking story as viewed:', currentStory.id, 'by user:', user?.id);
       markStoryAsViewed(currentStory.id);
+      
+      // Marcar notificações relacionadas a esta story como lidas
+      const storyNotifications = notifications.filter(
+        notification => 
+          notification.entity_type === 'story' && 
+          notification.entity_id === currentStory.id &&
+          !notification.is_read
+      );
+      
+      storyNotifications.forEach(notification => {
+        markAsRead(notification.id);
+      });
     }
-  }, [currentStoryIndex, currentGroupIndex, currentStory, markStoryAsViewed, open, user]);
+  }, [currentStoryIndex, currentGroupIndex, currentStory, markStoryAsViewed, open, user, notifications, markAsRead]);
 
   // Controles de toque
   const handleTouchStart = useCallback((e: React.TouchEvent) => {

@@ -3,19 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
-interface Notification {
-  id: string;
-  user_id: string;
-  type: 'like' | 'comment' | 'comment_like' | 'follow' | 'post_tag' | 'story_tag' | 'mention';
-  title: string;
-  message: string;
-  is_read: boolean;
-  entity_type?: string | null;
-  entity_id?: string | null;
-  actor_id?: string | null;
-  created_at: string;
-  updated_at: string;
-}
+  interface Notification {
+    id: string;
+    user_id: string;
+    type: 'like' | 'comment' | 'comment_like' | 'follow' | 'post_tag' | 'story_tag' | 'mention' | 'comment_reply' | 'comment_mention';
+    title: string;
+    message: string;
+    is_read: boolean;
+    entity_type?: string | null;
+    entity_id?: string | null;
+    actor_id?: string | null;
+    created_at: string;
+    updated_at: string;
+  }
 
 export const useNotifications = () => {
   const { user } = useAuth();
