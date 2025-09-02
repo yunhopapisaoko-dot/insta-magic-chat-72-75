@@ -896,9 +896,9 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
 
         {/* Add Users Modal - Only for group chats */}
         {!isOneOnOneChat && showAddUsers && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddUsers(false)}>
-            <div className="bg-background p-4 rounded-lg max-w-md w-full mx-4 max-h-[70vh] flex flex-col min-h-0" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAddUsers(false)}>
+            <div className="bg-background rounded-lg max-w-md w-full h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b">
                 <h4 className="text-lg font-semibold">Adicionar Participantes</h4>
                 <Button
                   variant="ghost"
@@ -913,7 +913,7 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
                 </Button>
               </div>
               
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 p-4 border-b">
                 <Button
                   size="sm"
                   variant="outline"
@@ -940,7 +940,7 @@ export const PrivateChatSettings = ({ isOpen, onClose, conversationId, isOneOnOn
                 )}
               </div>
 
-              <ScrollArea className="flex-1 min-h-0 max-h-[50vh] pr-2">
+              <ScrollArea className="flex-1 p-4">
                 <div className="space-y-2">
                   {availableUsers.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
