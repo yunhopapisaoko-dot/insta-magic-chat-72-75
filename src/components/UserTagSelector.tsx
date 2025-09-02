@@ -287,7 +287,7 @@ export const UserTagSelector = ({
                           {stripUserDigits(searchUser.display_name)}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          @{stripUserDigits(searchUser.username)}
+                          {stripUserDigits(searchUser.display_name)}
                         </p>
                       </div>
                       {isSelected && (
