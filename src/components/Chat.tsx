@@ -417,7 +417,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   // Reset scroll state when conversation changes
   useEffect(() => {
     setHasInitialScrolled(false);
-  }, [conversationId]);
+  }, [conversationId, messages.length]); // Também resetar quando mensagens mudarem
 
   // Realtime profile updates for the other participant
   useEffect(() => {
@@ -855,15 +855,22 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
              scrollBehavior: 'auto',
              backgroundColor: currentWallpaper?.type === 'color' ? currentWallpaper.value : undefined
            }}
-           ref={(el) => {
-             if (el && messages.length > 0 && !hasInitialScrolled) {
-               // Posicionar no final das mensagens sem animação
-               setTimeout(() => {
-                 el.scrollTop = el.scrollHeight;
-                 setHasInitialScrolled(true);
-               }, 50);
-             }
-           }}
+            ref={(el) => {
+              if (el && messages.length > 0 && !hasInitialScrolled) {
+                // Posicionar no final das mensagens sem animação - mais robusto
+                const scrollToEnd = () => {
+                  if (el.scrollHeight > el.clientHeight) {
+                    el.scrollTop = el.scrollHeight;
+                    setHasInitialScrolled(true);
+                  }
+                };
+                
+                // Tentar múltiplas vezes para garantir que funcione
+                setTimeout(scrollToEnd, 10);
+                setTimeout(scrollToEnd, 100);
+                setTimeout(scrollToEnd, 300);
+              }
+            }}
          >
           {/* Background Image */}
           {currentWallpaper?.type === 'image' && (
