@@ -444,17 +444,49 @@ export const usePostInteractions = (postId: string | null) => {
     }
   }, [user, postId, newComment]);
 
-  const handleDeleteComment = useCallback(async (commentId: string) => {
+  const handleDeleteComment = useCallback(async (commentId: string, isPostOwner: boolean = false) => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      // Build the query based on permissions
+      let query = supabase
         .from('post_comments')
         .delete()
-        .eq('id', commentId)
-        .eq('user_id', user.id);
+        .eq('id', commentId);
+      
+      // If not post owner, only allow deleting own comments
+      if (!isPostOwner) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { error } = await query;
 
       if (error) throw error;
+
+      // Optimistically remove comment from UI
+      setComments(prev => {
+        return prev.map(comment => {
+          // If it's a top-level comment being deleted
+          if (comment.id === commentId) {
+            return null; // This will be filtered out
+          }
+          // If it's a reply being deleted
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: comment.replies.filter(reply => reply.id !== commentId)
+            };
+          }
+          return comment;
+        }).filter(Boolean) as Comment[]; // Remove null values
+      });
+      
+      setCommentsCount(prev => prev - 1);
+      
+      toast({
+        title: "Sucesso",
+        description: "Comentário deletado com sucesso.",
+      });
     } catch (error) {
       console.error('Error deleting comment:', error);
       toast({

@@ -4,20 +4,22 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Heart, MoreHorizontal, Smile, X, Reply } from 'lucide-react';
+import { Heart, MoreHorizontal, Smile, X, Reply, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostInteractions } from '@/hooks/usePostInteractions';
 import { stripUserDigits } from '@/lib/utils';
 import { MentionText } from '@/components/MentionText';
 import { UserMentionInput } from '@/components/UserMentionInput';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface CommentsModalProps {
   isOpen: boolean;
   onClose: () => void;
   postId: string;
+  postOwnerId?: string;
 }
 
-export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) => {
+export const CommentsModal = ({ isOpen, onClose, postId, postOwnerId }: CommentsModalProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -93,6 +95,15 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
 
   const handleProfileClick = (username: string) => {
     navigate(`/user/${stripUserDigits(username)}`);
+  };
+
+  const onDeleteComment = (commentId: string, commentUserId: string) => {
+    const isPostOwner = user?.id === postOwnerId;
+    const isCommentOwner = user?.id === commentUserId;
+    
+    if (isPostOwner || isCommentOwner) {
+      handleDeleteComment(commentId, isPostOwner);
+    }
   };
 
   const renderComment = (comment: any, isReply = false) => (
@@ -180,6 +191,30 @@ export const CommentsModal = ({ isOpen, onClose, postId }: CommentsModalProps) =
                   )}
                 </button>
               </div>
+              
+              {/* Comment menu for delete option */}
+              {user && ((user.id === postOwnerId) || (user.id === comment.user_id)) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-background border border-border">
+                    <DropdownMenuItem 
+                      onClick={() => onDeleteComment(comment.id, comment.user_id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Deletar comentário
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
         </div>

@@ -294,6 +294,7 @@ const PostDetail = () => {
             isOpen={showComments}
             onClose={() => setShowComments(false)}
             postId={id || ''}
+            postOwnerId={post?.user_id}
           />
         </div>
       </div>
