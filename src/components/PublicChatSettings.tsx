@@ -694,7 +694,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {participant.profiles?.display_name || 'Usuário'}
+                            {stripUserDigits(participant.profiles?.display_name || 'Usuário')}
                             {participant.user_id === chatInfo.creatorId && (
                               <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
                                 Criador
@@ -702,7 +702,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                             )}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            @{participant.profiles?.username || 'unknown'}
+                            @{stripUserDigits(participant.profiles?.username || 'unknown')}
                           </p>
                         </div>
                       </div>
@@ -880,8 +880,8 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{user.display_name}</p>
-                          <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                          <p className="text-sm font-medium truncate">{stripUserDigits(user.display_name)}</p>
+                          <p className="text-xs text-muted-foreground truncate">@{stripUserDigits(user.username)}</p>
                         </div>
                       </div>
                     ))
@@ -939,7 +939,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {participant.profiles?.display_name || 'Usuário'}
+                            {stripUserDigits(participant.profiles?.display_name || 'Usuário')}
                             {participant.user_id === chatInfo.creatorId && (
                               <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
                                 Criador
@@ -947,7 +947,7 @@ export const PublicChatSettings = ({ isOpen, onClose, conversationId }: PublicCh
                             )}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            @{participant.profiles?.username || 'unknown'}
+                            @{stripUserDigits(participant.profiles?.username || 'unknown')}
                           </p>
                         </div>
                       </div>

@@ -624,8 +624,8 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{user.display_name}</p>
-                          <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                          <p className="text-sm font-medium truncate">{stripUserDigits(user.display_name)}</p>
+                          <p className="text-xs text-muted-foreground truncate">@{stripUserDigits(user.username)}</p>
                         </div>
                       </div>
                       <Button
