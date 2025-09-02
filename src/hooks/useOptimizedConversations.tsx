@@ -48,7 +48,7 @@ export const useOptimizedConversations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Otimized fetch with cache and parallel queries
+  // Ultra-optimized fetch with single batched query
   const fetchConversations = useCallback(async (useCache: boolean = true) => {
     if (!user) {
       setConversations([]);
@@ -69,8 +69,8 @@ export const useOptimizedConversations = () => {
     setError(null);
 
     try {
-      // Simplified: Just get user's conversations first
-      const { data: participantData, error: participantError } = await supabase
+      // Single optimized query with all needed data
+      const { data: conversationsData, error: conversationsError } = await supabase
         .from('conversation_participants')
         .select(`
           conversation_id,
@@ -87,65 +87,85 @@ export const useOptimizedConversations = () => {
         `)
         .eq('user_id', user.id);
 
-      if (participantError) throw participantError;
+      if (conversationsError) throw conversationsError;
 
-      if (!participantData?.length) {
+      if (!conversationsData?.length) {
         setConversations([]);
         conversationsCache = [];
         lastFetchTime = now;
+        setLoading(false);
         return;
       }
 
-      const conversationIds = participantData.map(p => p.conversation_id);
+      const conversationIds = conversationsData.map(p => p.conversation_id);
 
-      
-      // Get other participants only for user's conversations (much simpler)
-      const { data: otherParticipants, error: participantsError } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id, user_id')
-        .in('conversation_id', conversationIds)
-        .neq('user_id', user.id);
+      // Batch all queries in parallel for maximum speed
+      const [otherParticipantsResult, messagesResult, unreadResult] = await Promise.all([
+        // Get other participants
+        supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .in('conversation_id', conversationIds)
+          .neq('user_id', user.id),
+        
+        // Get latest messages for all conversations in one query
+        supabase
+          .from('messages')
+          .select('id, conversation_id, content, created_at, sender_id, read_at, media_url, media_type, story_id')
+          .in('conversation_id', conversationIds)
+          .order('created_at', { ascending: false }),
+        
+        // Get unread counts in one query
+        supabase
+          .from('messages')
+          .select('id, conversation_id, sender_id')
+          .in('conversation_id', conversationIds)
+          .neq('sender_id', user.id)
+          .is('read_at', null)
+      ]);
 
-      if (participantsError) throw participantsError;
+      if (otherParticipantsResult.error) throw otherParticipantsResult.error;
+      if (messagesResult.error) throw messagesResult.error;
+      if (unreadResult.error) throw unreadResult.error;
 
-      // Get unique user IDs from participants
-      const userIds = [...new Set(otherParticipants?.map(p => p.user_id) || [])];
-      
+      // Get unique user IDs and fetch profiles in single query
+      const userIds = [...new Set(otherParticipantsResult.data?.map(p => p.user_id) || [])];
       let profilesData: any = { data: [], error: null };
+      
       if (userIds.length > 0) {
         profilesData = await supabase
           .from('profiles')
           .select('id, display_name, username, avatar_url')
           .in('id', userIds);
+        
+        if (profilesData.error) throw profilesData.error;
       }
 
-      if (profilesData.error) throw profilesData.error;
-
-      // Simplified message fetching - just get latest per conversation
-      const messagesPromises = conversationIds.map(async (convId) => {
-        const { data: lastMessage } = await supabase
-          .from('messages')
-          .select('id, conversation_id, content, created_at, sender_id, read_at, media_url, media_type, story_id')
-          .eq('conversation_id', convId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        const { data: unreadMessages } = await supabase
-          .from('messages')
-          .select('id')
-          .eq('conversation_id', convId)
-          .neq('sender_id', user.id)
-          .is('read_at', null);
-
-        return {
-          conversationId: convId,
-          lastMessage,
-          unreadCount: unreadMessages?.length || 0
-        };
+      // Process data efficiently
+      const lastMessageMap = new Map<string, any>();
+      const unreadCountMap = new Map<string, number>();
+      
+      // Group messages by conversation and get latest
+      const messagesByConv = messagesResult.data?.reduce((acc, msg) => {
+        if (!acc[msg.conversation_id]) {
+          acc[msg.conversation_id] = [];
+        }
+        acc[msg.conversation_id].push(msg);
+        return acc;
+      }, {} as Record<string, any[]>) || {};
+      
+      // Get latest message for each conversation
+      Object.entries(messagesByConv).forEach(([convId, messages]) => {
+        if (messages.length > 0) {
+          lastMessageMap.set(convId, messages[0]); // Already sorted by created_at desc
+        }
       });
-
-      const conversationDetails = await Promise.all(messagesPromises);
+      
+      // Count unread messages by conversation
+      unreadResult.data?.forEach(msg => {
+        const currentCount = unreadCountMap.get(msg.conversation_id) || 0;
+        unreadCountMap.set(msg.conversation_id, currentCount + 1);
+      });
 
       // Create lookup maps for performance
       const profilesMap = (profilesData.data || []).reduce((acc, profile) => {
@@ -153,26 +173,16 @@ export const useOptimizedConversations = () => {
         return acc;
       }, {} as Record<string, any>);
 
-      const lastMessageMap: Record<string, any> = {};
-      const unreadCountMap: Record<string, number> = {};
-      
-      conversationDetails.forEach(detail => {
-        if (detail.lastMessage) {
-          lastMessageMap[detail.conversationId] = detail.lastMessage;
-        }
-        unreadCountMap[detail.conversationId] = detail.unreadCount;
-      });
-
-      // Build conversations list (simplified)
+      // Build conversations list efficiently
       const conversationsMap = new Map<string, Conversation>();
       
-      // Build conversations from user's private conversations
-      for (const participant of (participantData || [])) {
+      // Build conversations from user's conversations
+      for (const participant of conversationsData) {
         const conv = participant.conversations;
         if (!conv) continue;
 
-        const lastMessage = lastMessageMap[conv.id];
-        const otherParticipant = (otherParticipants || []).find(
+        const lastMessage = lastMessageMap.get(conv.id);
+        const otherParticipant = otherParticipantsResult.data?.find(
           p => p.conversation_id === participant.conversation_id
         );
         
@@ -200,7 +210,7 @@ export const useOptimizedConversations = () => {
               story_id: lastMessage.story_id,
               read_at: lastMessage.read_at
             } : undefined,
-            unread_count: unreadCountMap[conv.id] || 0,
+            unread_count: unreadCountMap.get(conv.id) || 0,
           });
         } else if (otherParticipant) {
           // Regular 1-on-1 conversation with other participants
@@ -228,7 +238,7 @@ export const useOptimizedConversations = () => {
                 story_id: lastMessage.story_id,
                 read_at: lastMessage.read_at
               } : undefined,
-              unread_count: unreadCountMap[conv.id] || 0,
+              unread_count: unreadCountMap.get(conv.id) || 0,
             });
           } else {
             // Profile not found, fetch it directly
@@ -261,7 +271,7 @@ export const useOptimizedConversations = () => {
                     story_id: lastMessage.story_id,
                     read_at: lastMessage.read_at
                   } : undefined,
-                  unread_count: unreadCountMap[conv.id] || 0,
+                  unread_count: unreadCountMap.get(conv.id) || 0,
                 });
               }
             } catch (err) {
