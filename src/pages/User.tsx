@@ -12,7 +12,7 @@ import ProfileChat from '@/components/ProfileChat';
 import ProfileNavigator from '@/components/ProfileNavigator';
 import { toast } from '@/hooks/use-toast';
 import { stripUserDigits } from '@/lib/utils';
-import { useConversations } from '@/hooks/useConversations';
+import { useFastChat } from '@/hooks/useFastChat';
 
 interface ProfileData {
   id: string;
@@ -28,7 +28,7 @@ const UserProfile = () => {
   const { username } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { createOrGetConversation } = useConversations();
+  const { startChat, creating } = useFastChat();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -164,45 +164,8 @@ const UserProfile = () => {
   };
 
   const handleStartChat = async () => {
-    if (!user || !profileData) {
-      toast({
-        title: "Login necessário",
-        description: "Faça login para enviar mensagens",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (profileData.id === user.id) {
-      toast({
-        title: "Ação inválida",
-        description: "Você não pode conversar consigo mesmo",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setStartingChat(true);
-    
-    try {
-      const conversationId = await createOrGetConversation(profileData.id);
-      
-      if (conversationId) {
-        // Navigate immediately without waiting for toast
-        navigate(`/messages?chat=${conversationId}`);
-      } else {
-        throw new Error('Failed to create conversation');
-      }
-    } catch (error) {
-      console.error('Error starting chat:', error);
-      toast({
-        title: "Erro ao iniciar conversa",
-        description: "Não foi possível iniciar a conversa. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setStartingChat(false);
-    }
+    if (!profileData) return;
+    await startChat(profileData.id, profileData.display_name);
   };
 
   useEffect(() => {
@@ -322,11 +285,11 @@ const UserProfile = () => {
                 {/* Chat Button - Destacado */}
                 <Button 
                   onClick={handleStartChat}
-                  disabled={startingChat}
+                  disabled={creating}
                   className="w-full rounded-xl bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                   size="lg"
                 >
-                  {startingChat ? (
+                  {creating ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                   ) : (
                     <MessageCircle className="w-5 h-5 mr-2" />

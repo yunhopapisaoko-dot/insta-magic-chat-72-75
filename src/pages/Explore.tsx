@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { useConversations } from '@/hooks/useConversations';
+import { useFastChat } from '@/hooks/useFastChat';
 import { stripUserDigits } from '@/lib/utils';
 
 interface Profile {
@@ -26,7 +26,7 @@ interface Profile {
 const Explore = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { createOrGetConversation } = useConversations();
+  const { startChat, creating } = useFastChat();
   const [searchQuery, setSearchQuery] = useState('');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
@@ -140,52 +140,7 @@ const Explore = () => {
   };
 
   const handleStartChat = async (userId: string, displayName: string) => {
-    console.log('handleStartChat called with:', { userId, displayName, currentUser: user?.id });
-    
-    if (!user) {
-      console.log('No user logged in');
-      toast({
-        title: "Login necessário",
-        description: "Faça login para enviar mensagens",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (userId === user.id) {
-      console.log('User trying to chat with themselves');
-      toast({
-        title: "Ação inválida",
-        description: "Você não pode conversar consigo mesmo",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setStartingChat(userId);
-    
-    try {
-      console.log('Creating or getting conversation...');
-      const conversationId = await createOrGetConversation(userId);
-      console.log('Conversation result:', conversationId);
-      
-      if (conversationId) {
-        console.log('Navigating to /messages with conversation:', conversationId);
-        navigate(`/messages?chat=${conversationId}`);
-      } else {
-        console.error('createOrGetConversation returned null');
-        throw new Error('Failed to create conversation');
-      }
-    } catch (error) {
-      console.error('Error starting chat:', error);
-      toast({
-        title: "Erro ao iniciar conversa",
-        description: "Não foi possível iniciar a conversa. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setStartingChat(null);
-    }
+    await startChat(userId, displayName);
   };
 
   const filteredProfiles = profiles.filter(profile =>
@@ -287,10 +242,10 @@ const Explore = () => {
                                   e.stopPropagation();
                                   handleStartChat(profile.id, stripUserDigits(profile.display_name));
                                 }}
-                                disabled={startingChat === profile.id}
+                                disabled={creating}
                                 className="border-primary text-primary hover:bg-primary/10 w-10 h-8 p-0"
                               >
-                                {startingChat === profile.id ? (
+                                {creating ? (
                                   <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin" />
                                 ) : (
                                   <MessageCircle className="w-4 h-4" />
