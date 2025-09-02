@@ -197,12 +197,12 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
     }
   }, [user]);
 
-  // Auto-scroll to bottom
-  const scrollToBottom = useCallback((smooth = true) => {
+  // Auto-scroll to bottom - sempre sem animação
+  const scrollToBottom = useCallback((smooth = false) => {
     if (scrollElementRef.current) {
       scrollElementRef.current.scrollTo({
         top: scrollElementRef.current.scrollHeight,
-        behavior: smooth ? 'smooth' : 'auto'
+        behavior: 'auto'  // Sempre instantâneo
       });
     }
   }, []);
@@ -322,18 +322,15 @@ export const useInfinitePublicChat = (options: UseInfinitePublicChatOptions = {}
     };
   }, [user]);
 
-  // Auto-scroll effect for new messages - DISABLED for static behavior
-  // Auto-scroll to bottom only on initial load - start from bottom
+  // Auto-scroll effect - carrega mensagens direto no final sem animação
   useEffect(() => {
     if (messages.length > lastMessageCountRef.current) {
       lastMessageCountRef.current = messages.length;
 
-      if (isInitialLoadRef.current && messages.length > 0) {
-        // Only scroll to bottom on initial load, no animation
-        setTimeout(() => scrollToBottom(false), 100);
-        isInitialLoadRef.current = false;
+      // Sempre posiciona no final sem qualquer animação
+      if (messages.length > 0) {
+        setTimeout(() => scrollToBottom(false), 50);
       }
-      // No auto-scroll for new messages to keep screen position fixed
     }
   }, [messages.length, scrollToBottom]);
 

@@ -198,7 +198,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => scrollToBottom(true)}
+                  onClick={() => scrollToBottom(false)}
                   className="rounded-full w-9 h-9 p-0 hover-scale"
                 >
                   <ChevronDown className="w-4 h-4" />
