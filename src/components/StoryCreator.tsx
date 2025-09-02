@@ -8,7 +8,7 @@ import { X, Send, Image, Upload, CheckCircle, AlertCircle, Video, Clock, Tag } f
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
+import { cn, stripUserDigits } from '@/lib/utils';
 import { useVideoValidation, VideoValidationResult } from '@/hooks/useVideoValidation';
 import VideoValidationStatus from '@/components/ui/VideoValidationStatus';
 import { UserTagSelector } from '@/components/UserTagSelector';
@@ -598,7 +598,7 @@ const StoryCreator = ({ open, onOpenChange, onStoryCreated }: StoryCreatorProps)
           onUserSelected={(user) => {
             // Adicionar @ automaticamente no texto
             setText(prev => {
-              const mention = `@${user.username} `;
+              const mention = `@${stripUserDigits(user.username)} `;
               if (!prev.includes(mention)) {
                 return prev + mention;
               }
