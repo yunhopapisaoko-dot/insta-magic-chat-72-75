@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -49,6 +49,12 @@ const StoriesSection = () => {
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
 
+  // Clear cache and force refresh when component mounts
+  useEffect(() => {
+    console.log('🔄 StoriesSection mounted - forcing stories refresh');
+    refreshStories();
+  }, []);
+
   const handleStoryCreated = () => {
     refreshStories();
   };
@@ -63,7 +69,7 @@ const StoriesSection = () => {
         avatar_url: user?.avatar_url || null,
       },
       stories: userStories,
-      hasViewed: false,
+      hasViewed: true, // Stories próprios NUNCA mostram bolinha vermelha
     }] : []),
     ...stories
   ];
@@ -140,10 +146,10 @@ const StoriesSection = () => {
                     </div>
                   )}
                   
-                  {/* New story indicator */}
-                  {userStories.length > 0 && (
-                    <div className="absolute top-0 right-0 w-3 h-3 bg-story-new-indicator rounded-full animate-pulse border-2 border-white animate-story-glow" />
-                  )}
+                   {/* New story indicator - NUNCA mostrar para stories próprios */}
+                   {false && (
+                     <div className="absolute top-0 right-0 w-3 h-3 bg-story-new-indicator rounded-full animate-pulse border-2 border-white animate-story-glow" />
+                   )}
                 </div>
                 
                 <span className="text-xs text-muted-foreground transition-colors duration-300 group-hover:text-primary font-medium">
