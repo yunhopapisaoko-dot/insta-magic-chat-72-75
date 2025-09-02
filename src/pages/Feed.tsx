@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { MessageCircle, Plus, Heart, MessageCircle as Comment, Share, Settings, LogOut, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
@@ -40,6 +41,7 @@ const Feed = () => {
   const [loading, setLoading] = useState(true);
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [phoneOpen, setPhoneOpen] = useState(false);
   const { navigateToProfile } = useProfileNavigation();
 
   useEffect(() => {
@@ -354,7 +356,7 @@ const Feed = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => window.open('https://virtual-life-sim-00-10.vercel.app/', '_blank')}>
+                  <DropdownMenuItem onClick={() => setPhoneOpen(true)}>
                     meu celular
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -590,6 +592,18 @@ const Feed = () => {
         onOpenChange={setCreatePostOpen}
         onPostCreated={fetchPosts}
       />
+
+      <Dialog open={phoneOpen} onOpenChange={setPhoneOpen}>
+        <DialogContent className="max-w-full h-full p-0 m-0">
+          <DialogTitle className="sr-only">Meu Celular</DialogTitle>
+          <iframe
+            src="https://virtual-life-sim-00-10.vercel.app/"
+            className="w-full h-full border-0"
+            title="Meu Celular"
+            loading="lazy"
+          />
+        </DialogContent>
+      </Dialog>
       </div>
     </MobileLayout>
   );
