@@ -314,16 +314,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await supabase.auth.signOut();
     }
     
+    // Verifica se deve manter os dados salvos para "lembrar de mim"
+    const shouldRememberLogin = localStorage.getItem('magic-talk-remember-login') === 'true';
+    const savedUserData = localStorage.getItem('magic-talk-user');
+    
     setUser(null);
     setSupabaseUser(null);
     setSession(null);
     setIsAdmin(false);
     
-    // Limpa dados de sessão, mantém preferências "lembrar de mim"
-    localStorage.removeItem('magic-talk-user');
+    // Limpa dados de sessão
     localStorage.removeItem('magic-talk-admin');
-    localStorage.removeItem('magic-talk-remember-login');
-    // Mantemos 'magic-talk-saved-username' e 'magic-talk-remember-me' para facilitar o próximo login
+    
+    // Se "lembrar de mim" não estiver ativo, remove todos os dados
+    if (!shouldRememberLogin) {
+      localStorage.removeItem('magic-talk-user');
+      localStorage.removeItem('magic-talk-remember-login');
+    }
+    // Se estiver ativo, mantém os dados para o próximo login
     
     toast({
       title: "Logout realizado",

@@ -92,46 +92,57 @@ const Login = () => {
             // Mostra a conta salva
             <div className="space-y-6">
               <div className="text-center space-y-4">
-                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-primary to-accent mx-auto">
-                  {savedUser.avatar_url ? (
-                    <img 
-                      src={savedUser.avatar_url} 
-                      alt={savedUser.display_name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-white font-bold text-lg">
-                      {savedUser.display_name?.charAt(0).toUpperCase() || savedUser.username?.charAt(0).toUpperCase()}
-                    </span>
-                  )}
+                <div className="relative mx-auto">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent p-1 shadow-xl">
+                    <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                      {savedUser.avatar_url ? (
+                        <img 
+                          src={savedUser.avatar_url} 
+                          alt={savedUser.display_name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-foreground font-bold text-xl">
+                          {savedUser.display_name?.charAt(0).toUpperCase() || savedUser.username?.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-background flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">{savedUser.display_name}</h3>
-                  <p className="text-sm text-muted-foreground">@{stripUserDigits(savedUser.username)}</p>
+                  <h3 className="font-bold text-xl text-foreground">{savedUser.display_name}</h3>
+                  <p className="text-sm text-muted-foreground font-medium">@{stripUserDigits(savedUser.username)}</p>
                 </div>
               </div>
               
               <Button
                 onClick={handleSavedAccountLogin}
-                className="w-full magic-button"
+                className="w-full relative overflow-hidden group bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white border-0 py-3 rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
                 disabled={loading}
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Entrando...</span>
+                  </div>
                 ) : (
-                  <>
-                    Entrar
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
+                  <div className="flex items-center justify-center space-x-2">
+                    <span className="font-semibold">Continuar como {savedUser.display_name}</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
+                  </div>
                 )}
               </Button>
               
               <div className="text-center">
                 <button
                   onClick={handleEnterAnotherAccount}
-                  className="text-sm text-primary font-medium hover:underline"
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium px-4 py-2 rounded-lg hover:bg-muted/50"
                 >
-                  Entrar em outra conta
+                  Usar outra conta
                 </button>
               </div>
               
