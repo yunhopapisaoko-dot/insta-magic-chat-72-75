@@ -106,6 +106,41 @@ const Admin = () => {
     }
   };
 
+  const deleteAllUsers = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+      if (error) {
+        toast({
+          title: "Erro ao deletar usuários",
+          description: "Tente novamente",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Todos os usuários deletados",
+        description: "O banco de dados foi limpo completamente",
+      });
+
+      // Reload users list
+      loadUsers();
+    } catch (error) {
+      toast({
+        title: "Erro ao deletar usuários",
+        description: "Tente novamente",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -232,10 +267,46 @@ const Admin = () => {
               <span>Usuários Cadastrados</span>
             </CardTitle>
             <CardDescription>
-              Gerencie todos os usuários do Magic Talk
+              Gerencie todos os usuários da VilaAurora
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Deletar Todos os Usuários
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center space-x-2">
+                      <AlertTriangle className="w-5 h-5 text-destructive" />
+                      <span>Deletar TODOS os usuários?</span>
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação irá <strong>DELETAR PERMANENTEMENTE</strong> todos os {users.length} usuários cadastrados. 
+                      Esta ação não pode ser desfeita!
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={deleteAllUsers}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      SIM, DELETAR TODOS
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+
             {loadingUsers ? (
               <div className="flex justify-center py-8">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

@@ -73,10 +73,10 @@ const Login = () => {
           <MessageCircle className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Magic Talk
+          VilaAurora
         </h1>
         <p className="text-muted-foreground mt-2">
-          Entre na conversa mágica
+          Entre no reino medieval
         </p>
       </div>
 

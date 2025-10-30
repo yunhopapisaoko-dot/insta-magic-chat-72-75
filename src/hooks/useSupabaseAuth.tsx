@@ -217,7 +217,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       
       toast({
         title: "Conta criada",
-        description: `Bem-vindo ao Magic Talk, ${data.display_name}! Seu usuário é: ${fullUsername}`,
+        description: `Bem-vindo à VilaAurora, ${data.display_name}! Seu usuário é: ${fullUsername}`,
       });
       
       return true;

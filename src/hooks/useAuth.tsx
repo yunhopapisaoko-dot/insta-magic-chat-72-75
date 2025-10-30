@@ -294,7 +294,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       toast({
         title: "Conta criada",
-        description: `Bem-vindo ao Magic Talk, ${data.display_name}!`,
+        description: `Bem-vindo à VilaAurora, ${data.display_name}!`,
       });
       
       return true;

@@ -342,7 +342,7 @@ const Feed = () => {
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Magic Talk
+                VilaAurora
               </h1>
             </div>
             
@@ -601,7 +601,7 @@ const Feed = () => {
               onClick={() => setPhoneOpen(false)}
               className="magic-button"
             >
-              Voltar ao Magic Talk
+              Voltar à VilaAurora
             </Button>
           </div>
           <iframe

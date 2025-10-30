@@ -39,10 +39,10 @@ const Register = () => {
           <MessageCircle className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Magic Talk
+          VilaAurora
         </h1>
         <p className="text-muted-foreground mt-2">
-          Crie sua conta mágica
+          Crie sua conta no reino
         </p>
       </div>
 
@@ -50,7 +50,7 @@ const Register = () => {
         <CardHeader className="text-center pb-6">
           <CardTitle className="text-xl">Criar Conta</CardTitle>
           <CardDescription>
-            Junte-se à comunidade Magic Talk
+            Junte-se à comunidade VilaAurora
           </CardDescription>
         </CardHeader>
         <CardContent>

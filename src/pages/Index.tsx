@@ -25,7 +25,7 @@ const Index = () => {
           
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              Magic Talk
+              VilaAurora
             </span>
           </h1>
           
@@ -94,7 +94,7 @@ const Index = () => {
             Pronto para a magia?
           </h2>
           <p className="text-muted-foreground mb-6">
-            Junte-se à comunidade Magic Talk e comece a compartilhar seus momentos especiais
+            Junte-se à comunidade VilaAurora e comece a compartilhar seus momentos especiais
           </p>
           <Button
             onClick={() => navigate('/register')}

@@ -8,48 +8,49 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Halloween Medieval Theme - Dark stone castle ambiance */
+    --background: 240 10% 8%;
+    --foreground: 30 20% 90%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 15% 12%;
+    --card-foreground: 30 20% 90%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 15% 12%;
+    --popover-foreground: 30 20% 90%;
 
-    /* Instagram-inspired gradient colors */
-    --primary: 262 100% 65%;
-    --primary-foreground: 210 40% 98%;
+    /* Halloween purple & orange theme */
+    --primary: 270 80% 45%;
+    --primary-foreground: 30 20% 95%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 20% 20%;
+    --secondary-foreground: 30 20% 90%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 240 15% 18%;
+    --muted-foreground: 30 15% 60%;
 
-    --accent: 320 100% 70%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 25 95% 55%;
+    --accent-foreground: 240 10% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 30 20% 95%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 240 15% 20%;
+    --input: 240 15% 18%;
+    --ring: 270 80% 60%;
 
     --radius: 0.75rem;
 
-  /* Magic gradients */
-  --gradient-magic: linear-gradient(135deg, hsl(262 100% 65%), hsl(320 100% 70%));
-  --gradient-story: linear-gradient(45deg, hsl(262 100% 65%), hsl(320 100% 70%), hsl(45 100% 60%));
-  --gradient-story-new: linear-gradient(45deg, hsl(0 100% 60%), hsl(45 100% 60%), hsl(320 100% 70%));
-  --gradient-story-viewed: linear-gradient(45deg, hsl(220 10% 60%), hsl(220 10% 50%));
+  /* Halloween Medieval gradients */
+  --gradient-magic: linear-gradient(135deg, hsl(270 80% 45%), hsl(25 95% 55%));
+  --gradient-story: linear-gradient(45deg, hsl(270 80% 45%), hsl(280 70% 50%), hsl(25 95% 55%));
+  --gradient-story-new: linear-gradient(45deg, hsl(15 100% 50%), hsl(25 95% 55%), hsl(270 80% 45%));
+  --gradient-story-viewed: linear-gradient(45deg, hsl(240 10% 40%), hsl(240 10% 30%));
 
-  /* Story indicator colors */
-  --story-new-indicator: 0 100% 60%;
-  --story-new-glow: 0 100% 60% / 0.4;
-  --story-count-bg: 262 100% 65%;
-  --story-count-text: 0 0% 100%;
+  /* Story indicator colors - spooky orange */
+  --story-new-indicator: 25 95% 55%;
+  --story-new-glow: 25 95% 55% / 0.5;
+  --story-count-bg: 270 80% 45%;
+  --story-count-text: 30 20% 95%;
 
   /* Animation and transition variables */
   --animation-duration-fast: 0.2s;
@@ -58,10 +59,10 @@ All colors MUST be HSL.
   --animation-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --animation-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-  /* Story creation specific colors */
-  --story-upload-bg: 0 0% 100% / 0.1;
-  --story-upload-border: 0 0% 100% / 0.3;
-  --story-upload-hover: 0 0% 100% / 0.5;
+  /* Story creation specific colors - glowing effects */
+  --story-upload-bg: 25 95% 55% / 0.15;
+  --story-upload-border: 25 95% 55% / 0.4;
+  --story-upload-hover: 25 95% 55% / 0.6;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -74,33 +75,34 @@ All colors MUST be HSL.
   }
 
   .light {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light mode - autumn/harvest theme */
+    --background: 35 50% 95%;
+    --foreground: 240 10% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 35 40% 98%;
+    --card-foreground: 240 10% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 35 40% 98%;
+    --popover-foreground: 240 10% 15%;
 
-    --primary: 262 100% 65%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 270 70% 50%;
+    --primary-foreground: 30 20% 95%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 35 30% 85%;
+    --secondary-foreground: 240 10% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 35 30% 90%;
+    --muted-foreground: 240 10% 45%;
 
-    --accent: 320 100% 70%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 25 90% 55%;
+    --accent-foreground: 240 10% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 30 20% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 35 30% 80%;
+    --input: 35 30% 85%;
+    --ring: 270 70% 50%;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
