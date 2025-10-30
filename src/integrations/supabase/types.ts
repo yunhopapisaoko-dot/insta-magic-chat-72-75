@@ -599,10 +599,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_expired_stories: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_stories: { Args: never; Returns: undefined }
       create_notification: {
         Args: {
           p_actor_id?: string
@@ -615,10 +612,7 @@ export type Database = {
         }
         Returns: string
       }
-      get_current_user_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_id: { Args: never; Returns: string }
       is_conversation_participant: {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
