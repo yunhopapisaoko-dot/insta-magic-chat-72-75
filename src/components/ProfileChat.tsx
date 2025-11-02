@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Smile, X, ArrowLeft, Settings, UserPlus, Keyboard } from 'lucide-react';
+import { Send, Smile, X, ArrowLeft, Settings, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useRealtimeConversations } from '@/hooks/useRealtimeConversations';
@@ -20,7 +20,6 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { stripUserDigits } from '@/lib/utils';
-import VirtualKeyboard from '@/components/VirtualKeyboard';
 
 interface ProfileChatProps {
   otherUser: {
@@ -41,7 +40,6 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   const { cacheConversation } = useProfileNavigation();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [participants, setParticipants] = useState<any[]>([]);
@@ -50,24 +48,6 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleVirtualKeyPress = (key: string) => {
-    const newValue = newMessage + key;
-    setNewMessage(newValue);
-    handleMessageChange(newValue);
-  };
-
-  const handleVirtualBackspace = () => {
-    const newValue = newMessage.slice(0, -1);
-    setNewMessage(newValue);
-    handleMessageChange(newValue);
-  };
-
-  const handleVirtualSpace = () => {
-    const newValue = newMessage + ' ';
-    setNewMessage(newValue);
-    handleMessageChange(newValue);
-  };
 
   const { 
     messages, 
@@ -549,55 +529,38 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
 
         {/* Input */}
         <div className="border-t border-border p-4 bg-card">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <MediaUpload
-                onMediaSelected={handleMediaSelected}
-                disabled={sending || !conversationId}
-              />
-              
-              <Input
-                value={newMessage}
-                readOnly
-                onClick={() => setShowVirtualKeyboard(true)}
-                placeholder="Digite uma mensagem..."
-                className="flex-1 rounded-full border-0 bg-muted/50 cursor-pointer"
-                disabled={sending || !conversationId}
-              />
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-9 h-9 p-0"
-                onClick={() => setShowVirtualKeyboard(!showVirtualKeyboard)}
-              >
-                <Keyboard className="w-4 h-4" />
-              </Button>
-              
-              <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSendMessage();
-                }}
-                disabled={!newMessage.trim() || sending || !conversationId}
-                size="sm"
-                className="rounded-full w-9 h-9 p-0"
-                type="button"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Virtual Keyboard */}
-            {showVirtualKeyboard && (
-              <VirtualKeyboard
-                onKeyPress={handleVirtualKeyPress}
-                onBackspace={handleVirtualBackspace}
-                onSpace={handleVirtualSpace}
-                onClose={() => setShowVirtualKeyboard(false)}
-              />
-            )}
+          <div className="flex items-center space-x-2">
+            <MediaUpload
+              onMediaSelected={handleMediaSelected}
+              disabled={sending || !conversationId}
+            />
+            
+            <Input
+              value={newMessage}
+              onChange={(e) => handleMessageChange(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Digite uma mensagem..."
+              className="flex-1 rounded-full border-0 bg-muted/50"
+              disabled={sending || !conversationId}
+            />
+            
+            <Button variant="ghost" size="sm" className="w-9 h-9 p-0">
+              <Smile className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSendMessage();
+              }}
+              disabled={!newMessage.trim() || sending || !conversationId}
+              size="sm"
+              className="rounded-full w-9 h-9 p-0"
+              type="button"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </SheetContent>

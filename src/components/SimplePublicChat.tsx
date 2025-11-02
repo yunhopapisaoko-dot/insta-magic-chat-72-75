@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSimplePublicChat } from '@/hooks/useSimplePublicChat';
 import MobileLayout from '@/components/MobileLayout';
 import VirtualKeyboard from '@/components/VirtualKeyboard';
-import { cn } from '@/lib/utils';
 
 interface SimplePublicChatProps {
   onBack: () => void;
@@ -93,10 +92,7 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
         </Card>
 
         {/* Messages - Fixed height without scroll */}
-        <div className={cn(
-          "flex-1 p-4 space-y-3 max-h-[calc(100vh-200px)] overflow-hidden transition-all duration-300",
-          showVirtualKeyboard && "max-h-[40vh]"
-        )}>
+        <div className="flex-1 p-4 space-y-3 max-h-[calc(100vh-200px)] overflow-hidden">
           {loading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
