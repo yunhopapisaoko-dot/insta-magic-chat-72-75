@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette, MessageCircle, Reply, Edit, X } from 'lucide-react';
+import { ArrowLeft, Send, Image, Smile, Play, Pause, VolumeX, Wifi, WifiOff, Settings, UserPlus, LogIn, Palette, MessageCircle, Reply, Edit, X, Keyboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
@@ -27,6 +27,7 @@ import { WallpaperSettings } from '@/components/WallpaperSettings';
 import { useMessageSenders } from '@/hooks/useMessageSenders';
 import { useNewMessageIndicator } from '@/hooks/useNewMessageIndicator';
 import { stripUserDigits } from '@/lib/utils';
+import VirtualKeyboard from '@/components/VirtualKeyboard';
 
 interface ChatProps {
   conversationId: string;
@@ -108,8 +109,27 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
     type: 'color' | 'image';
     value: string;
   } | null>(null);
+  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleVirtualKeyPress = (key: string) => {
+    const newValue = newMessage + key;
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
+
+  const handleVirtualBackspace = () => {
+    const newValue = newMessage.slice(0, -1);
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
+
+  const handleVirtualSpace = () => {
+    const newValue = newMessage + ' ';
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
 
   useEffect(() => {
     if (conversationId && user) {
@@ -1063,40 +1083,57 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                  </div>
                )}
               
-              {/* Message Input */}
-              <div className="flex items-center space-x-2">
-                <MediaUpload
-                  onMediaSelected={handleMediaSelected}
-                  disabled={sending}
-                />
-                
-                <Input
-                  value={newMessage}
-                  onChange={(e) => handleMessageChange(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={editingMessage ? "Editar mensagem..." : "Digite uma mensagem..."}
-                  className="flex-1 rounded-full border-0 bg-muted/50"
-                  disabled={sending}
-                />
-                
-                <Button variant="ghost" size="sm" className="w-9 h-9 p-0">
-                  <Smile className="w-4 h-4" />
-                </Button>
-                
-                <Button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    editingMessage ? handleSaveEdit() : handleSendMessage();
-                  }}
-                  disabled={!newMessage.trim() || sending}
-                  size="sm"
-                  className="rounded-full w-9 h-9 p-0"
-                  type="button"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
+               {/* Message Input */}
+               <div className="flex items-center space-x-2">
+                 <MediaUpload
+                   onMediaSelected={handleMediaSelected}
+                   disabled={sending}
+                 />
+                 
+                 <Input
+                   value={newMessage}
+                   readOnly
+                   onClick={() => setShowVirtualKeyboard(true)}
+                   placeholder={editingMessage ? "Editar mensagem..." : "Digite uma mensagem..."}
+                   className="flex-1 rounded-full border-0 bg-muted/50 cursor-pointer"
+                   disabled={sending}
+                 />
+                 
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   className="w-9 h-9 p-0"
+                   onClick={() => setShowVirtualKeyboard(!showVirtualKeyboard)}
+                 >
+                   <Keyboard className="w-4 h-4" />
+                 </Button>
+                 
+                 <Button
+                   onClick={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     editingMessage ? handleSaveEdit() : handleSendMessage();
+                   }}
+                   disabled={!newMessage.trim() || sending}
+                   size="sm"
+                   className="rounded-full w-9 h-9 p-0"
+                   type="button"
+                 >
+                   <Send className="w-4 h-4" />
+                 </Button>
+               </div>
+
+               {/* Virtual Keyboard */}
+               {showVirtualKeyboard && (
+                 <div className="mt-2">
+                   <VirtualKeyboard
+                     onKeyPress={handleVirtualKeyPress}
+                     onBackspace={handleVirtualBackspace}
+                     onSpace={handleVirtualSpace}
+                     onClose={() => setShowVirtualKeyboard(false)}
+                   />
+                 </div>
+               )}
             </CardContent>
           </Card>
         )}

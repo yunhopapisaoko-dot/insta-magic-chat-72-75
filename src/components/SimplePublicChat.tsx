@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Users } from 'lucide-react';
+import { ArrowLeft, Send, Users, Keyboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSimplePublicChat } from '@/hooks/useSimplePublicChat';
 import MobileLayout from '@/components/MobileLayout';
+import VirtualKeyboard from '@/components/VirtualKeyboard';
 
 interface SimplePublicChatProps {
   onBack: () => void;
@@ -22,6 +23,19 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
     userProfile
   } = useSimplePublicChat();
   const [newMessage, setNewMessage] = useState('');
+  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
+
+  const handleVirtualKeyPress = (key: string) => {
+    setNewMessage(prev => prev + key);
+  };
+
+  const handleVirtualBackspace = () => {
+    setNewMessage(prev => prev.slice(0, -1));
+  };
+
+  const handleVirtualSpace = () => {
+    setNewMessage(prev => prev + ' ');
+  };
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending || !user || !userProfile) return;
@@ -150,16 +164,25 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
 
         {/* Input - Fixed at bottom */}
         <Card className="card-shadow border-0 rounded-none">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-2">
             <div className="flex items-center space-x-2">
               <Input
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
+                readOnly
+                onClick={() => setShowVirtualKeyboard(true)}
                 placeholder="Digite uma mensagem na pousada..."
-                className="flex-1 rounded-full border-0 bg-muted/50"
+                className="flex-1 rounded-full border-0 bg-muted/50 cursor-pointer"
                 disabled={sending}
               />
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-9 h-9 p-0"
+                onClick={() => setShowVirtualKeyboard(!showVirtualKeyboard)}
+              >
+                <Keyboard className="w-4 h-4" />
+              </Button>
               
               <Button
                 onClick={handleSendMessage}
@@ -170,6 +193,16 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
+
+            {/* Virtual Keyboard */}
+            {showVirtualKeyboard && (
+              <VirtualKeyboard
+                onKeyPress={handleVirtualKeyPress}
+                onBackspace={handleVirtualBackspace}
+                onSpace={handleVirtualSpace}
+                onClose={() => setShowVirtualKeyboard(false)}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
