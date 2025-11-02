@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Users, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, Users, ChevronDown, Loader2, Keyboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useInfinitePublicChat } from '@/hooks/useInfinitePublicChat';
 import MobileLayout from '@/components/MobileLayout';
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import { cn, stripUserDigits } from '@/lib/utils';
+import VirtualKeyboard from '@/components/VirtualKeyboard';
 
 interface InfinitePublicChatProps {
   onBack: () => void;
@@ -33,7 +34,26 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
   } = useInfinitePublicChat({ pageSize: 25, enableAutoScroll: true });
   
   const [newMessage, setNewMessage] = useState('');
+  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleVirtualKeyPress = (key: string) => {
+    const newValue = newMessage + key;
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
+
+  const handleVirtualBackspace = () => {
+    const newValue = newMessage.slice(0, -1);
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
+
+  const handleVirtualSpace = () => {
+    const newValue = newMessage + ' ';
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || sending || !user || !userProfile) return;
@@ -209,7 +229,10 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
         </Card>
 
         {/* Messages */}
-        <div className="flex-1 relative">
+        <div className={cn(
+          "flex-1 relative transition-all duration-300",
+          showVirtualKeyboard && "max-h-[40vh]"
+        )}>
             <div
             ref={scrollElementRef}
             onScroll={handleScroll}
@@ -276,17 +299,26 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
 
         {/* Input */}
         <Card className="card-shadow border-0 rounded-none">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-2">
             <div className="flex items-center space-x-2">
               <Input
                 value={newMessage}
-                onChange={(e) => handleMessageChange(e.target.value)}
-                onKeyPress={handleKeyPress}
+                readOnly
+                onClick={() => setShowVirtualKeyboard(true)}
                 placeholder="Digite uma mensagem..."
-                className="flex-1 rounded-full border-0 bg-muted/50 transition-all duration-200 focus:bg-muted/70"
+                className="flex-1 rounded-full border-0 bg-muted/50 transition-all duration-200 cursor-pointer"
                 disabled={sending}
                 maxLength={1000}
               />
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-9 h-9 p-0"
+                onClick={() => setShowVirtualKeyboard(!showVirtualKeyboard)}
+              >
+                <Keyboard className="w-4 h-4" />
+              </Button>
               
               <Button
                 onClick={(e) => {
@@ -311,6 +343,16 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
               <p className="text-xs text-muted-foreground mt-2 text-right">
                 {newMessage.length}/1000 caracteres
               </p>
+            )}
+
+            {/* Virtual Keyboard */}
+            {showVirtualKeyboard && (
+              <VirtualKeyboard
+                onKeyPress={handleVirtualKeyPress}
+                onBackspace={handleVirtualBackspace}
+                onSpace={handleVirtualSpace}
+                onClose={() => setShowVirtualKeyboard(false)}
+              />
             )}
           </CardContent>
         </Card>

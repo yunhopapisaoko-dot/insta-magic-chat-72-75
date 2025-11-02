@@ -3,13 +3,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, Users } from 'lucide-react';
+import { ArrowLeft, Send, Users, Keyboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimePublicChat } from '@/hooks/useRealtimePublicChat';
 import { toast } from '@/hooks/use-toast';
 import MobileLayout from '@/components/MobileLayout';
 import TypingIndicator from '@/components/ui/TypingIndicator';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
+import VirtualKeyboard from '@/components/VirtualKeyboard';
+import { cn } from '@/lib/utils';
 
 interface PublicChatProps {
   onBack: () => void;
@@ -31,11 +33,30 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     reconnectChannels
   } = useRealtimePublicChat();
   const [newMessage, setNewMessage] = useState('');
+  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleVirtualKeyPress = (key: string) => {
+    const newValue = newMessage + key;
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
+
+  const handleVirtualBackspace = () => {
+    const newValue = newMessage.slice(0, -1);
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
+
+  const handleVirtualSpace = () => {
+    const newValue = newMessage + ' ';
+    setNewMessage(newValue);
+    handleMessageChange(newValue);
+  };
 
   // Check if user is near bottom of chat
   const checkIfNearBottom = useCallback(() => {
@@ -201,7 +222,10 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
         {/* Messages */}
         <div 
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-4"
+          className={cn(
+            "flex-1 overflow-y-auto p-4 space-y-4 transition-all duration-300",
+            showVirtualKeyboard && "max-h-[40vh]"
+          )}
           onScroll={handleScroll}
         >
           {loading ? (
@@ -286,16 +310,25 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
 
         {/* Input */}
         <Card className="card-shadow border-0 rounded-none">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-2">
             <div className="flex items-center space-x-2">
               <Input
                 value={newMessage}
-                onChange={(e) => handleMessageChange(e.target.value)}
-                onKeyPress={handleKeyPress}
+                readOnly
+                onClick={() => setShowVirtualKeyboard(true)}
                 placeholder="Digite uma mensagem na pousada..."
-                className="flex-1 rounded-full border-0 bg-muted/50"
+                className="flex-1 rounded-full border-0 bg-muted/50 cursor-pointer"
                 disabled={sending}
               />
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-9 h-9 p-0"
+                onClick={() => setShowVirtualKeyboard(!showVirtualKeyboard)}
+              >
+                <Keyboard className="w-4 h-4" />
+              </Button>
               
               <Button
                 onClick={(e) => {
@@ -311,6 +344,16 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
+
+            {/* Virtual Keyboard */}
+            {showVirtualKeyboard && (
+              <VirtualKeyboard
+                onKeyPress={handleVirtualKeyPress}
+                onBackspace={handleVirtualBackspace}
+                onSpace={handleVirtualSpace}
+                onClose={() => setShowVirtualKeyboard(false)}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
