@@ -26,7 +26,7 @@ import { useLongPress } from '@/hooks/useLongPress';
 import { WallpaperSettings } from '@/components/WallpaperSettings';
 import { useMessageSenders } from '@/hooks/useMessageSenders';
 import { useNewMessageIndicator } from '@/hooks/useNewMessageIndicator';
-import { stripUserDigits } from '@/lib/utils';
+import { stripUserDigits, cn } from '@/lib/utils';
 import VirtualKeyboard from '@/components/VirtualKeyboard';
 
 interface ChatProps {
@@ -870,7 +870,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
          {/* Messages - with bottom padding to account for fixed input */}
          <div 
-           className="flex-1 overflow-y-auto p-4 pb-32 relative" 
+           className={cn(
+             "flex-1 overflow-y-auto p-4 pb-32 relative transition-all duration-300",
+             showVirtualKeyboard && "max-h-[40vh]"
+           )}
            style={{ 
              scrollBehavior: 'auto',
              backgroundColor: currentWallpaper?.type === 'color' ? currentWallpaper.value : undefined
