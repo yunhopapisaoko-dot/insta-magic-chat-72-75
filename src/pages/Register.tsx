@@ -5,15 +5,46 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MessageCircle, ArrowLeft, UserPlus } from 'lucide-react';
+import { MessageCircle, ArrowLeft, UserPlus, Keyboard } from 'lucide-react';
+import VirtualKeyboard from '@/components/VirtualKeyboard';
+import { cn } from '@/lib/utils';
 
 const Register = () => {
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true); // Padrão marcado para novo usuário
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
+  const [activeField, setActiveField] = useState<'username' | 'displayName' | null>(null);
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  const handleVirtualKeyPress = (key: string) => {
+    if (activeField === 'username') {
+      setUsername(prev => prev + key.toLowerCase());
+    } else if (activeField === 'displayName') {
+      setDisplayName(prev => prev + key);
+    }
+  };
+
+  const handleVirtualBackspace = () => {
+    if (activeField === 'username') {
+      setUsername(prev => prev.slice(0, -1));
+    } else if (activeField === 'displayName') {
+      setDisplayName(prev => prev.slice(0, -1));
+    }
+  };
+
+  const handleVirtualSpace = () => {
+    if (activeField === 'displayName') {
+      setDisplayName(prev => prev + ' ');
+    }
+  };
+
+  const handleFieldClick = (field: 'username' | 'displayName') => {
+    setActiveField(field);
+    setShowVirtualKeyboard(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +64,10 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background mobile-container py-8 flex flex-col justify-center">
+    <div className={cn(
+      "min-h-screen bg-background mobile-container py-8 flex flex-col justify-center transition-all duration-300",
+      showVirtualKeyboard && "justify-start pt-4"
+    )}>
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full magic-gradient mb-4">
           <MessageCircle className="w-8 h-8 text-white" />
@@ -56,30 +90,60 @@ const Register = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <Input
-                type="text"
-                placeholder="Ex: ana1234"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                className="mobile-input"
-                maxLength={20}
-                required
-              />
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="text"
+                  placeholder="Ex: ana1234"
+                  value={username}
+                  readOnly
+                  onClick={() => handleFieldClick('username')}
+                  className="mobile-input flex-1 cursor-pointer"
+                  maxLength={20}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-9 h-9 p-0"
+                  onClick={() => {
+                    setActiveField('username');
+                    setShowVirtualKeyboard(!showVirtualKeyboard);
+                  }}
+                >
+                  <Keyboard className="w-4 h-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-2">
                 Nome de usuário: letras + exatamente 4 números
               </p>
             </div>
             
             <div>
-              <Input
-                type="text"
-                placeholder="Ex: Ana"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="mobile-input"
-                maxLength={50}
-                required
-              />
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="text"
+                  placeholder="Ex: Ana"
+                  value={displayName}
+                  readOnly
+                  onClick={() => handleFieldClick('displayName')}
+                  className="mobile-input flex-1 cursor-pointer"
+                  maxLength={50}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-9 h-9 p-0"
+                  onClick={() => {
+                    setActiveField('displayName');
+                    setShowVirtualKeyboard(!showVirtualKeyboard);
+                  }}
+                >
+                  <Keyboard className="w-4 h-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-2">
                 Nome que aparecerá para outros usuários
               </p>
@@ -138,6 +202,18 @@ const Register = () => {
         <ArrowLeft className="w-4 h-4 mr-2" />
         Voltar
       </Button>
+
+      {/* Virtual Keyboard */}
+      {showVirtualKeyboard && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background">
+          <VirtualKeyboard
+            onKeyPress={handleVirtualKeyPress}
+            onBackspace={handleVirtualBackspace}
+            onSpace={handleVirtualSpace}
+            onClose={() => setShowVirtualKeyboard(false)}
+          />
+        </div>
+      )}
     </div>
   );
 };

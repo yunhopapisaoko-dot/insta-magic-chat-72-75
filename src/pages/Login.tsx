@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MessageCircle, ArrowRight } from 'lucide-react';
+import { MessageCircle, ArrowRight, Keyboard } from 'lucide-react';
+import VirtualKeyboard from '@/components/VirtualKeyboard';
+import { cn } from '@/lib/utils';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -13,8 +15,31 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [showSavedAccount, setShowSavedAccount] = useState(false);
   const [savedUser, setSavedUser] = useState<any>(null);
+  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
+  const [activeField, setActiveField] = useState<'username' | null>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handleVirtualKeyPress = (key: string) => {
+    if (activeField === 'username') {
+      setUsername(prev => prev + key.toLowerCase());
+    }
+  };
+
+  const handleVirtualBackspace = () => {
+    if (activeField === 'username') {
+      setUsername(prev => prev.slice(0, -1));
+    }
+  };
+
+  const handleVirtualSpace = () => {
+    // Username não permite espaços
+  };
+
+  const handleFieldClick = (field: 'username') => {
+    setActiveField(field);
+    setShowVirtualKeyboard(true);
+  };
 
   // Carrega o último usuário salvo ao inicializar
   useEffect(() => {
@@ -67,7 +92,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background mobile-container py-8 flex flex-col justify-center">
+    <div className={cn(
+      "min-h-screen bg-background mobile-container py-8 flex flex-col justify-center transition-all duration-300",
+      showVirtualKeyboard && "justify-start pt-4"
+    )}>
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full magic-gradient mb-4">
           <MessageCircle className="w-8 h-8 text-white" />
@@ -157,17 +185,30 @@ const Login = () => {
             <>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Input
-                    type="text"
-                    placeholder="Ex: ana1234"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                    showClearButton={true}
-                    onClear={() => setUsername('')}
-                    className="mobile-input"
-                    maxLength={20}
-                    required
-                  />
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="text"
+                      placeholder="Ex: ana1234"
+                      value={username}
+                      readOnly
+                      onClick={() => handleFieldClick('username')}
+                      className="mobile-input flex-1 cursor-pointer"
+                      maxLength={20}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-9 h-9 p-0"
+                      onClick={() => {
+                        setActiveField('username');
+                        setShowVirtualKeyboard(!showVirtualKeyboard);
+                      }}
+                    >
+                      <Keyboard className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     Formato: letras + exatamente 4 números
                   </p>
@@ -228,6 +269,18 @@ const Login = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Virtual Keyboard */}
+      {showVirtualKeyboard && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background">
+          <VirtualKeyboard
+            onKeyPress={handleVirtualKeyPress}
+            onBackspace={handleVirtualBackspace}
+            onSpace={handleVirtualSpace}
+            onClose={() => setShowVirtualKeyboard(false)}
+          />
+        </div>
+      )}
     </div>
   );
 };
