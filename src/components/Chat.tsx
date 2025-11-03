@@ -800,7 +800,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   return (
     <div className={cn(
       "flex flex-col h-screen relative bg-background transition-transform duration-300 ease-in-out",
-      showVirtualKeyboard && "-translate-y-[340px]"
+      showVirtualKeyboard && "-translate-y-[280px]"
     )}>
         {/* Fixed Header */}
         <Card className="card-shadow border-0 rounded-none sticky top-0 z-10 bg-background">

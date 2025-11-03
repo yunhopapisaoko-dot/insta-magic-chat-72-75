@@ -186,7 +186,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
     <MobileLayout>
       <div className={cn(
         "flex flex-col h-screen transition-transform duration-300 ease-in-out",
-        showVirtualKeyboard && "-translate-y-[340px]"
+        showVirtualKeyboard && "-translate-y-[280px]"
       )}>
         {/* Header */}
         <Card className="card-shadow border-0 rounded-none">

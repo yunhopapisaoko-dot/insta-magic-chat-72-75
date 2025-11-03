@@ -360,7 +360,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
         side="bottom" 
         className={cn(
           "h-[90vh] flex flex-col p-0 bg-background border-t border-border rounded-t-2xl transition-transform duration-300 ease-in-out",
-          showVirtualKeyboard && "-translate-y-[340px]"
+          showVirtualKeyboard && "-translate-y-[280px]"
         )}
       >
         {/* Header */}

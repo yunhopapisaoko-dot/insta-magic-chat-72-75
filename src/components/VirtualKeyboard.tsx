@@ -33,35 +33,34 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
   };
 
   return (
-    <div className="w-full bg-gradient-to-b from-background/98 to-background border-t border-border/50 shadow-2xl animate-slide-up">
-      {/* Preview Area */}
-      <div className="px-5 py-4 bg-muted/30 backdrop-blur-md border-b border-border/30">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Digitando</span>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full hover:bg-destructive/20 hover:text-destructive transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </Button>
+    <div className="w-full max-h-[280px] bg-card/98 border-t border-border shadow-2xl animate-slide-up overflow-hidden">
+      {/* Preview Area - Compacta */}
+      <div className="px-3 py-2 bg-muted/40 backdrop-blur-sm border-b border-border/30 flex items-center justify-between">
+        <div className="flex-1 min-w-0 mr-2">
+          <div className="text-xs truncate text-foreground">
+            {currentValue || <span className="text-muted-foreground/60">Digite...</span>}
+          </div>
         </div>
-        <div className="min-h-[56px] max-h-[90px] overflow-y-auto bg-background/60 rounded-xl px-4 py-3 text-base break-words border border-border/50 shadow-inner">
-          {currentValue || <span className="text-muted-foreground/50">Digite aqui...</span>}
-        </div>
+        <Button
+          onClick={onClose}
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 flex-shrink-0 rounded-full hover:bg-destructive/20 hover:text-destructive"
+        >
+          <X className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Keyboard */}
-      <div className="p-4 space-y-3">
+      {/* Keyboard - Compacto */}
+      <div className="p-2 space-y-1.5 pb-safe">
         {/* First Row */}
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-1 justify-center">
           {row1.map((key) => (
             <Button
               key={key}
               onClick={() => handleKeyPress(key)}
               variant="outline"
-              className="h-14 min-w-[34px] flex-1 text-xl font-semibold bg-card hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+              className="h-10 min-w-[28px] flex-1 max-w-[36px] text-base font-semibold bg-muted hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-md border-border/50"
             >
               {isUpperCase && !isSymbols ? key.toUpperCase() : key}
             </Button>
@@ -69,13 +68,13 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
         </div>
 
         {/* Second Row */}
-        <div className="flex gap-2 justify-center px-3">
+        <div className="flex gap-1 justify-center px-2">
           {row2.map((key) => (
             <Button
               key={key}
               onClick={() => handleKeyPress(key)}
               variant="outline"
-              className="h-14 min-w-[34px] flex-1 text-xl font-semibold bg-card hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+              className="h-10 min-w-[28px] flex-1 max-w-[36px] text-base font-semibold bg-muted hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-md border-border/50"
             >
               {isUpperCase && !isSymbols ? key.toUpperCase() : key}
             </Button>
@@ -83,11 +82,11 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
         </div>
 
         {/* Third Row */}
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-1 justify-center">
           <Button
             onClick={() => setIsUpperCase(!isUpperCase)}
             variant="outline"
-            className="h-14 px-5 text-2xl font-bold bg-card hover:bg-accent hover:text-accent-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+            className="h-10 px-3 text-lg font-bold bg-muted hover:bg-accent hover:text-accent-foreground active:scale-95 transition-all rounded-md border-border/50"
           >
             {isUpperCase ? '⇩' : '⇧'}
           </Button>
@@ -96,7 +95,7 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
               key={key}
               onClick={() => handleKeyPress(key)}
               variant="outline"
-              className="h-14 min-w-[34px] flex-1 text-xl font-semibold bg-card hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+              className="h-10 min-w-[28px] flex-1 max-w-[36px] text-base font-semibold bg-muted hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-md border-border/50"
             >
               {isUpperCase && !isSymbols ? key.toUpperCase() : key}
             </Button>
@@ -104,34 +103,41 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
           <Button
             onClick={onBackspace}
             variant="outline"
-            className="h-14 px-5 bg-card hover:bg-destructive hover:text-destructive-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+            className="h-10 px-3 bg-muted hover:bg-destructive hover:text-destructive-foreground active:scale-95 transition-all rounded-md border-border/50"
           >
-            <Delete className="w-6 h-6" />
+            <Delete className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Fourth Row */}
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-1 justify-center">
           <Button
             onClick={() => setIsSymbols(!isSymbols)}
             variant="outline"
-            className="h-14 px-6 text-base font-bold bg-card hover:bg-accent hover:text-accent-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+            className="h-10 px-4 text-xs font-bold bg-muted hover:bg-accent hover:text-accent-foreground active:scale-95 transition-all rounded-md border-border/50"
           >
             {isSymbols ? 'ABC' : '123'}
           </Button>
           <Button
             onClick={onSpace}
             variant="outline"
-            className="h-14 flex-1 text-sm font-semibold bg-card hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+            className="h-10 flex-1 text-xs font-medium bg-muted hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-md border-border/50"
           >
             espaço
           </Button>
           <Button
             onClick={() => handleKeyPress('.')}
             variant="outline"
-            className="h-14 px-6 text-2xl font-bold bg-card hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-xl shadow-md border-border/50"
+            className="h-10 px-4 text-xl font-bold bg-muted hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all rounded-md border-border/50"
           >
             .
+          </Button>
+          <Button
+            onClick={onClose}
+            variant="outline"
+            className="h-10 px-3 text-xs font-bold bg-muted hover:bg-accent hover:text-accent-foreground active:scale-95 transition-all rounded-md border-border/50"
+          >
+            ✓
           </Button>
         </div>
       </div>
