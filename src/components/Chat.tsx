@@ -798,7 +798,10 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
   }
 
   return (
-    <div className="flex flex-col h-screen relative bg-background">
+    <div className={cn(
+      "flex flex-col h-screen relative bg-background transition-transform duration-300 ease-in-out",
+      showVirtualKeyboard && "-translate-y-[340px]"
+    )}>
         {/* Fixed Header */}
         <Card className="card-shadow border-0 rounded-none sticky top-0 z-10 bg-background">
           <CardHeader className="py-4 px-6">
@@ -870,10 +873,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
          {/* Messages - with bottom padding to account for fixed input */}
          <div 
-           className={cn(
-             "flex-1 overflow-y-auto p-4 pb-32 relative transition-all duration-300",
-             showVirtualKeyboard && "pb-[350px]"
-           )}
+           className="flex-1 overflow-y-auto p-4 pb-32 relative"
            style={{ 
              scrollBehavior: 'auto',
              backgroundColor: currentWallpaper?.type === 'color' ? currentWallpaper.value : undefined

@@ -66,7 +66,10 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
 
   return (
     <MobileLayout>
-      <div className="flex flex-col h-screen">
+      <div className={cn(
+        "flex flex-col h-screen transition-transform duration-300 ease-in-out",
+        showVirtualKeyboard && "-translate-y-[340px]"
+      )}>
         {/* Header */}
         <Card className="card-shadow border-0 rounded-none">
           <CardHeader className="py-4 px-6">
@@ -93,10 +96,7 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
         </Card>
 
         {/* Messages */}
-        <div className={cn(
-          "flex-1 p-4 space-y-3 overflow-y-auto transition-all duration-300",
-          showVirtualKeyboard && "pb-[320px]"
-        )}>
+        <div className="flex-1 p-4 space-y-3 overflow-y-auto">
           {loading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (

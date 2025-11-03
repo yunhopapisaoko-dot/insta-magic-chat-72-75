@@ -184,7 +184,10 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
 
   return (
     <MobileLayout>
-      <div className="flex flex-col h-screen">
+      <div className={cn(
+        "flex flex-col h-screen transition-transform duration-300 ease-in-out",
+        showVirtualKeyboard && "-translate-y-[340px]"
+      )}>
         {/* Header */}
         <Card className="card-shadow border-0 rounded-none">
           <CardHeader className="py-4 px-6">
@@ -222,10 +225,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
         {/* Messages */}
         <div 
           ref={messagesContainerRef}
-          className={cn(
-            "flex-1 overflow-y-auto p-4 space-y-4 transition-all duration-300",
-            showVirtualKeyboard && "pb-[320px]"
-          )}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
           onScroll={handleScroll}
         >
           {loading ? (

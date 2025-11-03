@@ -65,7 +65,7 @@ const Register = () => {
 
   return (
     <div className={cn(
-      "min-h-screen bg-background mobile-container py-8 flex flex-col justify-center transition-all duration-300",
+      "min-h-screen bg-background mobile-container py-8 flex flex-col justify-center transition-all duration-300 ease-in-out",
       showVirtualKeyboard && "justify-start pt-4"
     )}>
       <div className="text-center mb-8">
