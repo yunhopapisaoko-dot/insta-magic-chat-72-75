@@ -1128,7 +1128,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
 
                  {/* Virtual Keyboard - Fixed at bottom */}
                  {showVirtualKeyboard && (
-                   <div className="fixed bottom-0 left-0 right-0 z-[60]">
+                   <div className="fixed bottom-0 left-0 right-0 z-[60] bg-background border-t border-border">
                      <VirtualKeyboard
                        onKeyPress={handleVirtualKeyPress}
                        onBackspace={handleVirtualBackspace}

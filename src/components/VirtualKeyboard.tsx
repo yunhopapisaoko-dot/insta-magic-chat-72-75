@@ -33,7 +33,7 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
   };
 
   return (
-    <div className="w-full bg-card/98 border-t border-border shadow-2xl animate-slide-up">
+    <div className="w-full bg-background border-t border-border shadow-2xl animate-slide-up">
       {/* Preview Area - Compacta */}
       <div className="px-3 py-2 bg-muted/40 backdrop-blur-sm border-b border-border/30 flex items-center justify-between">
         <div className="flex-1 min-w-0 mr-2">
