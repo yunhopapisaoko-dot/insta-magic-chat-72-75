@@ -872,7 +872,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
          <div 
            className={cn(
              "flex-1 overflow-y-auto p-4 pb-32 relative transition-all duration-300",
-             showVirtualKeyboard && "max-h-[40vh]"
+             showVirtualKeyboard && "pb-[350px]"
            )}
            style={{ 
              scrollBehavior: 'auto',
@@ -1126,17 +1126,17 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                  </Button>
                </div>
 
-               {/* Virtual Keyboard */}
-               {showVirtualKeyboard && (
-                 <div className="mt-2">
-                   <VirtualKeyboard
-                     onKeyPress={handleVirtualKeyPress}
-                     onBackspace={handleVirtualBackspace}
-                     onSpace={handleVirtualSpace}
-                     onClose={() => setShowVirtualKeyboard(false)}
-                   />
-                 </div>
-               )}
+                {/* Virtual Keyboard - Fixed at bottom */}
+                {showVirtualKeyboard && (
+                  <div className="fixed bottom-0 left-0 right-0 z-[60] bg-background border-t border-border">
+                    <VirtualKeyboard
+                      onKeyPress={handleVirtualKeyPress}
+                      onBackspace={handleVirtualBackspace}
+                      onSpace={handleVirtualSpace}
+                      onClose={() => setShowVirtualKeyboard(false)}
+                    />
+                  </div>
+                )}
             </CardContent>
           </Card>
         )}

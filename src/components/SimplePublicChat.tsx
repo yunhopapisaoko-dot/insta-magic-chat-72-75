@@ -92,10 +92,10 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
           </CardHeader>
         </Card>
 
-        {/* Messages - Fixed height without scroll */}
+        {/* Messages */}
         <div className={cn(
-          "flex-1 p-4 space-y-3 max-h-[calc(100vh-200px)] overflow-hidden transition-all duration-300",
-          showVirtualKeyboard && "max-h-[40vh]"
+          "flex-1 p-4 space-y-3 overflow-y-auto transition-all duration-300",
+          showVirtualKeyboard && "pb-[320px]"
         )}>
           {loading ? (
             <div className="space-y-3">
@@ -166,9 +166,9 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
           )}
         </div>
 
-        {/* Input - Fixed at bottom */}
+        {/* Input */}
         <Card className="card-shadow border-0 rounded-none">
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Input
                 value={newMessage}
@@ -197,18 +197,20 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-
-            {/* Virtual Keyboard */}
-            {showVirtualKeyboard && (
-              <VirtualKeyboard
-                onKeyPress={handleVirtualKeyPress}
-                onBackspace={handleVirtualBackspace}
-                onSpace={handleVirtualSpace}
-                onClose={() => setShowVirtualKeyboard(false)}
-              />
-            )}
           </CardContent>
         </Card>
+
+        {/* Virtual Keyboard - Fixed at bottom */}
+        {showVirtualKeyboard && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
+            <VirtualKeyboard
+              onKeyPress={handleVirtualKeyPress}
+              onBackspace={handleVirtualBackspace}
+              onSpace={handleVirtualSpace}
+              onClose={() => setShowVirtualKeyboard(false)}
+            />
+          </div>
+        )}
       </div>
     </MobileLayout>
   );

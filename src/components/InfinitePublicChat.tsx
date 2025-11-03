@@ -229,16 +229,15 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
         </Card>
 
         {/* Messages */}
-        <div className={cn(
-          "flex-1 relative transition-all duration-300",
-          showVirtualKeyboard && "max-h-[40vh]"
-        )}>
-            <div
-            ref={scrollElementRef}
-            onScroll={handleScroll}
-            className="absolute inset-0 overflow-y-auto p-4"
-            style={{ scrollBehavior: 'auto', display: 'flex', flexDirection: 'column-reverse' }}
-          >
+        <div 
+          ref={scrollElementRef}
+          onScroll={handleScroll}
+          className={cn(
+            "flex-1 overflow-y-auto p-4 transition-all duration-300",
+            showVirtualKeyboard && "pb-[320px]"
+          )}
+          style={{ scrollBehavior: 'auto' }}
+        >
             {/* Load more indicator */}
             {loadingMore && (
               <div className="flex justify-center py-4">
@@ -294,12 +293,11 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
 
             {/* Scroll indicator */}
             <div className="h-4" />
-          </div>
         </div>
 
         {/* Input */}
         <Card className="card-shadow border-0 rounded-none">
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Input
                 value={newMessage}
@@ -344,18 +342,20 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
                 {newMessage.length}/1000 caracteres
               </p>
             )}
-
-            {/* Virtual Keyboard */}
-            {showVirtualKeyboard && (
-              <VirtualKeyboard
-                onKeyPress={handleVirtualKeyPress}
-                onBackspace={handleVirtualBackspace}
-                onSpace={handleVirtualSpace}
-                onClose={() => setShowVirtualKeyboard(false)}
-              />
-            )}
           </CardContent>
         </Card>
+
+        {/* Virtual Keyboard - Fixed at bottom */}
+        {showVirtualKeyboard && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
+            <VirtualKeyboard
+              onKeyPress={handleVirtualKeyPress}
+              onBackspace={handleVirtualBackspace}
+              onSpace={handleVirtualSpace}
+              onClose={() => setShowVirtualKeyboard(false)}
+            />
+          </div>
+        )}
       </div>
     </MobileLayout>
   );

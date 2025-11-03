@@ -224,7 +224,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
           ref={messagesContainerRef}
           className={cn(
             "flex-1 overflow-y-auto p-4 space-y-4 transition-all duration-300",
-            showVirtualKeyboard && "max-h-[40vh]"
+            showVirtualKeyboard && "pb-[320px]"
           )}
           onScroll={handleScroll}
         >
@@ -310,7 +310,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
 
         {/* Input */}
         <Card className="card-shadow border-0 rounded-none">
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Input
                 value={newMessage}
@@ -344,18 +344,20 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-
-            {/* Virtual Keyboard */}
-            {showVirtualKeyboard && (
-              <VirtualKeyboard
-                onKeyPress={handleVirtualKeyPress}
-                onBackspace={handleVirtualBackspace}
-                onSpace={handleVirtualSpace}
-                onClose={() => setShowVirtualKeyboard(false)}
-              />
-            )}
           </CardContent>
         </Card>
+
+        {/* Virtual Keyboard - Fixed at bottom */}
+        {showVirtualKeyboard && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
+            <VirtualKeyboard
+              onKeyPress={handleVirtualKeyPress}
+              onBackspace={handleVirtualBackspace}
+              onSpace={handleVirtualSpace}
+              onClose={() => setShowVirtualKeyboard(false)}
+            />
+          </div>
+        )}
       </div>
     </MobileLayout>
   );

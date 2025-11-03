@@ -19,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { stripUserDigits } from '@/lib/utils';
+import { stripUserDigits, cn } from '@/lib/utils';
 import VirtualKeyboard from '@/components/VirtualKeyboard';
 
 interface ProfileChatProps {
@@ -354,6 +354,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
   }, []);
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="bottom" 
@@ -426,7 +427,10 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
         </SheetHeader>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
+        <div className={cn(
+          "flex-1 overflow-y-auto p-4 space-y-4 bg-background transition-all duration-300",
+          showVirtualKeyboard && "pb-[320px]"
+        )}>
           {!conversationId ? (
             <div className="flex items-center justify-center h-full">
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -588,22 +592,25 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-
-            {/* Virtual Keyboard */}
-            {showVirtualKeyboard && (
-              <VirtualKeyboard
-                onKeyPress={handleVirtualKeyPress}
-                onBackspace={handleVirtualBackspace}
-                onSpace={handleVirtualSpace}
-                onClose={() => setShowVirtualKeyboard(false)}
-              />
-            )}
           </div>
         </div>
-      </SheetContent>
 
-      {/* Settings Modal */}
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        {/* Virtual Keyboard - Fixed at bottom */}
+        {showVirtualKeyboard && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
+            <VirtualKeyboard
+              onKeyPress={handleVirtualKeyPress}
+              onBackspace={handleVirtualBackspace}
+              onSpace={handleVirtualSpace}
+              onClose={() => setShowVirtualKeyboard(false)}
+            />
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+
+    {/* Settings Modal */}
+    <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Configurações da Conversa</DialogTitle>
@@ -718,7 +725,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Sheet>
+    </>
   );
 };
 
