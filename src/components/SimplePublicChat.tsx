@@ -202,7 +202,7 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
 
         {/* Virtual Keyboard - Fixed at bottom */}
         {showVirtualKeyboard && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
+          <div className="fixed bottom-0 left-0 right-0 z-50">
             <VirtualKeyboard
               onKeyPress={handleVirtualKeyPress}
               onBackspace={handleVirtualBackspace}

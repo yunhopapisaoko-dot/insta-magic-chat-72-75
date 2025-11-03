@@ -33,7 +33,7 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
   };
 
   return (
-    <div className="w-full max-h-[280px] bg-card/98 border-t border-border shadow-2xl animate-slide-up overflow-hidden">
+    <div className="w-full bg-card/98 border-t border-border shadow-2xl animate-slide-up">
       {/* Preview Area - Compacta */}
       <div className="px-3 py-2 bg-muted/40 backdrop-blur-sm border-b border-border/30 flex items-center justify-between">
         <div className="flex-1 min-w-0 mr-2">
@@ -52,7 +52,7 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
       </div>
 
       {/* Keyboard - Compacto */}
-      <div className="p-2 space-y-1.5 pb-safe">
+      <div className="p-2 pb-1 space-y-1.5">
         {/* First Row */}
         <div className="flex gap-1 justify-center">
           {row1.map((key) => (
@@ -110,7 +110,7 @@ const VirtualKeyboard = ({ onKeyPress, onBackspace, onSpace, onClose, currentVal
         </div>
 
         {/* Fourth Row */}
-        <div className="flex gap-1 justify-center">
+        <div className="flex gap-1 justify-center mb-1">
           <Button
             onClick={() => setIsSymbols(!isSymbols)}
             variant="outline"
