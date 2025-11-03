@@ -208,6 +208,7 @@ const SimplePublicChat = ({ onBack }: SimplePublicChatProps) => {
               onBackspace={handleVirtualBackspace}
               onSpace={handleVirtualSpace}
               onClose={() => setShowVirtualKeyboard(false)}
+              currentValue={newMessage}
             />
           </div>
         )}

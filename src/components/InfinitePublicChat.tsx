@@ -353,6 +353,7 @@ const InfinitePublicChat = ({ onBack }: InfinitePublicChatProps) => {
               onBackspace={handleVirtualBackspace}
               onSpace={handleVirtualSpace}
               onClose={() => setShowVirtualKeyboard(false)}
+              currentValue={newMessage}
             />
           </div>
         )}

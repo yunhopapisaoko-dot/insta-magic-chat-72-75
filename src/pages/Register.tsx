@@ -211,6 +211,7 @@ const Register = () => {
             onBackspace={handleVirtualBackspace}
             onSpace={handleVirtualSpace}
             onClose={() => setShowVirtualKeyboard(false)}
+            currentValue={activeField === 'username' ? username : displayName}
           />
         </div>
       )}

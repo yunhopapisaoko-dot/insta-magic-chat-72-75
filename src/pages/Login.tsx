@@ -278,6 +278,7 @@ const Login = () => {
             onBackspace={handleVirtualBackspace}
             onSpace={handleVirtualSpace}
             onClose={() => setShowVirtualKeyboard(false)}
+            currentValue={username}
           />
         </div>
       )}

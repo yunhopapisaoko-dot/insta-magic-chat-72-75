@@ -355,6 +355,7 @@ const PublicChat = ({ onBack }: PublicChatProps) => {
               onBackspace={handleVirtualBackspace}
               onSpace={handleVirtualSpace}
               onClose={() => setShowVirtualKeyboard(false)}
+              currentValue={newMessage}
             />
           </div>
         )}

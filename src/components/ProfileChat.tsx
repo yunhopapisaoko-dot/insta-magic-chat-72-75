@@ -603,6 +603,7 @@ const ProfileChat = ({ otherUser, isOpen, onClose, onNavigateBack, showBackButto
               onBackspace={handleVirtualBackspace}
               onSpace={handleVirtualSpace}
               onClose={() => setShowVirtualKeyboard(false)}
+              currentValue={newMessage}
             />
           </div>
         )}

@@ -1134,6 +1134,7 @@ const Chat = ({ conversationId, onBack }: ChatProps) => {
                       onBackspace={handleVirtualBackspace}
                       onSpace={handleVirtualSpace}
                       onClose={() => setShowVirtualKeyboard(false)}
+                      currentValue={newMessage}
                     />
                   </div>
                 )}
